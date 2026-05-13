@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@plugin "@tailwindcss/typography";
 @plugin "daisyui" {
     themes: night;
 }
@@ -15,29 +14,80 @@
     }
 }
 
-.player {
-    @apply bg-neutral absolute top-0 left-0 h-full w-full;
-    color-scheme: light;
-    width: 160% !important;
-    height: 160% !important;
-    -webkit-transform: scale(0.625);
-    transform: scale(0.625);
-    -webkit-transform-origin: 0 0;
-    transform-origin: 0 0;
+.controls {
+    @apply border-base-300 bg-base-200/95 sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border p-2;
+}
+
+.gallery {
+    @apply grid grid-cols-[repeat(auto-fill,minmax(310px,1fr))] items-start gap-2 pt-3;
 }
 
 .box {
-    animation: fadeInRight 1s ease-out;
+    @apply bg-base-200 border-base-300 min-w-0 overflow-hidden rounded-lg border;
+    animation: fadeInRight 0.35s ease-out;
 }
 
-.box-controls:hover > .box-name-container {
+.box.unmuted {
+    @apply outline-secondary outline-4;
+}
+
+.box.expanded {
+    @apply fixed inset-3 z-30;
+}
+
+.box-toolbar {
+    @apply bg-base-300 grid min-h-9 grid-cols-[30px_26px_minmax(72px,1fr)_auto_repeat(6,auto)] items-center gap-1 p-1;
+}
+
+.drag-handle {
+    @apply cursor-grab;
+}
+
+.box-form {
+    @apply border-base-300 hidden grid-cols-[minmax(80px,1fr)_140px_minmax(120px,2fr)_auto_auto] gap-1 border-b p-2;
+}
+
+.box.editing .box-form {
+    @apply grid;
+}
+
+.viewport {
+    @apply relative h-[180px] bg-black;
+}
+
+.expanded .viewport {
+    height: calc(100vh - 82px);
+}
+
+.player {
+    @apply h-full w-full;
+}
+
+.meter {
+    @apply pointer-events-none absolute top-0 right-0 h-full w-6 bg-black/30;
+}
+
+.empty-state {
+    @apply text-base-content/60 pointer-events-none absolute inset-0 grid place-items-center p-5 text-center;
+}
+
+.box.loaded .empty-state {
     @apply hidden;
 }
 
-.unmuted {
-    @apply outline outline-4 outline-green-500;
-}
+@media (max-width: 760px) {
+    .box-toolbar {
+        @apply grid-cols-[30px_26px_minmax(80px,1fr)_auto_auto_auto];
+    }
 
-.expanded {
-    @apply fixed inset-0 z-30 m-auto box-border h-[95%] w-[95%];
+    .box-toolbar .box-status,
+    .box-toolbar .solo,
+    .box-toolbar .edit,
+    .box-toolbar .reload {
+        @apply hidden;
+    }
+
+    .box-form {
+        @apply grid-cols-1;
+    }
 }

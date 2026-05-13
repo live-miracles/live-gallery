@@ -1,12 +1,24 @@
 # Live Gallery
 
-<img width="700" alt="Live Gallery" src="https://github.com/user-attachments/assets/d1a87eb1-1881-4400-912d-af3303c5e3f9">
+Live Gallery is an Electron app for monitoring multiple live sources at once:
+YouTube, privacy-enhanced YouTube embeds, JW Player, VdoCipher, Facebook embeds,
+custom URLs, HLS links, and screen shares.
 
-Here you can monitor multiple YouTube, JW, Facebook, and other live broadcasts simultaneously.
+The old Chrome extension flow has been replaced with Electron `webview` preloads.
+Each box runs its player inside a webview, while the app can still meter audio,
+mute or solo boxes, rotate the active audio source, and send player actions such
+as YouTube LIVE / lowest-quality commands where the embedded player allows it.
 
-It provides usefull features:
+## Development
 
-- Audio VU meter, which shows audio levels on the right side.
-- Sets lowest quality for all playing YouTube videos.
-- You can monitor multiple Zooms using the Screen Share.
-- And others!
+```bash
+npm ci
+npm run build
+npm run dev
+```
+
+## Packaging
+
+```bash
+npm run dist
+```

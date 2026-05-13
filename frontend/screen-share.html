@@ -1,45 +1,71 @@
 <!doctype html>
-<html lang="en" data-theme="night">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Screen Share</title>
-    <link rel="stylesheet" href="./output.css" />
-  </head>
-  <body class="text-base-content text-neutral-content h-screen w-screen bg-black">
-    <div class="hover:bg-neutral relative h-full w-full cursor-pointer" onclick="captureWindow()">
-      <video class="absolute inset-0 h-full w-full object-contain pr-[20px]"></video>
-      <span class="absolute inset-0 flex items-center justify-center text-center text-xl"> Click to Share Window </span>
-    </div>
+    <style>
+      body {
+        margin: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: #05070a;
+        color: white;
+        font:
+          15px system-ui,
+          sans-serif;
+      }
 
+      button {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: transparent;
+        color: white;
+        cursor: pointer;
+      }
+
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .active button {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <video autoplay></video>
+    <button>Click to Share Window</button>
     <script>
       const video = document.querySelector('video');
-      const span = document.querySelector('span');
+      const button = document.querySelector('button');
 
-      async function captureWindow() {
-        try {
-          const screenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { displaySurface: 'window' },
-          });
-
-          const audioStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-            video: false,
-          });
-
-          const combinedStream = new MediaStream([...screenStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
-
-          video.srcObject = combinedStream;
-          span.classList.add('hidden');
-          video.play();
-
-          screenStream.getVideoTracks()[0].addEventListener('ended', () => {
-            span.classList.remove('hidden');
-          });
-        } catch (error) {
-          console.error('Error accessing media devices:', error);
-        }
-      }
+      button.addEventListener('click', async () => {
+        const params = new URLSearchParams(window.location.search);
+        const deviceId = params.get('value');
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { displaySurface: 'window' },
+          audio: !deviceId,
+        });
+        const audioStream = deviceId
+          ? await navigator.mediaDevices.getUserMedia({
+              audio: { deviceId: { exact: deviceId } },
+              video: false,
+            })
+          : null;
+        const stream = new MediaStream([...displayStream.getVideoTracks(), ...(audioStream?.getAudioTracks() ?? displayStream.getAudioTracks())]);
+        video.srcObject = stream;
+        document.body.classList.add('active');
+        displayStream.getVideoTracks()[0]?.addEventListener('ended', () => {
+          document.body.classList.remove('active');
+        });
+      });
     </script>
   </body>
 </html>

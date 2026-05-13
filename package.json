@@ -4,11 +4,12 @@
     "description": "Monitor multiple live streams from YouTube, JW, Facebook, and other sources.",
     "main": "dist/main.js",
     "scripts": {
-        "build": "tsc -p backend && tsc -p preload && tsc -p ui",
+        "build": "npm run css && tsc -p backend && tsc -p preload && tsc -p frontend",
         "dist": "npm run build && electron-builder",
         "publish": "dotenv -e .env -- npm run build && dotenv -e .env -- electron-builder --publish=always",
-        "dev": "concurrently \"tsc -p backend -w\" \"tsc -p preload -w\" \"tsc -p ui -w\" \"electronmon .\"",
-        "css": "npx tailwindcss -i ./ui/input.css -o ./ui/dist/output.css --watch",
+        "dev": "concurrently \"npm run css -- --watch\" \"tsc -p backend -w\" \"tsc -p preload -w\" \"tsc -p frontend -w\" \"electronmon .\"",
+        "css": "tailwindcss -i ./frontend/input.css -o ./frontend/dist/output.css",
+        "watch:css": "tailwindcss -i ./frontend/input.css -o ./frontend/dist/output.css --watch",
         "format": "npx prettier --write .",
         "format:check": "npx prettier --check .",
         "test": "npm run build && node --test"
@@ -29,11 +30,11 @@
         },
         "files": [
             "dist/**/*",
-            "ui/**/*"
+            "frontend/**/*"
         ],
         "win": {
             "target": "nsis",
-            "icon": "ui/icon-256.ico"
+            "icon": "frontend/logo-256.ico"
         },
         "publish": {
             "provider": "github",
