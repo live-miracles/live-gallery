@@ -1,0 +1,43 @@
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+@plugin "daisyui" {
+    themes: night;
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.player {
+    @apply bg-neutral absolute top-0 left-0 h-full w-full;
+    color-scheme: light;
+    width: 160% !important;
+    height: 160% !important;
+    -webkit-transform: scale(0.625);
+    transform: scale(0.625);
+    -webkit-transform-origin: 0 0;
+    transform-origin: 0 0;
+}
+
+.box {
+    animation: fadeInRight 1s ease-out;
+}
+
+.box-controls:hover > .box-name-container {
+    @apply hidden;
+}
+
+.unmuted {
+    @apply outline outline-4 outline-green-500;
+}
+
+.expanded {
+    @apply fixed inset-0 z-30 m-auto box-border h-[95%] w-[95%];
+}

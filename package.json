@@ -1,0 +1,63 @@
+{
+    "name": "live-gallery",
+    "version": "0.0.1",
+    "description": "Monitor multiple live streams from YouTube, JW, Facebook, and other sources.",
+    "main": "dist/main.js",
+    "scripts": {
+        "build": "tsc -p backend && tsc -p preload && tsc -p ui",
+        "dist": "npm run build && electron-builder",
+        "publish": "dotenv -e .env -- npm run build && dotenv -e .env -- electron-builder --publish=always",
+        "dev": "concurrently \"tsc -p backend -w\" \"tsc -p preload -w\" \"tsc -p ui -w\" \"electronmon .\"",
+        "css": "npx tailwindcss -i ./ui/input.css -o ./ui/dist/output.css --watch",
+        "format": "npx prettier --write .",
+        "format:check": "npx prettier --check .",
+        "test": "npm run build && node --test"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@github-2:live-miracles/live-gallery.git"
+    },
+    "keywords": [],
+    "author": "Live Stream Miracles",
+    "license": "MIT",
+    "type": "module",
+    "build": {
+        "appId": "com.livemiracles.livegallery",
+        "productName": "Live Gallery",
+        "directories": {
+            "output": "release"
+        },
+        "files": [
+            "dist/**/*",
+            "ui/**/*"
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "ui/icon-256.ico"
+        },
+        "publish": {
+            "provider": "github",
+            "owner": "live-miracles",
+            "repo": "folder-player"
+        }
+    },
+    "devDependencies": {
+        "@tailwindcss/cli": "^4.2.1",
+        "@types/node": "^25.5.0",
+        "@types/semver": "^7.7.1",
+        "concurrently": "^9.2.1",
+        "daisyui": "^5.5.19",
+        "dotenv-cli": "^11.0.0",
+        "electron": "^41.0.2",
+        "electron-builder": "^26.8.1",
+        "electronmon": "^2.0.4",
+        "prettier": "^3.8.1",
+        "prettier-plugin-tailwindcss": "^0.7.2",
+        "tailwindcss": "^4.2.1",
+        "typescript": "^5.9.3"
+    },
+    "dependencies": {
+        "electron-updater": "^6.8.3",
+        "fast-xml-parser": "^5.5.6"
+    }
+}
