@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 @plugin "daisyui" {
-    themes: night;
+    themes: dim;
 }
 
 @keyframes fadeInRight {

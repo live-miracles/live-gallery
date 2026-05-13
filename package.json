@@ -7,7 +7,7 @@
         "build": "npm run css && tsc -p backend && tsc -p preload && tsc -p frontend",
         "dist": "npm run build && electron-builder",
         "publish": "dotenv -e .env -- npm run build && dotenv -e .env -- electron-builder --publish=always",
-        "dev": "concurrently \"npm run css -- --watch\" \"tsc -p backend -w\" \"tsc -p preload -w\" \"tsc -p frontend -w\" \"electronmon .\"",
+        "dev": "concurrently \"npm run watch:css\" \"tsc -p backend -w\" \"tsc -p preload -w\" \"tsc -p frontend -w\" \"electronmon .\"",
         "css": "tailwindcss -i ./frontend/input.css -o ./frontend/dist/output.css",
         "watch:css": "tailwindcss -i ./frontend/input.css -o ./frontend/dist/output.css --watch",
         "format": "npx prettier --write .",

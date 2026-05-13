@@ -7,5 +7,8 @@
         "lib": ["ES2020", "DOM"],
         "types": ["electron"]
     },
-    "include": ["./**/*.ts"]
+    "include": ["./**/*.ts"],
+    "watchOptions": {
+        "excludeDirectories": ["./dist"]
+    }
 }
