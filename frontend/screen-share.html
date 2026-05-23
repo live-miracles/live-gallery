@@ -47,24 +47,29 @@
       const button = document.querySelector('button');
 
       button.addEventListener('click', async () => {
-        const params = new URLSearchParams(window.location.search);
-        const deviceId = params.get('value');
-        const displayStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { displaySurface: 'window' },
-          audio: !deviceId,
-        });
-        const audioStream = deviceId
-          ? await navigator.mediaDevices.getUserMedia({
-              audio: { deviceId: { exact: deviceId } },
-              video: false,
-            })
-          : null;
-        const stream = new MediaStream([...displayStream.getVideoTracks(), ...(audioStream?.getAudioTracks() ?? displayStream.getAudioTracks())]);
-        video.srcObject = stream;
-        document.body.classList.add('active');
-        displayStream.getVideoTracks()[0]?.addEventListener('ended', () => {
-          document.body.classList.remove('active');
-        });
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const deviceId = params.get('value');
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { displaySurface: 'window' },
+            audio: !deviceId,
+          });
+          const audioStream = deviceId
+            ? await navigator.mediaDevices.getUserMedia({
+                audio: { deviceId: { exact: deviceId } },
+                video: false,
+              })
+            : null;
+          const stream = new MediaStream([...displayStream.getVideoTracks(), ...(audioStream?.getAudioTracks() ?? displayStream.getAudioTracks())]);
+          video.srcObject = stream;
+          document.body.classList.add('active');
+          displayStream.getVideoTracks()[0]?.addEventListener('ended', () => {
+            document.body.classList.remove('active');
+          });
+        } catch (error) {
+          console.error(error);
+          button.textContent = 'Could not start screen share. Click to try again.';
+        }
       });
     </script>
   </body>

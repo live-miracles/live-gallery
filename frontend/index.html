@@ -20,11 +20,9 @@
     </header>
 
     <main class="p-3">
-      <section class="controls" aria-label="Gallery controls">
-        <label class="label cursor-pointer gap-2 p-0">
-          <input id="audio-levels" class="toggle toggle-secondary toggle-sm" type="checkbox" checked />
-          Audio meters
-        </label>
+      <section
+        class="border-base-300 bg-base-200/95 sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border p-2"
+        aria-label="Gallery controls">
         <label class="label cursor-pointer gap-2 p-0">
           <input id="mute-rotation" class="toggle toggle-secondary toggle-sm" type="checkbox" />
           Rotate solo audio
@@ -44,45 +42,8 @@
         <button id="lowest-quality" class="btn btn-secondary btn-xs btn-outline">Lowest Quality</button>
       </section>
 
-      <section id="gallery" class="gallery" aria-label="Live boxes"></section>
+      <section id="gallery" class="flex flex-wrap items-start pt-3 max-[760px]:justify-center" aria-label="Live boxes"></section>
     </main>
-
-    <template id="box-template">
-      <article class="box">
-        <div class="box-toolbar">
-          <button class="drag-handle btn btn-ghost btn-xs" title="Drag">=</button>
-          <span class="box-number badge badge-sm badge-neutral"></span>
-          <strong class="box-title truncate text-sm"></strong>
-          <span class="box-status text-base-content/60 text-xs"></span>
-          <button class="expand btn btn-secondary btn-xs btn-soft" title="Expand">□</button>
-          <button class="mute btn btn-xs btn-soft" title="Mute or unmute">Muted</button>
-          <button class="solo btn btn-secondary btn-xs btn-soft" title="Solo this box">Solo</button>
-          <button class="edit btn btn-secondary btn-xs btn-soft" title="Edit">Edit</button>
-          <button class="reload btn btn-secondary btn-xs btn-soft" title="Reload">Reload</button>
-          <button class="remove btn btn-error btn-xs btn-soft" title="Remove">×</button>
-        </div>
-        <form class="box-form">
-          <input name="name" class="input input-xs" type="text" placeholder="Name" />
-          <select name="type" class="select select-xs">
-            <option value="YT">YouTube</option>
-            <option value="YN">YouTube Private</option>
-            <option value="JW">JW Player</option>
-            <option value="VC">VdoCipher</option>
-            <option value="SS">Screen Share</option>
-            <option value="FB">Facebook</option>
-            <option value="CU">Custom URL</option>
-          </select>
-          <input name="value" class="input input-xs" type="text" placeholder="URL, ID, or microphone device" />
-          <button type="submit" class="btn btn-secondary btn-xs">Save</button>
-          <button type="button" class="cancel btn btn-xs">Cancel</button>
-        </form>
-        <div class="viewport">
-          <webview class="player" allowpopups></webview>
-          <canvas class="meter" width="40" height="180"></canvas>
-          <div class="empty-state">Configure this box to load a live source.</div>
-        </div>
-      </article>
-    </template>
 
     <dialog id="url-dialog" class="modal">
       <form method="dialog">

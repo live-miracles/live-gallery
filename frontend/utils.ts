@@ -17,6 +17,7 @@ export type GallerySettings = {
 };
 
 const separator = '|';
+const youtubeEmbedOrigin = 'https://live-gallery.local';
 
 export function createId(): string {
     return crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
@@ -113,12 +114,12 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
     params.set('boxId', box.id);
     params.set('value', box.value);
 
-    if (!box.value.trim()) {
-        return '';
-    }
-
     if (box.type === 'SS') {
         return new URL(`screen-share.html?${params.toString()}`, window.location.href).toString();
+    }
+
+    if (!box.value.trim()) {
+        return '';
     }
 
     if (box.type === 'CU') {
@@ -133,6 +134,10 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
 
     if (box.type === 'YT' || box.type === 'YN') {
         const host = box.type === 'YT' ? 'youtube.com' : 'youtube-nocookie.com';
+        params.set('origin', youtubeEmbedOrigin);
+        params.set('mute', '1');
+        params.set('playsinline', '1');
+        params.set('widget_referrer', youtubeEmbedOrigin);
         return `https://www.${host}/embed/${extractYouTubeId(box.value)}?autoplay=1&enablejsapi=1&iv_load_policy=3&${params.toString()}`;
     }
 

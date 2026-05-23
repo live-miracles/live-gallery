@@ -7,6 +7,7 @@ const { autoUpdater } = updater;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
+const youtubeEmbedOrigin = 'https://live-gallery.local';
 
 function createWindow(): void {
     const isSmokeTest = process.argv.includes('--smoke-test');
@@ -39,6 +40,15 @@ function createWindow(): void {
     });
 
     win.loadFile(path.join(rootDir, 'frontend', 'index.html'));
+
+    // For Camera / Mic permissions
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        if (permission === 'media') {
+            callback(true);
+        } else {
+            callback(false);
+        }
+    });
 
     if (isSmokeTest) {
         win.webContents.once('did-finish-load', () => {
@@ -92,6 +102,20 @@ function configureAppSession(): void {
         delete headers['content-security-policy'];
         callback({ responseHeaders: headers });
     });
+
+    session.defaultSession.webRequest.onBeforeSendHeaders(
+        {
+            urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*'],
+        },
+        (details, callback) => {
+            callback({
+                requestHeaders: {
+                    ...details.requestHeaders,
+                    Referer: `${youtubeEmbedOrigin}/`,
+                },
+            });
+        },
+    );
 }
 
 app.whenReady().then(() => {

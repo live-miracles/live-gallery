@@ -93,6 +93,12 @@ function calculateDb(analyser: AnalyserNode): number {
 function applyMute(): void {
     if (audioTools) {
         audioTools.gain.gain.value = muted ? 0 : 1;
+        audioTools.context.resume().catch((error: unknown) => {
+            ipcRenderer.sendToHost('gallery-error', {
+                boxId,
+                message: error instanceof Error ? error.message : String(error),
+            });
+        });
     }
 }
 
@@ -106,6 +112,12 @@ function emitLevels(): void {
     }
 
     window.setTimeout(emitLevels, 100);
+}
+
+function keepMediaAudibleForMeter(media: HTMLMediaElement): void {
+    media.autoplay = true;
+    media.muted = false;
+    media.volume = 1;
 }
 
 function clickAutoLive(): void {
@@ -168,12 +180,11 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             connectedElement = media;
-            media.autoplay = true;
-            media.muted = false;
-            media.volume = 1;
+            keepMediaAudibleForMeter(media);
             audioTools = createTools(media);
             applyMute();
             emitLevels();
+            window.setInterval(() => keepMediaAudibleForMeter(media), 500);
             window.setInterval(clickAutoLive, 2000);
         })
         .catch((error: unknown) => {
