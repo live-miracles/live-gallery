@@ -72,6 +72,13 @@ function syncControlsFromSettings(): void {
     rotationBoxesInput.value = settings.rotationBoxes;
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
+    syncRotationControlsVisibility();
+}
+
+function syncRotationControlsVisibility(): void {
+    const isRotating = muteRotationInput.checked;
+    rotationBoxesInput.disabled = !isRotating;
+    rotationTimeInput.disabled = !isRotating;
 }
 
 function saveState(): void {
@@ -580,6 +587,7 @@ function getRotationBoxes(): GalleryBox[] {
 
 function updateAllSettings(): void {
     syncSettingsFromControls();
+    syncRotationControlsVisibility();
     boxes.forEach((box) => {
         sendCommand(box.id, { type: 'auto-live', enabled: settings.autoLive });
         loadWebview(box);
