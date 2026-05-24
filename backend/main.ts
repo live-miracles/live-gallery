@@ -24,6 +24,8 @@ let appZoomPercent = 100;
 const shortcutWebContents = new WeakSet<Electron.WebContents>();
 let updatesAreConfigured = false;
 
+configureChromiumSwitches();
+
 ipcMain.handle('gallery:get-zoom', () => appZoomPercent);
 ipcMain.handle('gallery:set-zoom', (_event, percent: number) => setAppZoom(percent));
 ipcMain.handle('gallery:change-zoom', (_event, delta: number) =>
@@ -241,9 +243,19 @@ function setAppZoom(percent: number): number {
     return appZoomPercent;
 }
 
-function configureAppSession(): void {
+function configureChromiumSwitches(): void {
     app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+    app.commandLine.appendSwitch(
+        'disable-features',
+        [
+            'WebRtcAllowInputVolumeAdjustment',
+            'WebRtcApmDownmixCaptureAudioMethod',
+            'ChromeWideEchoCancellation',
+        ].join(','),
+    );
+}
 
+function configureAppSession(): void {
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
         const allowed = new Set(['media', 'display-capture', 'fullscreen', 'clipboard-read']);
         callback(allowed.has(permission));

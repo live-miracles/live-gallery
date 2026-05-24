@@ -45,7 +45,9 @@ let levelsEnabled = params.get('audioLevels') !== '0';
 let autoLive = params.get('autoLive') !== '0';
 let connectedElement: HTMLMediaElement | null = null;
 let connectedStream: MediaStream | null = null;
+let selectedMicStream: MediaStream | null = null;
 let emitLevelsStarted = false;
+let autoLiveTimer = 0;
 const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
 
 function sleep(ms: number): Promise<void> {
@@ -159,6 +161,40 @@ function startLevelLoop(): void {
     emitLevels();
 }
 
+function getCleanMicConstraints(deviceId: string): MediaTrackConstraints {
+    return {
+        deviceId: { exact: deviceId },
+        autoGainControl: false,
+        echoCancellation: false,
+        noiseSuppression: false,
+        channelCount: 2,
+    };
+}
+
+async function connectSelectedScreenShareMic(): Promise<void> {
+    if (!isScreenShare || selectedMicStream) {
+        return;
+    }
+
+    const deviceId = params.get('value');
+    if (!deviceId) {
+        return;
+    }
+
+    try {
+        selectedMicStream = await navigator.mediaDevices.getUserMedia({
+            audio: getCleanMicConstraints(deviceId),
+            video: false,
+        });
+        connectScreenShareAudio(selectedMicStream);
+    } catch (error) {
+        ipcRenderer.sendToHost('gallery-error', {
+            boxId,
+            message: error instanceof Error ? error.message : String(error),
+        });
+    }
+}
+
 function connectScreenShareAudio(stream: MediaStream): void {
     const audioTracks = stream.getAudioTracks();
     if (audioTracks.length === 0) {
@@ -259,10 +295,23 @@ function clickAutoLive(): void {
         return;
     }
 
-    const liveBadge = querySelectorAllShadows<HTMLElement>('.ytp-live-badge')[0];
-    if (liveBadge && !liveBadge.classList.contains('ytp-live-badge-is-live')) {
-        liveBadge.click();
+    const liveBadge = querySelectorAllShadows<HTMLElement>('.ytwPlayerTimeDisplayTimeElapsed')[0];
+    if (!liveBadge) {
+        console.error('YouTube auto-live failed: .ytp-live-badge was not found.');
+        return;
     }
+
+    liveBadge.click();
+}
+
+function startAutoLiveLoop(): void {
+    window.clearInterval(autoLiveTimer);
+    if (!autoLive || isScreenShare) {
+        return;
+    }
+
+    clickAutoLive();
+    autoLiveTimer = window.setInterval(clickAutoLive, 5000);
 }
 
 async function setLowestYouTubeQuality(): Promise<void> {
@@ -296,6 +345,7 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
         levelsEnabled = command.enabled;
     } else if (command.type === 'auto-live') {
         autoLive = command.enabled;
+        startAutoLiveLoop();
     } else if (command.type === 'lowest-quality') {
         setLowestYouTubeQuality().catch((error: unknown) => {
             ipcRenderer.sendToHost('gallery-error', {
@@ -307,6 +357,13 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
+    connectSelectedScreenShareMic().catch((error: unknown) => {
+        ipcRenderer.sendToHost('gallery-error', {
+            boxId,
+            message: error instanceof Error ? error.message : String(error),
+        });
+    });
+
     waitForVideo()
         .then((media) => {
             if (!media) {
@@ -314,7 +371,7 @@ window.addEventListener('DOMContentLoaded', () => {
             }
 
             watchMedia(media);
-            window.setInterval(clickAutoLive, 2000);
+            startAutoLiveLoop();
         })
         .catch((error: unknown) => {
             ipcRenderer.sendToHost('gallery-error', {

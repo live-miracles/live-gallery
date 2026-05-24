@@ -145,12 +145,48 @@ function syncControlsFromSettings(): void {
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
     syncRotationControlsVisibility();
+    updateRotationBoxesValidity();
 }
 
 function syncRotationControlsVisibility(): void {
     const isRotating = muteRotationInput.checked;
     rotationBoxesInput.disabled = !isRotating;
     rotationTimeInput.disabled = !isRotating;
+}
+
+function sanitizeRotationBoxesInput(): void {
+    rotationBoxesInput.value = rotationBoxesInput.value.replace(/[^\d\s-]/g, ' ');
+    updateRotationBoxesValidity();
+}
+
+function updateRotationBoxesValidity(): boolean {
+    const error = getRotationBoxesSyntaxError(rotationBoxesInput.value);
+    rotationBoxesInput.classList.toggle('input-error', Boolean(error));
+    rotationBoxesInput.title = error ?? '';
+    return !error;
+}
+
+function getRotationBoxesSyntaxError(value: string): string | null {
+    const tokens = value.trim().split(/\s+/).filter(Boolean);
+    for (const token of tokens) {
+        const singleNumber = token.match(/^\d+$/);
+        if (singleNumber) {
+            continue;
+        }
+
+        const range = token.match(/^(\d+)-(\d+)$/);
+        if (!range) {
+            return 'Use numbers or ranges like 2 4 9-11. Dashes need numbers on both sides.';
+        }
+
+        const start = Number(range[1]);
+        const end = Number(range[2]);
+        if (end <= start) {
+            return 'Range end must be greater than range start.';
+        }
+    }
+
+    return null;
 }
 
 function saveState(): void {
@@ -224,11 +260,11 @@ function renderBox(box: GalleryBox, index: number): void {
           <button type="submit" class="btn btn-secondary btn-xs">Save</button>
           <button type="button" class="cancel btn btn-xs">Cancel</button>
         </form>
-        <div class="viewport relative h-[150px] overflow-hidden bg-black">
-          <div class="absolute top-0 right-[10px] bottom-0 left-0 overflow-hidden">
+        <div class="viewport relative h-37.5 overflow-hidden bg-black">
+          <div class="absolute top-0 right-2.5 bottom-0 left-0 overflow-hidden">
             <webview class="player bg-neutral absolute top-0 left-0 h-[160%] w-[160%] origin-top-left scale-[0.625]" style="color-scheme: light" allowpopups></webview>
           </div>
-          <canvas class="meter pointer-events-none absolute top-0 right-0 h-full w-[10px] bg-black/30" width="10" height="180"></canvas>
+          <canvas class="meter pointer-events-none absolute top-0 right-0 h-full w-2.5 bg-black/30" width="10" height="180"></canvas>
           <div class="empty-state text-base-content/60 pointer-events-none absolute inset-0 grid place-items-center p-5 text-center">Configure this box to load a live source.</div>
         </div>`;
 
@@ -411,7 +447,14 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
 
 async function loadMics(): Promise<void> {
     try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                autoGainControl: false,
+                echoCancellation: false,
+                noiseSuppression: false,
+            },
+        });
+        stream.getTracks().forEach((track) => track.stop());
         const devices = await navigator.mediaDevices.enumerateDevices();
         mics = devices
             .filter((device) => device.kind === 'audioinput')
@@ -643,21 +686,44 @@ function restartRotation(): void {
 }
 
 function getRotationBoxes(): GalleryBox[] {
-    const numbers = settings.rotationBoxes
-        .split(/\s+/)
-        .map((value) => Number(value))
-        .filter((value) => Number.isInteger(value) && value > 0);
-
-    if (numbers.length === 0) {
+    if (settings.rotationBoxes.trim() === '') {
         return boxes;
     }
+
+    if (getRotationBoxesSyntaxError(settings.rotationBoxes)) {
+        return [];
+    }
+
+    const numbers = parseRotationNumbers(settings.rotationBoxes);
 
     return numbers
         .map((number) => boxes[number - 1])
         .filter((box): box is GalleryBox => Boolean(box));
 }
 
+function parseRotationNumbers(value: string): number[] {
+    return value.split(/\s+/).flatMap((token) => {
+        const match = token.match(/^(\d+)(?:-(\d+))?$/);
+        if (!match) {
+            return [];
+        }
+
+        const start = Number(match[1]);
+        const end = match[2] ? Number(match[2]) : start;
+        if (!Number.isInteger(start) || !Number.isInteger(end) || start <= 0 || end <= 0) {
+            return [];
+        }
+
+        const range: number[] = [];
+        for (let current = start; current <= end; current += 1) {
+            range.push(current);
+        }
+        return range;
+    });
+}
+
 function updateAllSettings(): void {
+    sanitizeRotationBoxesInput();
     syncSettingsFromControls();
     syncRotationControlsVisibility();
     boxes.forEach((box) => {
@@ -709,6 +775,7 @@ document.getElementById('lowest-quality')!.addEventListener('click', () => {
 [muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
     input.addEventListener('change', updateAllSettings);
 });
+rotationBoxesInput.addEventListener('input', sanitizeRotationBoxesInput);
 
 initZoomControls();
 initUpdateControls();

@@ -163,6 +163,16 @@
         activeStream = null;
       }
 
+      function getCleanMicConstraints(deviceId) {
+        return {
+          deviceId: { exact: deviceId },
+          autoGainControl: false,
+          echoCancellation: false,
+          noiseSuppression: false,
+          channelCount: 2,
+        };
+      }
+
       async function getDisplayStream(sourceId, includeAudio) {
         const desktopVideo = {
           mandatory: {
@@ -202,13 +212,7 @@
           const params = new URLSearchParams(window.location.search);
           const deviceId = params.get('value');
           const displayStream = await getDisplayStream(source.id, !deviceId);
-          const audioStream = deviceId
-            ? await navigator.mediaDevices.getUserMedia({
-                audio: { deviceId: { exact: deviceId } },
-                video: false,
-              })
-            : null;
-          const stream = new MediaStream([...displayStream.getVideoTracks(), ...(audioStream?.getAudioTracks() ?? displayStream.getAudioTracks())]);
+          const stream = new MediaStream([...displayStream.getVideoTracks(), ...(!deviceId ? displayStream.getAudioTracks() : [])]);
           stopActiveStream();
           activeStream = stream;
           video.srcObject = stream;
