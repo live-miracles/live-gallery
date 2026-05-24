@@ -246,7 +246,7 @@ function renderBox(box: GalleryBox, index: number): void {
           <button class="reload btn btn-secondary btn-xs btn-soft box-tool-btn" title="Reload">↻</button>
           <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove">✕</button>
         </div>
-        <form class="box-form bg-base-200/95 border-base-300 absolute top-5 left-0 z-20 hidden w-full grid-cols-1 gap-1 border-b p-2 shadow-lg">
+        <form class="box-form bg-base-200/80 border-base-300 absolute top-7 left-1/2 z-20 hidden w-4/5 -translate-x-1/2 grid-cols-1 gap-1 rounded-lg border p-2 shadow-lg backdrop-blur-sm">
           <input name="name" class="input input-xs" type="text" placeholder="Name" />
           <select name="type" class="select select-xs">
             <option value="YT">YouTube</option>
@@ -257,8 +257,10 @@ function renderBox(box: GalleryBox, index: number): void {
             <option value="CU">Custom URL</option>
           </select>
           <div class="value-slot"></div>
-          <button type="submit" class="btn btn-secondary btn-xs">Save</button>
-          <button type="button" class="cancel btn btn-xs">Cancel</button>
+          <div class="mt-1 flex justify-center gap-2">
+            <button type="button" class="cancel btn btn-xs min-w-16">Cancel</button>
+            <button type="submit" class="btn btn-secondary btn-xs min-w-16">Save</button>
+          </div>
         </form>
         <div class="viewport relative h-37.5 overflow-hidden bg-black">
           <div class="absolute top-0 right-2.5 bottom-0 left-0 overflow-hidden">
