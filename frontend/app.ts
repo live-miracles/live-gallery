@@ -26,6 +26,8 @@ type BoxElements = {
     webview: Electron.WebviewTag;
     canvas: HTMLCanvasElement;
     muteButton: HTMLButtonElement;
+    webviewReady: boolean;
+    pendingCommands: Record<string, unknown>[];
 };
 
 const boxes: GalleryBox[] = [];
@@ -164,7 +166,19 @@ function renderBox(box: GalleryBox, index: number): void {
     root.draggable = true;
     number.textContent = String(index + 1);
     syncBoxControls(
-        { root, title, number, form, viewport, emptyState, webview, canvas, muteButton },
+        {
+            root,
+            title,
+            number,
+            form,
+            viewport,
+            emptyState,
+            webview,
+            canvas,
+            muteButton,
+            webviewReady: false,
+            pendingCommands: [],
+        },
         box,
     );
 
@@ -184,6 +198,15 @@ function renderBox(box: GalleryBox, index: number): void {
     webview.addEventListener('did-fail-load', (event) => {
         console.warn(`Box ${box.name || box.id} failed to load:`, event.errorDescription);
     });
+    webview.addEventListener('dom-ready', () => {
+        const entry = elements.get(box.id);
+        if (!entry) {
+            return;
+        }
+
+        entry.webviewReady = true;
+        flushPendingCommands(entry);
+    });
     webview.addEventListener('did-finish-load', () => {
         sendCommand(box.id, { type: 'mute', muted: box.muted });
     });
@@ -195,7 +218,7 @@ function renderBox(box: GalleryBox, index: number): void {
         setEditing(form, true);
     });
     root.querySelector<HTMLButtonElement>('.reload')!.addEventListener('click', () =>
-        loadWebview(box),
+        loadWebview(box, true),
     );
     root.querySelector<HTMLButtonElement>('.remove')!.addEventListener('click', () =>
         removeBox(box.id),
@@ -236,7 +259,19 @@ function renderBox(box: GalleryBox, index: number): void {
                 : String(formData.get('value') ?? '');
         setEditing(form, false);
         syncBoxControls(
-            { root, title, number, form, viewport, emptyState, webview, canvas, muteButton },
+            {
+                root,
+                title,
+                number,
+                form,
+                viewport,
+                emptyState,
+                webview,
+                canvas,
+                muteButton,
+                webviewReady: false,
+                pendingCommands: [],
+            },
             box,
         );
         loadWebview(box);
@@ -255,6 +290,8 @@ function renderBox(box: GalleryBox, index: number): void {
         webview,
         canvas,
         muteButton,
+        webviewReady: false,
+        pendingCommands: [],
     });
     loadWebview(box);
 }
@@ -323,15 +360,16 @@ function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
 function toggleExpanded(root: HTMLElement, viewport: HTMLElement): void {
     const isExpanded = !root.classList.contains('fixed');
     root.classList.toggle('fixed', isExpanded);
-    root.classList.toggle('inset-3', isExpanded);
+    root.classList.toggle('inset-0', isExpanded);
     root.classList.toggle('z-30', isExpanded);
-    root.classList.toggle('m-auto', isExpanded);
+    root.classList.toggle('m-0', isExpanded);
     root.classList.toggle('box-border', isExpanded);
-    root.classList.toggle('h-[95%]', isExpanded);
-    root.classList.toggle('w-[95%]', isExpanded);
+    root.classList.toggle('h-screen', isExpanded);
+    root.classList.toggle('w-screen', isExpanded);
     root.classList.toggle('max-w-none', isExpanded);
+    root.classList.toggle('rounded-none', isExpanded);
     viewport.classList.toggle('h-[150px]', !isExpanded);
-    viewport.classList.toggle('h-[calc(100vh-82px)]', isExpanded);
+    viewport.classList.toggle('h-[calc(100vh-20px)]', isExpanded);
 }
 
 function updateBoxNumbers(): void {
@@ -340,7 +378,7 @@ function updateBoxNumbers(): void {
     });
 }
 
-function loadWebview(box: GalleryBox): void {
+function loadWebview(box: GalleryBox, forceReload = false): void {
     const entry = elements.get(box.id);
     if (!entry) {
         return;
@@ -350,17 +388,48 @@ function loadWebview(box: GalleryBox): void {
     entry.emptyState.classList.toggle('hidden', Boolean(src));
     entry.webview.classList.toggle('hidden', !src);
 
-    if (!src || entry.webview.getAttribute('src') === src) {
+    if (!src) {
         return;
     }
 
+    if (entry.webview.getAttribute('src') === src) {
+        if (forceReload) {
+            if (entry.webviewReady) {
+                entry.webview.reloadIgnoringCache();
+            }
+        }
+        return;
+    }
+
+    entry.webviewReady = false;
+    entry.pendingCommands = [];
     entry.webview.src = src;
+}
+
+function flushPendingCommands(entry: BoxElements): void {
+    const commands = entry.pendingCommands.splice(0);
+    commands.forEach((command) => {
+        entry.webview.send('gallery-command', command);
+    });
 }
 
 function sendCommand(boxId: string, command: Record<string, unknown>): void {
     const entry = elements.get(boxId);
-    if (entry?.webview.isLoading() === false) {
+    if (!entry) {
+        return;
+    }
+
+    if (!entry.webviewReady) {
+        entry.pendingCommands.push(command);
+        return;
+    }
+
+    try {
         entry.webview.send('gallery-command', command);
+    } catch (error) {
+        entry.webviewReady = false;
+        entry.pendingCommands.push(command);
+        console.warn(`Box ${boxId} is not ready for player command yet:`, error);
     }
 }
 
@@ -379,7 +448,19 @@ function toggleMute(boxId: string, forceMuted?: boolean): void {
 }
 
 function soloBox(boxId: string): void {
-    boxes.forEach((box) => toggleMute(box.id, box.id !== boxId));
+    const box = boxes.find((item) => item.id === boxId);
+    if (!box) {
+        return;
+    }
+
+    const alreadySolo = !box.muted && boxes.every((item) => item.id === boxId || item.muted);
+
+    if (alreadySolo) {
+        toggleMute(boxId, true);
+        return;
+    }
+
+    boxes.forEach((item) => toggleMute(item.id, item.id !== boxId));
 }
 
 function removeBox(boxId: string): void {

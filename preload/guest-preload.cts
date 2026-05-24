@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 
 type GalleryCommand =
     | { type: 'mute'; muted: boolean }
@@ -14,13 +14,39 @@ type AudioTools = {
     source?: MediaElementAudioSourceNode;
 };
 
+type StreamAudioTools = {
+    context: AudioContext;
+    analyserL: AnalyserNode;
+    analyserR: AnalyserNode;
+    gain: GainNode;
+    source: MediaStreamAudioSourceNode;
+};
+
+type DesktopSource = {
+    id: string;
+    name: string;
+    thumbnail: string;
+};
+
+contextBridge.exposeInMainWorld('liveGalleryGuest', {
+    getDesktopSources: (): Promise<DesktopSource[]> =>
+        ipcRenderer.invoke('gallery:get-desktop-sources') as Promise<DesktopSource[]>,
+    connectScreenShareAudio: (): void => {
+        connectScreenShareAudioFromPage();
+    },
+});
+
 const params = new URLSearchParams(window.location.search);
 const boxId = params.get('boxId') ?? crypto.randomUUID();
 let audioTools: AudioTools | null = null;
+let streamAudioTools: StreamAudioTools | null = null;
 let muted = true;
 let levelsEnabled = params.get('audioLevels') !== '0';
 let autoLive = params.get('autoLive') !== '0';
 let connectedElement: HTMLMediaElement | null = null;
+let connectedStream: MediaStream | null = null;
+let emitLevelsStarted = false;
+const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -90,34 +116,142 @@ function calculateDb(analyser: AnalyserNode): number {
     return Math.max(-90, Math.min(0, 20 * Math.log10(rms + 1e-10)));
 }
 
+function resumeContext(context: AudioContext): void {
+    context.resume().catch((error: unknown) => {
+        ipcRenderer.sendToHost('gallery-error', {
+            boxId,
+            message: error instanceof Error ? error.message : String(error),
+        });
+    });
+}
+
 function applyMute(): void {
     if (audioTools) {
         audioTools.gain.gain.value = muted ? 0 : 1;
-        audioTools.context.resume().catch((error: unknown) => {
-            ipcRenderer.sendToHost('gallery-error', {
-                boxId,
-                message: error instanceof Error ? error.message : String(error),
-            });
-        });
+        resumeContext(audioTools.context);
+    }
+
+    if (streamAudioTools) {
+        streamAudioTools.gain.gain.value = muted ? 0 : 1;
+        resumeContext(streamAudioTools.context);
     }
 }
 
 function emitLevels(): void {
-    if (audioTools && levelsEnabled) {
+    const tools = streamAudioTools ?? audioTools;
+    if (tools && levelsEnabled) {
         ipcRenderer.sendToHost('gallery-level', {
             boxId,
-            left: calculateDb(audioTools.analyserL),
-            right: calculateDb(audioTools.analyserR),
+            left: calculateDb(tools.analyserL),
+            right: calculateDb(tools.analyserR),
         });
     }
 
     window.setTimeout(emitLevels, 100);
 }
 
+function startLevelLoop(): void {
+    if (emitLevelsStarted) {
+        return;
+    }
+
+    emitLevelsStarted = true;
+    emitLevels();
+}
+
+function connectScreenShareAudio(stream: MediaStream): void {
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+        return;
+    }
+
+    streamAudioTools?.source.disconnect();
+    streamAudioTools?.gain.disconnect();
+    streamAudioTools?.context.close().catch(() => {});
+
+    try {
+        const context = new AudioContext();
+        const source = context.createMediaStreamSource(new MediaStream(audioTracks));
+        const splitter = context.createChannelSplitter(2);
+        const analyserL = context.createAnalyser();
+        const analyserR = context.createAnalyser();
+        const gain = context.createGain();
+
+        analyserL.fftSize = 256;
+        analyserR.fftSize = 256;
+        analyserL.smoothingTimeConstant = 0.8;
+        analyserR.smoothingTimeConstant = 0.8;
+
+        source.connect(splitter);
+        splitter.connect(analyserL, 0);
+        splitter.connect(analyserR, 1);
+        source.connect(gain);
+        gain.connect(context.destination);
+
+        streamAudioTools = { context, source, analyserL, analyserR, gain };
+        applyMute();
+        startLevelLoop();
+    } catch (error) {
+        ipcRenderer.sendToHost('gallery-error', {
+            boxId,
+            message: error instanceof Error ? error.message : String(error),
+        });
+    }
+}
+
+function connectScreenShareAudioFromPage(): void {
+    const media = querySelectorAllShadows<HTMLMediaElement>('video, audio')[0];
+    const stream = media?.srcObject;
+    if (!(stream instanceof MediaStream)) {
+        return;
+    }
+
+    media.muted = true;
+    media.volume = 0;
+    connectScreenShareAudio(stream);
+}
+
 function keepMediaAudibleForMeter(media: HTMLMediaElement): void {
     media.autoplay = true;
     media.muted = false;
     media.volume = 1;
+}
+
+function connectMedia(media: HTMLMediaElement): void {
+    const stream = media.srcObject instanceof MediaStream ? media.srcObject : null;
+    if (isScreenShare) {
+        return;
+    }
+
+    if (connectedElement === media && audioTools) {
+        connectedStream = stream;
+        keepMediaAudibleForMeter(media);
+        applyMute();
+        return;
+    }
+
+    keepMediaAudibleForMeter(media);
+    connectedElement = media;
+    connectedStream = stream;
+    audioTools = createTools(media);
+    applyMute();
+    startLevelLoop();
+}
+
+function watchMedia(media: HTMLMediaElement): void {
+    if (isScreenShare) {
+        window.addEventListener('live-gallery-media-ready', connectScreenShareAudioFromPage);
+        return;
+    }
+
+    connectMedia(media);
+    window.addEventListener('live-gallery-media-ready', () => {
+        connectMedia(media);
+    });
+    window.setInterval(() => {
+        keepMediaAudibleForMeter(media);
+        connectMedia(media);
+    }, 500);
 }
 
 function clickAutoLive(): void {
@@ -175,16 +309,11 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
 window.addEventListener('DOMContentLoaded', () => {
     waitForVideo()
         .then((media) => {
-            if (!media || connectedElement === media) {
+            if (!media) {
                 return;
             }
 
-            connectedElement = media;
-            keepMediaAudibleForMeter(media);
-            audioTools = createTools(media);
-            applyMute();
-            emitLevels();
-            window.setInterval(() => keepMediaAudibleForMeter(media), 500);
+            watchMedia(media);
             window.setInterval(clickAutoLive, 2000);
         })
         .catch((error: unknown) => {

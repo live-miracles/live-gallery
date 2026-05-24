@@ -18,6 +18,10 @@
       }
 
       button {
+        font: inherit;
+      }
+
+      .start {
         position: absolute;
         inset: 0;
         width: 100%;
@@ -28,32 +32,176 @@
         cursor: pointer;
       }
 
-      video {
+      .picker {
+        position: absolute;
+        inset: 0;
+        display: none;
+        grid-template-rows: auto 1fr;
+        gap: 10px;
+        padding: 12px;
+        overflow: hidden;
+        background: #05070a;
+      }
+
+      .picker.open {
+        display: grid;
+      }
+
+      .picker-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .picker-title {
+        overflow: hidden;
+        font-size: 13px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .refresh {
+        border: 1px solid rgb(255 255 255 / 0.24);
+        border-radius: 4px;
+        padding: 4px 7px;
+        background: rgb(255 255 255 / 0.08);
+        color: white;
+        cursor: pointer;
+      }
+
+      .picker-actions {
+        display: flex;
+        flex-shrink: 0;
+        gap: 6px;
+      }
+
+      .sources {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 8px;
+        overflow: auto;
+      }
+
+      .source {
+        display: grid;
+        gap: 5px;
+        align-content: start;
+        border: 1px solid rgb(255 255 255 / 0.16);
+        border-radius: 6px;
+        padding: 5px;
+        background: rgb(255 255 255 / 0.06);
+        color: white;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .source:hover,
+      .source:focus-visible {
+        border-color: rgb(130 230 111 / 0.8);
+        outline: none;
+      }
+
+      .source img {
         width: 100%;
-        height: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: 3px;
+        background: #111820;
         object-fit: contain;
       }
 
-      .active button {
+      .source span {
+        overflow: hidden;
+        font-size: 11px;
+        line-height: 1.25;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      video {
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        object-fit: contain;
+      }
+
+      .active .start,
+      .active .picker {
         display: none;
+      }
+
+      .active .picker.open {
+        display: grid;
       }
     </style>
   </head>
   <body>
     <video autoplay></video>
-    <button>Click to Share Window</button>
+    <button class="start">Click to Share Window</button>
+    <section class="picker" aria-label="Select a screen or window">
+      <div class="picker-header">
+        <div class="picker-title">Select a screen or window</div>
+        <div class="picker-actions">
+          <button class="refresh" type="button">Refresh</button>
+          <button class="cancel" type="button">Cancel</button>
+        </div>
+      </div>
+      <div class="sources"></div>
+    </section>
     <script>
       const video = document.querySelector('video');
-      const button = document.querySelector('button');
+      const startButton = document.querySelector('.start');
+      const picker = document.querySelector('.picker');
+      const refreshButton = document.querySelector('.refresh');
+      const cancelButton = document.querySelector('.cancel');
+      const sourcesNode = document.querySelector('.sources');
+      let activeStream = null;
 
-      button.addEventListener('click', async () => {
+      function stopActiveStream() {
+        activeStream?.getTracks().forEach((track) => track.stop());
+        activeStream = null;
+      }
+
+      async function getDisplayStream(sourceId, includeAudio) {
+        const desktopVideo = {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: sourceId,
+          },
+        };
+        const desktopAudio = {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: sourceId,
+          },
+        };
+
+        if (!includeAudio) {
+          return navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: desktopVideo,
+          });
+        }
+
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            audio: desktopAudio,
+            video: desktopVideo,
+          });
+        } catch {
+          return navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: desktopVideo,
+          });
+        }
+      }
+
+      async function startShare(source) {
         try {
           const params = new URLSearchParams(window.location.search);
           const deviceId = params.get('value');
-          const displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { displaySurface: 'window' },
-            audio: !deviceId,
-          });
+          const displayStream = await getDisplayStream(source.id, !deviceId);
           const audioStream = deviceId
             ? await navigator.mediaDevices.getUserMedia({
                 audio: { deviceId: { exact: deviceId } },
@@ -61,14 +209,76 @@
               })
             : null;
           const stream = new MediaStream([...displayStream.getVideoTracks(), ...(audioStream?.getAudioTracks() ?? displayStream.getAudioTracks())]);
+          stopActiveStream();
+          activeStream = stream;
           video.srcObject = stream;
+          video.muted = true;
+          video.volume = 0;
+          await video.play();
+          window.liveGalleryGuest.connectScreenShareAudio();
+          window.dispatchEvent(new CustomEvent('live-gallery-media-ready'));
+          picker.classList.remove('open');
           document.body.classList.add('active');
           displayStream.getVideoTracks()[0]?.addEventListener('ended', () => {
+            if (activeStream === stream) {
+              activeStream = null;
+            }
             document.body.classList.remove('active');
+            startButton.textContent = 'Click to Share Window';
           });
         } catch (error) {
           console.error(error);
-          button.textContent = 'Could not start screen share. Click to try again.';
+          picker.classList.remove('open');
+          startButton.textContent = 'Could not start screen share. Click to try again.';
+        }
+      }
+
+      async function loadSources() {
+        sourcesNode.replaceChildren();
+        const sources = await window.liveGalleryGuest.getDesktopSources();
+        sources.forEach((source) => {
+          const button = document.createElement('button');
+          button.className = 'source';
+          button.type = 'button';
+          button.innerHTML = `<img alt="" /><span></span>`;
+          button.querySelector('img').src = source.thumbnail;
+          button.querySelector('span').textContent = source.name;
+          button.title = source.name;
+          button.addEventListener('click', () => startShare(source));
+          sourcesNode.appendChild(button);
+        });
+      }
+
+      async function openPicker() {
+        startButton.textContent = 'Click to Share Window';
+        picker.classList.add('open');
+        await loadSources();
+      }
+
+      startButton.addEventListener('click', () => {
+        openPicker().catch((error) => {
+          console.error(error);
+          picker.classList.remove('open');
+          startButton.textContent = 'Could not load windows. Click to try again.';
+        });
+      });
+
+      refreshButton.addEventListener('click', () => {
+        loadSources().catch((error) => {
+          console.error(error);
+        });
+      });
+
+      cancelButton.addEventListener('click', () => {
+        picker.classList.remove('open');
+      });
+
+      video.addEventListener('click', () => {
+        if (document.body.classList.contains('active')) {
+          openPicker().catch((error) => {
+            console.error(error);
+            picker.classList.remove('open');
+          });
         }
       });
     </script>

@@ -1,4 +1,13 @@
-import { app, BrowserWindow, Menu, MenuItemConstructorOptions, session, shell } from 'electron';
+import {
+    app,
+    BrowserWindow,
+    desktopCapturer,
+    ipcMain,
+    Menu,
+    MenuItemConstructorOptions,
+    session,
+    shell,
+} from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,6 +17,20 @@ const { autoUpdater } = updater;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 const youtubeEmbedOrigin = 'https://live-gallery.local';
+
+ipcMain.handle('gallery:get-desktop-sources', async () => {
+    const sources = await desktopCapturer.getSources({
+        types: ['window', 'screen'],
+        thumbnailSize: { width: 240, height: 135 },
+        fetchWindowIcons: true,
+    });
+
+    return sources.map((source) => ({
+        id: source.id,
+        name: source.name,
+        thumbnail: source.thumbnail.toDataURL(),
+    }));
+});
 
 function createWindow(): void {
     const isSmokeTest = process.argv.includes('--smoke-test');
@@ -40,15 +63,6 @@ function createWindow(): void {
     });
 
     win.loadFile(path.join(rootDir, 'frontend', 'index.html'));
-
-    // For Camera / Mic permissions
-    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        if (permission === 'media') {
-            callback(true);
-        } else {
-            callback(false);
-        }
-    });
 
     if (isSmokeTest) {
         win.webContents.once('did-finish-load', () => {
