@@ -480,18 +480,9 @@ function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
 }
 
 function toggleExpanded(root: HTMLElement, viewport: HTMLElement): void {
-    const isExpanded = !root.classList.contains('fixed');
-    root.classList.toggle('fixed', isExpanded);
-    root.classList.toggle('inset-0', isExpanded);
-    root.classList.toggle('z-30', isExpanded);
-    root.classList.toggle('m-0', isExpanded);
-    root.classList.toggle('box-border', isExpanded);
-    root.classList.toggle('h-screen', isExpanded);
-    root.classList.toggle('w-screen', isExpanded);
-    root.classList.toggle('max-w-none', isExpanded);
-    root.classList.toggle('rounded-none', isExpanded);
-    viewport.classList.toggle('h-[150px]', !isExpanded);
-    viewport.classList.toggle('h-[calc(100vh-20px)]', isExpanded);
+    const isExpanded = !root.classList.contains('box-expanded');
+    root.classList.toggle('box-expanded', isExpanded);
+    viewport.classList.toggle('h-37.5', !isExpanded);
 }
 
 function updateBoxNumbers(): void {
