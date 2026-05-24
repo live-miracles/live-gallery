@@ -43,6 +43,9 @@ const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
 const urlDialog = mustGet<HTMLDialogElement>('url-dialog');
 const sharedUrlInput = mustGet<HTMLInputElement>('shared-url');
+const zoomOutButton = mustGet<HTMLButtonElement>('zoom-out');
+const zoomInButton = mustGet<HTMLButtonElement>('zoom-in');
+const zoomStatusButton = mustGet<HTMLButtonElement>('zoom-status');
 
 const settings: GallerySettings = {
     audioLevels: true,
@@ -58,6 +61,27 @@ function mustGet<T extends HTMLElement>(id: string): T {
         throw new Error(`Missing #${id}`);
     }
     return element as T;
+}
+
+function setZoomStatus(percent: number): void {
+    zoomStatusButton.textContent = `${percent}%`;
+    zoomOutButton.disabled = percent <= 20;
+    zoomInButton.disabled = percent >= 300;
+}
+
+function initZoomControls(): void {
+    window.liveGallery.getZoom().then(setZoomStatus).catch(console.error);
+    window.liveGallery.onZoomChanged(setZoomStatus);
+
+    zoomOutButton.addEventListener('click', () => {
+        window.liveGallery.changeZoom(-1).then(setZoomStatus).catch(console.error);
+    });
+    zoomInButton.addEventListener('click', () => {
+        window.liveGallery.changeZoom(1).then(setZoomStatus).catch(console.error);
+    });
+    zoomStatusButton.addEventListener('click', () => {
+        window.liveGallery.setZoom(100).then(setZoomStatus).catch(console.error);
+    });
 }
 
 function syncSettingsFromControls(): void {
@@ -638,5 +662,6 @@ document.getElementById('lowest-quality')!.addEventListener('click', () => {
     input.addEventListener('change', updateAllSettings);
 });
 
+initZoomControls();
 loadState();
 render();

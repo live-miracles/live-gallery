@@ -8,6 +8,13 @@
   </head>
   <body class="bg-base-100 text-base-content min-h-screen">
     <header class="bg-base-200/95 border-base-300 sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1.5 border-b px-2 py-1">
+      <section class="border-base-300 flex h-6 overflow-hidden rounded-md border" aria-label="Zoom controls">
+        <button id="zoom-out" class="btn btn-ghost btn-xs border-base-300 h-6 min-h-0 rounded-none border-0 border-r px-2" title="Zoom out">-</button>
+        <button id="zoom-status" class="btn btn-ghost btn-xs border-base-300 h-6 min-h-0 w-14 rounded-none border-0 border-r px-1 font-mono" title="Reset zoom">
+          100%
+        </button>
+        <button id="zoom-in" class="btn btn-ghost btn-xs h-6 min-h-0 rounded-none border-0 px-2" title="Zoom in">+</button>
+      </section>
       <section class="flex flex-wrap items-center gap-1.5" aria-label="Gallery controls">
         <label class="label p-0">
           <span class="sr-only">Rotation boxes</span>
