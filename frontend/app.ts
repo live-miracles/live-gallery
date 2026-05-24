@@ -46,6 +46,12 @@ const sharedUrlInput = mustGet<HTMLInputElement>('shared-url');
 const zoomOutButton = mustGet<HTMLButtonElement>('zoom-out');
 const zoomInButton = mustGet<HTMLButtonElement>('zoom-in');
 const zoomStatusButton = mustGet<HTMLButtonElement>('zoom-status');
+const updateToast = mustGet<HTMLElement>('update-toast');
+const updateText = mustGet<HTMLElement>('update-text');
+const updateProgress = mustGet<HTMLProgressElement>('update-progress');
+const updateDismissButton = mustGet<HTMLButtonElement>('update-dismiss-btn');
+const updateDownloadButton = mustGet<HTMLButtonElement>('update-download-btn');
+const updateRestartButton = mustGet<HTMLButtonElement>('update-restart-btn');
 
 const settings: GallerySettings = {
     audioLevels: true,
@@ -82,6 +88,48 @@ function initZoomControls(): void {
     zoomStatusButton.addEventListener('click', () => {
         window.liveGallery.setZoom(100).then(setZoomStatus).catch(console.error);
     });
+}
+
+function initUpdateControls(): void {
+    window.liveGallery.onUpdateAvailable(() => {
+        updateToast.classList.remove('hidden');
+        updateText.textContent = 'A new version is ready to download.';
+        updateProgress.classList.add('hidden');
+        updateProgress.value = 0;
+        updateDownloadButton.classList.remove('hidden');
+        updateDismissButton.classList.remove('hidden');
+        updateRestartButton.classList.add('hidden');
+    });
+
+    window.liveGallery.onUpdateProgress((progress) => {
+        updateToast.classList.remove('hidden');
+        updateProgress.classList.remove('hidden');
+        updateProgress.value = progress;
+        updateText.textContent = `Downloading: ${progress.toFixed(1)}%`;
+        updateDownloadButton.classList.add('hidden');
+        updateDismissButton.classList.add('hidden');
+        updateRestartButton.classList.add('hidden');
+    });
+
+    window.liveGallery.onUpdateReady(() => {
+        updateToast.classList.remove('hidden');
+        updateText.textContent = 'Update downloaded. Restart to install it.';
+        updateProgress.classList.add('hidden');
+        updateDownloadButton.classList.add('hidden');
+        updateDismissButton.classList.remove('hidden');
+        updateRestartButton.classList.remove('hidden');
+    });
+
+    updateDownloadButton.addEventListener('click', () => {
+        updateText.textContent = 'Downloading...';
+        updateProgress.value = 0;
+        updateProgress.classList.remove('hidden');
+        updateDownloadButton.classList.add('hidden');
+        updateDismissButton.classList.add('hidden');
+        window.liveGallery.downloadUpdate();
+    });
+    updateDismissButton.addEventListener('click', () => updateToast.classList.add('hidden'));
+    updateRestartButton.addEventListener('click', () => window.liveGallery.installUpdate());
 }
 
 function syncSettingsFromControls(): void {
@@ -663,5 +711,6 @@ document.getElementById('lowest-quality')!.addEventListener('click', () => {
 });
 
 initZoomControls();
+initUpdateControls();
 loadState();
 render();

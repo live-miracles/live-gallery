@@ -53,6 +53,21 @@
       <section id="gallery" class="flex flex-wrap items-start max-[760px]:justify-center" aria-label="Live boxes"></section>
     </main>
 
+    <aside
+      id="update-toast"
+      class="alert border-base-300 bg-base-200 fixed bottom-3 left-3 z-50 hidden w-80 max-w-[calc(100vw-1.5rem)] flex-col items-start gap-2 shadow-lg">
+      <div>
+        <div class="font-semibold">Update available</div>
+        <div id="update-text" class="text-base-content/70 text-sm">A new version is ready to download.</div>
+      </div>
+      <progress id="update-progress" class="progress progress-secondary hidden w-full" value="0" max="100"></progress>
+      <div class="flex w-full justify-end gap-2">
+        <button id="update-dismiss-btn" class="btn btn-xs">Later</button>
+        <button id="update-download-btn" class="btn btn-secondary btn-xs">Download</button>
+        <button id="update-restart-btn" class="btn btn-secondary btn-xs hidden">Restart</button>
+      </div>
+    </aside>
+
     <dialog id="url-dialog" class="modal">
       <form method="dialog">
         <div class="modal-box max-w-3xl">

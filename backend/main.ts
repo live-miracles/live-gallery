@@ -22,12 +22,19 @@ const minZoomPercent = 20;
 const maxZoomPercent = 300;
 let appZoomPercent = 100;
 const shortcutWebContents = new WeakSet<Electron.WebContents>();
+let updatesAreConfigured = false;
 
 ipcMain.handle('gallery:get-zoom', () => appZoomPercent);
 ipcMain.handle('gallery:set-zoom', (_event, percent: number) => setAppZoom(percent));
 ipcMain.handle('gallery:change-zoom', (_event, delta: number) =>
     changeAppZoom(delta * zoomStepPercent),
 );
+ipcMain.on('gallery:download-update', () => {
+    autoUpdater.downloadUpdate().catch((error: unknown) => {
+        console.warn('Update download failed:', error);
+    });
+});
+ipcMain.on('gallery:install-update', () => autoUpdater.quitAndInstall());
 
 ipcMain.handle('gallery:get-desktop-sources', async () => {
     const sources = await desktopCapturer.getSources({
@@ -66,6 +73,7 @@ function createWindow(): void {
     installAppShortcuts(win, win.webContents);
 
     win.loadFile(path.join(rootDir, 'frontend', 'index.html'));
+    setupUpdates(win);
 
     if (isSmokeTest) {
         win.webContents.once('did-finish-load', () => {
@@ -73,6 +81,44 @@ function createWindow(): void {
         });
         setTimeout(() => app.exit(0), 5000).unref();
     }
+}
+
+function setupUpdates(win: BrowserWindow): void {
+    autoUpdater.autoDownload = false;
+
+    if (!app.isPackaged) {
+        return;
+    }
+
+    win.webContents.once('did-finish-load', () => {
+        autoUpdater.checkForUpdates().catch((error: unknown) => {
+            console.warn('Update check failed:', error);
+        });
+    });
+
+    if (updatesAreConfigured) {
+        return;
+    }
+
+    updatesAreConfigured = true;
+
+    autoUpdater.on('update-available', () => {
+        broadcastToWindows('gallery:update-available');
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+        broadcastToWindows('gallery:update-progress', progress.percent);
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+        broadcastToWindows('gallery:update-ready');
+    });
+}
+
+function broadcastToWindows(channel: string, ...args: unknown[]): void {
+    BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(channel, ...args);
+    });
 }
 
 function createApplicationMenu(): void {
@@ -231,12 +277,6 @@ app.whenReady().then(() => {
     configureAppSession();
     createApplicationMenu();
     createWindow();
-
-    if (app.isPackaged) {
-        autoUpdater.checkForUpdatesAndNotify().catch((error: unknown) => {
-            console.warn('Update check failed:', error);
-        });
-    }
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
