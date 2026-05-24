@@ -641,26 +641,26 @@ function drawMeter(canvas: HTMLCanvasElement, payload: LevelPayload): void {
 
 function drawChannel(context: CanvasRenderingContext2D, x: number, db: number): void {
     const ranges = [
-        { min: -90, max: -36, color: '#218c45' },
-        { min: -36, max: -18, color: '#35c76f' },
-        { min: -18, max: -6, color: '#82e66f' },
-        { min: -6, max: -1, color: '#f6d84a' },
-        { min: -1, max: 0, color: '#f36f6f' },
+        { min: -91, max: -90, fraction: 0.07, color: '#008000' },
+        { min: -90, max: -36, fraction: 0.28, color: '#008000' },
+        { min: -36, max: -18, fraction: 0.25, color: '#00c000' },
+        { min: -18, max: -6, fraction: 0.25, color: '#00ff00' },
+        { min: -6, max: -1, fraction: 0.12, color: '#ffff00' },
+        { min: -1, max: 0, fraction: 0.03, color: '#ff0000' },
     ];
     const width = context.canvas.width / 2;
     const height = context.canvas.height;
-    const normalized = Math.max(0, Math.min(1, (db + 90) / 90));
-    const filledHeight = normalized * height;
-    let cursor = height;
+    let accumulatedHeight = 0;
 
     ranges.forEach((range) => {
-        const rangeStart = Math.max(0, (range.min + 90) / 90) * height;
-        const rangeEnd = Math.max(0, (range.max + 90) / 90) * height;
-        const segmentHeight = Math.max(0, Math.min(filledHeight, rangeEnd) - rangeStart);
-        if (segmentHeight > 0) {
-            cursor -= segmentHeight;
+        if (db >= range.min) {
+            const rangeHeight = range.fraction * height;
+            const filledFraction = Math.min(db, range.max) - range.min;
+            const filledHeight = (filledFraction / (range.max - range.min)) * rangeHeight;
+
             context.fillStyle = range.color;
-            context.fillRect(x, cursor, width, segmentHeight);
+            context.fillRect(x, height - accumulatedHeight - filledHeight, width, filledHeight);
+            accumulatedHeight += rangeHeight;
         }
     });
 }

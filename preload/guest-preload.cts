@@ -49,6 +49,9 @@ let selectedMicStream: MediaStream | null = null;
 let emitLevelsStarted = false;
 let autoLiveTimer = 0;
 const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
+const BUFF_SIZE = 64;
+const SMOOTHING_TIME = 0.8;
+const RMS_GAIN = 2.3;
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -88,10 +91,10 @@ function createTools(media: HTMLMediaElement): AudioTools | null {
         const analyserR = context.createAnalyser();
         const gain = context.createGain();
 
-        analyserL.fftSize = 256;
-        analyserR.fftSize = 256;
-        analyserL.smoothingTimeConstant = 0.8;
-        analyserR.smoothingTimeConstant = 0.8;
+        analyserL.fftSize = BUFF_SIZE * 2;
+        analyserR.fftSize = BUFF_SIZE * 2;
+        analyserL.smoothingTimeConstant = SMOOTHING_TIME;
+        analyserR.smoothingTimeConstant = SMOOTHING_TIME;
 
         source.connect(splitter);
         splitter.connect(analyserL, 0);
@@ -114,8 +117,8 @@ function calculateDb(analyser: AnalyserNode): number {
     analyser.getFloatTimeDomainData(data);
 
     const sum = data.reduce((total, sample) => total + sample * sample, 0);
-    const rms = Math.sqrt(sum / data.length) * 2.3;
-    return Math.max(-90, Math.min(0, 20 * Math.log10(rms + 1e-10)));
+    const rms = Math.sqrt(sum / data.length) * RMS_GAIN;
+    return 20 * Math.log10(rms + 1e-10);
 }
 
 function resumeContext(context: AudioContext): void {
@@ -213,10 +216,10 @@ function connectScreenShareAudio(stream: MediaStream): void {
         const analyserR = context.createAnalyser();
         const gain = context.createGain();
 
-        analyserL.fftSize = 256;
-        analyserR.fftSize = 256;
-        analyserL.smoothingTimeConstant = 0.8;
-        analyserR.smoothingTimeConstant = 0.8;
+        analyserL.fftSize = BUFF_SIZE * 2;
+        analyserR.fftSize = BUFF_SIZE * 2;
+        analyserL.smoothingTimeConstant = SMOOTHING_TIME;
+        analyserR.smoothingTimeConstant = SMOOTHING_TIME;
 
         source.connect(splitter);
         splitter.connect(analyserL, 0);
