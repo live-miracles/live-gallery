@@ -590,7 +590,6 @@ function updateAllSettings(): void {
     syncRotationControlsVisibility();
     boxes.forEach((box) => {
         sendCommand(box.id, { type: 'auto-live', enabled: settings.autoLive });
-        loadWebview(box);
     });
     saveState();
     restartRotation();
