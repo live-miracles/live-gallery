@@ -39,7 +39,7 @@
         "publish": {
             "provider": "github",
             "owner": "live-miracles",
-            "repo": "folder-player"
+            "repo": "live-gallery"
         }
     },
     "devDependencies": {
