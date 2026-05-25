@@ -74,6 +74,23 @@ const settings: GallerySettings = {
     autoLive: true,
 };
 
+const fullscreenIcon = `
+    <svg
+      aria-hidden="true"
+      class="h-3.5 w-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.25"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+      <path d="M21 16v3a2 2 0 0 1-2 2h-3" />
+      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+    </svg>
+`;
+
 function mustGet<T extends HTMLElement>(id: string): T {
     const element = document.getElementById(id);
     if (!element) {
@@ -283,7 +300,7 @@ function renderBox(box: GalleryBox, index: number): void {
           <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag">☰</button>
           <span class="box-number badge badge-sm badge-neutral absolute top-0 left-1 z-20 h-5 min-h-0"></span>
           <strong class="box-title bg-base-300 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-sm font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
-          <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Expand">🖥️</button>
+          <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Expand" aria-label="Expand">${fullscreenIcon}</button>
           <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute or unmute">🔇</button>
           <button class="solo btn btn-secondary btn-xs btn-soft box-tool-btn" title="Solo this box">S</button>
           <button class="edit btn btn-secondary btn-xs btn-soft box-tool-btn" title="Edit">✎</button>
@@ -956,9 +973,12 @@ function refreshSavedPresets(): void {
 function promptPresetName(message: string, defaultValue = ''): Promise<string | null> {
     presetNameTitle.textContent = message;
     presetNameInput.value = defaultValue;
+    presetMenu.open = false;
     presetNameDialog.showModal();
-    presetNameInput.focus();
-    presetNameInput.select();
+    requestAnimationFrame(() => {
+        presetNameInput.focus();
+        presetNameInput.select();
+    });
 
     return new Promise((resolve) => {
         presetNameDialog.addEventListener(
@@ -975,6 +995,12 @@ function promptPresetName(message: string, defaultValue = ''): Promise<string | 
 async function saveCurrentPreset(): Promise<void> {
     const name = await promptPresetName('Preset name');
     if (!name) {
+        return;
+    }
+
+    const presets = await window.liveGallery.listPresets();
+    const existing = presets.find((preset) => preset.name.toLowerCase() === name.toLowerCase());
+    if (existing && !window.confirm(`Preset "${existing.name}" already exists. Overwrite it?`)) {
         return;
     }
 

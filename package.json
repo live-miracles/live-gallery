@@ -1,6 +1,6 @@
 {
     "name": "live-gallery",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "Monitor multiple live streams from YouTube, JW, Facebook, and other sources.",
     "main": "dist/main.js",
     "scripts": {
