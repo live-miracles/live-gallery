@@ -11,6 +11,10 @@
     @apply ml-auto;
 }
 
+.app-header:has(#preset-menu[open]) {
+    z-index: 200;
+}
+
 .box-expanded {
     position: fixed !important;
     top: 0 !important;

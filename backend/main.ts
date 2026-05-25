@@ -1,13 +1,16 @@
 import {
     app,
     BrowserWindow,
+    clipboard,
     desktopCapturer,
+    dialog,
     ipcMain,
     Menu,
     MenuItemConstructorOptions,
     session,
     shell,
 } from 'electron';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,6 +23,7 @@ const youtubeEmbedOrigin = 'https://live-gallery.local';
 const zoomStepPercent = 10;
 const minZoomPercent = 20;
 const maxZoomPercent = 300;
+const presetsFileName = 'presets.json';
 let appZoomPercent = 100;
 const shortcutWebContents = new WeakSet<Electron.WebContents>();
 let updatesAreConfigured = false;
@@ -31,6 +35,87 @@ ipcMain.handle('gallery:set-zoom', (_event, percent: number) => setAppZoom(perce
 ipcMain.handle('gallery:change-zoom', (_event, delta: number) =>
     changeAppZoom(delta * zoomStepPercent),
 );
+ipcMain.handle('gallery:copy-text', (_event, text: string) => {
+    clipboard.writeText(text);
+});
+ipcMain.handle('gallery:toggle-fullscreen', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win?.setFullScreen(!win.isFullScreen());
+});
+ipcMain.handle('gallery:reload', (event) => {
+    event.sender.reload();
+});
+ipcMain.handle('gallery:export-preset', async (event, boxes: PresetBox[]) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const options: Electron.SaveDialogOptions = {
+        defaultPath: 'live-gallery.json',
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+    };
+    const result = win
+        ? await dialog.showSaveDialog(win, options)
+        : await dialog.showSaveDialog(options);
+    if (result.canceled || !result.filePath) {
+        return false;
+    }
+
+    await fs.writeFile(result.filePath, JSON.stringify(normalizePresetBoxes(boxes), null, 2));
+    return true;
+});
+ipcMain.handle('gallery:import-preset', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const options: Electron.OpenDialogOptions = {
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+        properties: ['openFile'],
+    };
+    const result = win
+        ? await dialog.showOpenDialog(win, options)
+        : await dialog.showOpenDialog(options);
+    if (result.canceled || result.filePaths.length === 0) {
+        return null;
+    }
+
+    return readPresetFile(result.filePaths[0]);
+});
+ipcMain.handle('gallery:list-presets', () => readSavedPresets());
+ipcMain.handle('gallery:save-preset', async (_event, name: string, boxes: PresetBox[]) => {
+    const presetName = normalizePresetName(name);
+    if (!presetName) {
+        throw new Error('Preset name is required.');
+    }
+
+    const presets = await readSavedPresets();
+    const existing = presets.find(
+        (preset) => preset.name.toLowerCase() === presetName.toLowerCase(),
+    );
+    if (existing) {
+        existing.boxes = normalizePresetBoxes(boxes);
+    } else {
+        presets.push({ name: presetName, boxes: normalizePresetBoxes(boxes) });
+    }
+    await writeSavedPresets(presets);
+    return sortPresets(presets);
+});
+ipcMain.handle('gallery:rename-preset', async (_event, oldName: string, newName: string) => {
+    const presetName = normalizePresetName(newName);
+    if (!presetName) {
+        throw new Error('Preset name is required.');
+    }
+
+    const presets = await readSavedPresets();
+    const preset = presets.find((item) => item.name === oldName);
+    if (!preset) {
+        return sortPresets(presets);
+    }
+
+    preset.name = presetName;
+    await writeSavedPresets(presets);
+    return sortPresets(presets);
+});
+ipcMain.handle('gallery:delete-preset', async (_event, name: string) => {
+    const presets = (await readSavedPresets()).filter((preset) => preset.name !== name);
+    await writeSavedPresets(presets);
+    return sortPresets(presets);
+});
 ipcMain.on('gallery:download-update', () => {
     autoUpdater.downloadUpdate().catch((error: unknown) => {
         console.warn('Update download failed:', error);
@@ -71,10 +156,15 @@ function createWindow(): void {
         },
     });
     win.setAutoHideMenuBar(true);
+    win.setMenu(null);
+    win.setMenuBarVisibility(false);
 
     installAppShortcuts(win, win.webContents);
 
     win.loadFile(path.join(rootDir, 'frontend', 'index.html'));
+    win.webContents.once('did-finish-load', () => {
+        syncAppZoomFromWindow(win);
+    });
     setupUpdates(win);
 
     if (isSmokeTest) {
@@ -180,6 +270,18 @@ function installAppShortcuts(win: BrowserWindow, contents: Electron.WebContents)
             return;
         }
 
+        if (input.key === 'F11') {
+            event.preventDefault();
+            win.setFullScreen(!win.isFullScreen());
+            return;
+        }
+
+        if (isShortcutModifier(input) && input.key.toLowerCase() === 'r') {
+            event.preventDefault();
+            contents.reload();
+            return;
+        }
+
         const zoomDirection = getZoomDirection(input);
         if (zoomDirection !== null) {
             event.preventDefault();
@@ -231,6 +333,11 @@ function changeAppZoom(deltaPercent: number): number {
     return setAppZoom(appZoomPercent + deltaPercent);
 }
 
+function syncAppZoomFromWindow(win: BrowserWindow): void {
+    appZoomPercent = Math.round(win.webContents.getZoomFactor() * 100);
+    win.webContents.send('gallery:zoom-changed', appZoomPercent);
+}
+
 function setAppZoom(percent: number): number {
     appZoomPercent = Math.max(
         minZoomPercent,
@@ -241,6 +348,82 @@ function setAppZoom(percent: number): number {
         win.webContents.send('gallery:zoom-changed', appZoomPercent);
     });
     return appZoomPercent;
+}
+
+type PresetBox = {
+    name: string;
+    type: string;
+    value: string;
+};
+
+type SavedPreset = {
+    name: string;
+    boxes: PresetBox[];
+};
+
+function getPresetsPath(): string {
+    return path.join(app.getPath('userData'), presetsFileName);
+}
+
+function normalizePresetName(name: string): string {
+    return name.trim().replace(/[\\/:*?"<>|]/g, '-');
+}
+
+function normalizePresetBoxes(value: unknown): PresetBox[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.map((box) => {
+        const item = box as Partial<PresetBox>;
+        return {
+            name: String(item.name ?? ''),
+            type: String(item.type ?? 'YT'),
+            value: String(item.value ?? ''),
+        };
+    });
+}
+
+function sortPresets(presets: SavedPreset[]): SavedPreset[] {
+    return presets.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+    );
+}
+
+async function readPresetFile(filePath: string): Promise<PresetBox[]> {
+    const raw = await fs.readFile(filePath, 'utf8');
+    return normalizePresetBoxes(JSON.parse(raw) as unknown);
+}
+
+async function readSavedPresets(): Promise<SavedPreset[]> {
+    try {
+        const raw = await fs.readFile(getPresetsPath(), 'utf8');
+        const value = JSON.parse(raw) as unknown;
+        if (!Array.isArray(value)) {
+            return [];
+        }
+        return sortPresets(
+            value
+                .map((preset) => {
+                    const item = preset as Partial<SavedPreset>;
+                    return {
+                        name: String(item.name ?? ''),
+                        boxes: normalizePresetBoxes(item.boxes),
+                    };
+                })
+                .filter((preset) => preset.name.trim()),
+        );
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return [];
+        }
+        throw error;
+    }
+}
+
+async function writeSavedPresets(presets: SavedPreset[]): Promise<void> {
+    await fs.mkdir(path.dirname(getPresetsPath()), { recursive: true });
+    await fs.writeFile(getPresetsPath(), JSON.stringify(sortPresets(presets), null, 2));
 }
 
 function configureChromiumSwitches(): void {

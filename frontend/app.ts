@@ -6,8 +6,6 @@ import {
     extractYouTubeId,
     getPlayerUrl,
     makeBox,
-    parseSheetRows,
-    serializeBoxes,
 } from './utils.js';
 
 type LevelPayload = {
@@ -34,6 +32,7 @@ const boxes: GalleryBox[] = [];
 const elements = new Map<string, BoxElements>();
 let mics: MediaDeviceInfo[] = [];
 let rotationTimer = 0;
+let clipboardToastTimer = 0;
 let draggedId = '';
 
 const gallery = mustGet<HTMLElement>('gallery');
@@ -41,8 +40,10 @@ const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
 const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
-const urlDialog = mustGet<HTMLDialogElement>('url-dialog');
-const sharedUrlInput = mustGet<HTMLInputElement>('shared-url');
+const presetMenu = mustGet<HTMLDetailsElement>('preset-menu');
+const savedPresetList = mustGet<HTMLElement>('saved-preset-list');
+const fullscreenButton = mustGet<HTMLButtonElement>('toggle-fullscreen');
+const refreshPageButton = mustGet<HTMLButtonElement>('refresh-page');
 const zoomOutButton = mustGet<HTMLButtonElement>('zoom-out');
 const zoomInButton = mustGet<HTMLButtonElement>('zoom-in');
 const zoomStatusButton = mustGet<HTMLButtonElement>('zoom-status');
@@ -52,6 +53,11 @@ const updateProgress = mustGet<HTMLProgressElement>('update-progress');
 const updateDismissButton = mustGet<HTMLButtonElement>('update-dismiss-btn');
 const updateDownloadButton = mustGet<HTMLButtonElement>('update-download-btn');
 const updateRestartButton = mustGet<HTMLButtonElement>('update-restart-btn');
+const clipboardToast = mustGet<HTMLElement>('clipboard-toast');
+const clipboardToastText = mustGet<HTMLElement>('clipboard-toast-text');
+const presetNameDialog = mustGet<HTMLDialogElement>('preset-name-dialog');
+const presetNameTitle = mustGet<HTMLElement>('preset-name-title');
+const presetNameInput = mustGet<HTMLInputElement>('preset-name-input');
 
 const settings: GallerySettings = {
     audioLevels: true,
@@ -87,6 +93,15 @@ function initZoomControls(): void {
     });
     zoomStatusButton.addEventListener('click', () => {
         window.liveGallery.setZoom(100).then(setZoomStatus).catch(console.error);
+    });
+}
+
+function initWindowControls(): void {
+    fullscreenButton.addEventListener('click', () => {
+        window.liveGallery.toggleFullscreen().catch(console.error);
+    });
+    refreshPageButton.addEventListener('click', () => {
+        window.liveGallery.reload().catch(console.error);
     });
 }
 
@@ -726,39 +741,222 @@ function updateAllSettings(): void {
     restartRotation();
 }
 
-function makeShareUrl(): string {
-    const url = new URL(window.location.href);
-    url.search = '';
-    url.searchParams.set('boxes', serializeBoxes(boxes));
-    return url.toString();
+function showToast(message: string): void {
+    window.clearTimeout(clipboardToastTimer);
+    clipboardToastText.textContent = message;
+    clipboardToast.classList.remove('hidden');
+    clipboardToastTimer = window.setTimeout(() => {
+        clipboardToast.classList.add('hidden');
+    }, 1800);
+}
+
+function boxesToPreset(): PresetBox[] {
+    return boxes.map((box) => ({
+        name: box.name,
+        type: box.type,
+        value: box.value,
+    }));
+}
+
+function presetToBoxes(presetBoxes: PresetBox[]): GalleryBox[] {
+    return presetBoxes.map((box) => makeBox(box.name, normalizePresetBoxType(box.type), box.value));
+}
+
+function normalizePresetBoxType(type: string): BoxType {
+    const allowed = new Set<BoxType>(['YT', 'YN', 'JW', 'VC', 'SS', 'FB', 'CU']);
+    return allowed.has(type as BoxType) ? (type as BoxType) : 'YT';
+}
+
+function loadPresetBoxes(presetBoxes: PresetBox[]): void {
+    boxes.splice(0, boxes.length, ...presetToBoxes(presetBoxes));
+    if (boxes.length === 0) {
+        boxes.push(makeBox());
+    }
+    render();
+}
+
+function renderSavedPresets(presets: SavedPreset[]): void {
+    savedPresetList.replaceChildren();
+
+    if (presets.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'text-base-content/60 px-2 py-1 text-xs';
+        empty.textContent = 'No saved presets';
+        savedPresetList.appendChild(empty);
+        return;
+    }
+
+    presets.forEach((preset) => {
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-[1fr_auto_auto] items-center gap-1';
+
+        const loadButton = document.createElement('button');
+        loadButton.type = 'button';
+        loadButton.className =
+            'btn btn-ghost btn-xs justify-start truncate hover:bg-secondary hover:text-secondary-content';
+        loadButton.textContent = preset.name;
+        loadButton.title = preset.name;
+        loadButton.addEventListener('click', () => {
+            loadPresetBoxes(preset.boxes);
+            presetMenu.open = false;
+        });
+
+        const renameButton = document.createElement('button');
+        renameButton.type = 'button';
+        renameButton.className = 'btn btn-secondary btn-xs btn-outline box-tool-btn';
+        renameButton.textContent = '✎';
+        renameButton.title = 'Rename preset';
+        renameButton.setAttribute('aria-label', 'Rename preset');
+        renameButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            renameSavedPreset(preset.name).catch((error) => {
+                console.error('Could not rename preset:', error);
+                showToast('Rename failed');
+            });
+        });
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'btn btn-error btn-xs btn-outline box-tool-btn';
+        deleteButton.textContent = '✕';
+        deleteButton.title = 'Delete preset';
+        deleteButton.setAttribute('aria-label', 'Delete preset');
+        deleteButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            deleteSavedPreset(preset.name);
+        });
+
+        row.append(loadButton, renameButton, deleteButton);
+        savedPresetList.appendChild(row);
+    });
+}
+
+function refreshSavedPresets(): void {
+    window.liveGallery
+        .listPresets()
+        .then(renderSavedPresets)
+        .catch((error) => {
+            console.error('Could not load presets:', error);
+            showToast('Could not load presets');
+        });
+}
+
+function promptPresetName(message: string, defaultValue = ''): Promise<string | null> {
+    presetNameTitle.textContent = message;
+    presetNameInput.value = defaultValue;
+    presetNameDialog.showModal();
+    presetNameInput.focus();
+    presetNameInput.select();
+
+    return new Promise((resolve) => {
+        presetNameDialog.addEventListener(
+            'close',
+            () => {
+                const name = presetNameInput.value.trim();
+                resolve(presetNameDialog.returnValue === 'default' && name ? name : null);
+            },
+            { once: true },
+        );
+    });
+}
+
+async function saveCurrentPreset(): Promise<void> {
+    const name = await promptPresetName('Preset name');
+    if (!name) {
+        return;
+    }
+
+    window.liveGallery
+        .savePreset(name, boxesToPreset())
+        .then((presets) => {
+            renderSavedPresets(presets);
+            showToast('Preset saved');
+        })
+        .catch((error) => {
+            console.error('Could not save preset:', error);
+            showToast('Save failed');
+        });
+}
+
+async function renameSavedPreset(oldName: string): Promise<void> {
+    const newName = await promptPresetName('Preset name', oldName);
+    if (!newName || newName === oldName) {
+        return;
+    }
+
+    window.liveGallery
+        .renamePreset(oldName, newName)
+        .then(renderSavedPresets)
+        .catch((error) => {
+            console.error('Could not rename preset:', error);
+            showToast('Rename failed');
+        });
+}
+
+function deleteSavedPreset(name: string): void {
+    if (!window.confirm(`Delete preset "${name}"?`)) {
+        return;
+    }
+
+    window.liveGallery
+        .deletePreset(name)
+        .then((presets) => {
+            renderSavedPresets(presets);
+            showToast('Preset deleted');
+        })
+        .catch((error) => {
+            console.error('Could not delete preset:', error);
+            showToast('Delete failed');
+        });
 }
 
 document.getElementById('add-box')!.addEventListener('click', () => {
     addBox();
 });
 
-document.getElementById('copy-url')!.addEventListener('click', () => {
-    navigator.clipboard.writeText(makeShareUrl()).catch(() => {
-        sharedUrlInput.value = makeShareUrl();
-        urlDialog.showModal();
-    });
-});
-
-document.getElementById('import-url')!.addEventListener('click', () => {
-    sharedUrlInput.value = '';
-    urlDialog.showModal();
-});
-
-document.getElementById('load-shared-url')!.addEventListener('click', () => {
-    const value = sharedUrlInput.value.trim();
-    const sheetBoxes = parseSheetRows(value);
-    if (sheetBoxes.length > 0) {
-        boxes.splice(0, boxes.length, ...sheetBoxes);
-    } else {
-        const parsedUrl = new URL(value);
-        boxes.splice(0, boxes.length, ...deserializeBoxes(parsedUrl.searchParams.get('boxes')));
-    }
+document.getElementById('new-preset')!.addEventListener('click', () => {
+    boxes.splice(0, boxes.length, makeBox());
     render();
+    presetMenu.open = false;
+});
+
+document.getElementById('export-preset')!.addEventListener('click', () => {
+    window.liveGallery
+        .exportPreset(boxesToPreset())
+        .then((exported) => {
+            if (exported) {
+                showToast('Preset exported');
+                presetMenu.open = false;
+            }
+        })
+        .catch((error) => {
+            console.error('Could not export preset:', error);
+            showToast('Export failed');
+        });
+});
+
+document.getElementById('import-preset')!.addEventListener('click', () => {
+    window.liveGallery
+        .importPreset()
+        .then((presetBoxes) => {
+            if (!presetBoxes) {
+                return;
+            }
+            loadPresetBoxes(presetBoxes);
+            showToast('Preset imported');
+            presetMenu.open = false;
+        })
+        .catch((error) => {
+            console.error('Could not import preset:', error);
+            showToast('Import failed');
+        });
+});
+
+document.getElementById('save-preset')!.addEventListener('click', () => {
+    saveCurrentPreset().catch((error) => {
+        console.error('Could not save preset:', error);
+        showToast('Save failed');
+    });
 });
 
 document.getElementById('lowest-quality')!.addEventListener('click', () => {
@@ -770,7 +968,9 @@ document.getElementById('lowest-quality')!.addEventListener('click', () => {
 });
 rotationBoxesInput.addEventListener('input', sanitizeRotationBoxesInput);
 
+initWindowControls();
 initZoomControls();
 initUpdateControls();
 loadState();
 render();
+refreshSavedPresets();

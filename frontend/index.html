@@ -7,17 +7,27 @@
     <script type="module" src="./dist/app.js"></script>
   </head>
   <body class="bg-base-100 text-base-content min-h-screen">
-    <header class="bg-base-200/95 border-base-300 sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1.5 border-b px-2 py-1">
-      <section class="border-base-300 flex h-6 overflow-hidden rounded-md border" aria-label="Zoom controls">
-        <button id="zoom-out" class="btn btn-ghost btn-xs border-base-300 h-6 min-h-0 rounded-none border-0 border-r px-2" title="Zoom out">-</button>
-        <button
-          id="zoom-status"
-          class="btn btn-ghost btn-xs border-base-300 h-6 min-h-0 w-14 rounded-none border-0 border-r px-1 font-mono"
-          title="Reset zoom">
-          100%
-        </button>
-        <button id="zoom-in" class="btn btn-ghost btn-xs h-6 min-h-0 rounded-none border-0 px-2" title="Zoom in">+</button>
-      </section>
+    <header class="app-header bg-base-200/95 border-base-300 sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1.5 border-b px-2 py-1">
+      <details id="preset-menu" class="dropdown">
+        <summary class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 px-2">Preset</summary>
+        <div class="dropdown-content bg-base-200/60 border-base-content/20 z-100 mt-1 w-72 rounded-md border p-1 shadow-2xl backdrop-blur-md">
+          <button id="new-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
+            New Preset
+          </button>
+          <button id="export-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
+            Export Preset
+          </button>
+          <button id="import-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
+            Import Preset
+          </button>
+          <button id="save-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
+            Save Preset
+          </button>
+          <div class="divider my-1"></div>
+          <div id="saved-preset-list" class="grid gap-1"></div>
+        </div>
+      </details>
+      <button id="add-box" class="btn btn-secondary btn-xs min-h-0 h-6 w-6 px-0" title="Add box" aria-label="Add box">+</button>
       <section class="flex flex-wrap items-center gap-1.5" aria-label="Gallery controls">
         <label class="label p-0">
           <span class="sr-only">Rotation boxes</span>
@@ -41,11 +51,58 @@
         <button id="lowest-quality" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6">Low Quality</button>
       </section>
       <div class="ml-auto flex flex-wrap items-center gap-1">
-        <button id="import-url" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 px-2" title="Load a shared gallery URL">Import URL</button>
-        <button id="copy-url" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 px-2" title="Copy this gallery layout as a URL">
-          Copy URL
+        <section class="border-base-300 flex h-6 overflow-hidden rounded-md border" aria-label="Zoom controls">
+          <button id="zoom-out" class="btn btn-ghost btn-xs border-base-300 h-6 min-h-0 rounded-none border-0 border-r px-2" title="Zoom out">
+            -
+          </button>
+          <button
+            id="zoom-status"
+            class="btn btn-ghost btn-xs border-base-300 h-6 min-h-0 w-14 rounded-none border-0 border-r px-1 font-mono"
+            title="Reset zoom">
+            100%
+          </button>
+          <button id="zoom-in" class="btn btn-ghost btn-xs h-6 min-h-0 rounded-none border-0 px-2" title="Zoom in">+</button>
+        </section>
+        <button
+          id="toggle-fullscreen"
+          class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 w-6 px-0"
+          title="Enter or exit fullscreen (F11)"
+          aria-label="Enter or exit fullscreen">
+          <svg
+            aria-hidden="true"
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+            <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+            <path d="M21 16v3a2 2 0 0 1-2 2h-3" />
+            <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+          </svg>
         </button>
-        <button id="add-box" class="btn btn-secondary btn-xs min-h-0 h-6 px-2">Add Box</button>
+        <button
+          id="refresh-page"
+          class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 w-6 px-0"
+          title="Refresh page (Ctrl+R)"
+          aria-label="Refresh page">
+          <svg
+            aria-hidden="true"
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+            <path d="M21 3v5h-5" />
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+            <path d="M3 21v-5h5" />
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -68,14 +125,20 @@
       </div>
     </aside>
 
-    <dialog id="url-dialog" class="modal">
+    <div id="clipboard-toast" class="toast toast-end toast-bottom z-50 hidden">
+      <div class="alert alert-success py-2">
+        <span id="clipboard-toast-text">Copied</span>
+      </div>
+    </div>
+
+    <dialog id="preset-name-dialog" class="modal">
       <form method="dialog">
-        <div class="modal-box max-w-3xl">
-          <h2 class="mb-3 text-lg font-semibold">Import Gallery URL</h2>
-          <input id="shared-url" class="input input-bordered w-full" type="text" placeholder="Paste gallery URL or copied sheet rows" />
+        <div class="modal-box max-w-2xl">
+          <h2 id="preset-name-title" class="mb-3 text-lg font-semibold">Preset Name</h2>
+          <input id="preset-name-input" class="input input-bordered w-full" type="text" required />
           <div class="modal-action">
-            <button value="cancel" class="btn">Cancel</button>
-            <button id="load-shared-url" value="default" class="btn btn-secondary">Load</button>
+            <button value="cancel" formnovalidate class="btn">Cancel</button>
+            <button id="preset-name-save" value="default" class="btn btn-secondary">Save</button>
           </div>
         </div>
       </form>
