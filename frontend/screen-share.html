@@ -103,6 +103,11 @@
         outline: none;
       }
 
+      .source.selected {
+        border-color: rgb(130 230 111);
+        background: rgb(130 230 111 / 0.18);
+      }
+
       .source img {
         width: 100%;
         aspect-ratio: 16 / 9;
@@ -157,6 +162,49 @@
       const cancelButton = document.querySelector('.cancel');
       const sourcesNode = document.querySelector('.sources');
       let activeStream = null;
+      let restoredSourceId = '';
+      let savedScreenShareValue = parseScreenShareValue(new URLSearchParams(window.location.search).get('value') || '');
+
+      function parseScreenShareValue(value) {
+        try {
+          const parsed = JSON.parse(value);
+          return {
+            micDeviceId: typeof parsed.micDeviceId === 'string' ? parsed.micDeviceId : '',
+            sourceId: typeof parsed.sourceId === 'string' ? parsed.sourceId : '',
+            sourceName: typeof parsed.sourceName === 'string' ? parsed.sourceName : '',
+            displayId: typeof parsed.displayId === 'string' ? parsed.displayId : '',
+          };
+        } catch {
+          return {
+            micDeviceId: '',
+            sourceId: '',
+            sourceName: '',
+            displayId: '',
+          };
+        }
+      }
+
+      function findSavedSource(sources, saved) {
+        if (saved.sourceId) {
+          const exact = sources.find((source) => source.id === saved.sourceId);
+          if (exact) {
+            return exact;
+          }
+        }
+
+        if (saved.displayId) {
+          const displayMatch = sources.find((source) => source.displayId && source.displayId === saved.displayId);
+          if (displayMatch) {
+            return displayMatch;
+          }
+        }
+
+        if (saved.sourceName) {
+          return sources.find((source) => source.name === saved.sourceName) || null;
+        }
+
+        return null;
+      }
 
       function stopActiveStream() {
         activeStream?.getTracks().forEach((track) => track.stop());
@@ -209,8 +257,7 @@
 
       async function startShare(source) {
         try {
-          const params = new URLSearchParams(window.location.search);
-          const deviceId = params.get('value');
+          const deviceId = savedScreenShareValue.micDeviceId;
           const displayStream = await getDisplayStream(source.id, !deviceId);
           const stream = new MediaStream([...displayStream.getVideoTracks(), ...(!deviceId ? displayStream.getAudioTracks() : [])]);
           stopActiveStream();
@@ -219,6 +266,13 @@
           video.muted = true;
           video.volume = 0;
           await video.play();
+          savedScreenShareValue = {
+            ...savedScreenShareValue,
+            sourceId: source.id,
+            sourceName: source.name,
+            displayId: source.displayId || '',
+          };
+          window.liveGalleryGuest.rememberScreenShareSource(source);
           window.liveGalleryGuest.connectScreenShareAudio();
           window.dispatchEvent(new CustomEvent('live-gallery-media-ready'));
           picker.classList.remove('open');
@@ -240,9 +294,10 @@
       async function loadSources() {
         sourcesNode.replaceChildren();
         const sources = await window.liveGalleryGuest.getDesktopSources();
+        const savedSource = findSavedSource(sources, savedScreenShareValue);
         sources.forEach((source) => {
           const button = document.createElement('button');
-          button.className = 'source';
+          button.className = source === savedSource ? 'source selected' : 'source';
           button.type = 'button';
           button.innerHTML = `<img alt="" /><span></span>`;
           button.querySelector('img').src = source.thumbnail;
@@ -251,6 +306,8 @@
           button.addEventListener('click', () => startShare(source));
           sourcesNode.appendChild(button);
         });
+
+        return savedSource;
       }
 
       async function openPicker() {
@@ -284,6 +341,21 @@
             picker.classList.remove('open');
           });
         }
+      });
+
+      window.addEventListener('DOMContentLoaded', () => {
+        loadSources()
+          .then((savedSource) => {
+            if (!savedSource || restoredSourceId === savedSource.id) {
+              return;
+            }
+
+            restoredSourceId = savedSource.id;
+            return startShare(savedSource);
+          })
+          .catch((error) => {
+            console.error(error);
+          });
       });
     </script>
   </body>

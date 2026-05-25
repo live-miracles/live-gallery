@@ -12,6 +12,13 @@ declare global {
         boxes: PresetBox[];
     };
 
+    type DesktopSource = {
+        id: string;
+        name: string;
+        displayId: string;
+        thumbnail: string;
+    };
+
     interface Window {
         liveGallery: {
             guestPreloadUrl: string;
@@ -33,6 +40,11 @@ declare global {
             onUpdateReady: (callback: () => void) => () => void;
             downloadUpdate: () => void;
             installUpdate: () => void;
+        };
+        liveGalleryGuest: {
+            getDesktopSources: () => Promise<DesktopSource[]>;
+            connectScreenShareAudio: () => void;
+            rememberScreenShareSource: (source: DesktopSource) => void;
         };
     }
 }

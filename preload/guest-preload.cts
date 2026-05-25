@@ -25,6 +25,7 @@ type StreamAudioTools = {
 type DesktopSource = {
     id: string;
     name: string;
+    displayId: string;
     thumbnail: string;
 };
 
@@ -34,10 +35,18 @@ contextBridge.exposeInMainWorld('liveGalleryGuest', {
     connectScreenShareAudio: (): void => {
         connectScreenShareAudioFromPage();
     },
+    rememberScreenShareSource: (source: DesktopSource): void => {
+        ipcRenderer.sendToHost('gallery-screen-share-source', {
+            id: source.id,
+            name: source.name,
+            displayId: source.displayId,
+        });
+    },
 });
 
 const params = new URLSearchParams(window.location.search);
 const boxId = params.get('boxId') ?? crypto.randomUUID();
+const screenShareValue = parseScreenShareValue(params.get('value') ?? '');
 let audioTools: AudioTools | null = null;
 let streamAudioTools: StreamAudioTools | null = null;
 let muted = true;
@@ -52,6 +61,15 @@ const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
 const BUFF_SIZE = 64;
 const SMOOTHING_TIME = 0.8;
 const RMS_GAIN = 2.3;
+
+function parseScreenShareValue(value: string): { micDeviceId: string } {
+    try {
+        const parsed = JSON.parse(value) as { micDeviceId?: unknown };
+        return { micDeviceId: typeof parsed.micDeviceId === 'string' ? parsed.micDeviceId : '' };
+    } catch {
+        return { micDeviceId: '' };
+    }
+}
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -179,7 +197,7 @@ async function connectSelectedScreenShareMic(): Promise<void> {
         return;
     }
 
-    const deviceId = params.get('value');
+    const deviceId = screenShareValue.micDeviceId;
     if (!deviceId) {
         return;
     }

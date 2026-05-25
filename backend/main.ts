@@ -133,6 +133,7 @@ ipcMain.handle('gallery:get-desktop-sources', async () => {
     return sources.map((source) => ({
         id: source.id,
         name: source.name,
+        displayId: source.display_id,
         thumbnail: source.thumbnail.toDataURL(),
     }));
 });

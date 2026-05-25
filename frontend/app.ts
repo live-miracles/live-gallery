@@ -14,6 +14,13 @@ type LevelPayload = {
     right: number;
 };
 
+type ScreenShareValue = {
+    micDeviceId: string;
+    sourceId: string;
+    sourceName: string;
+    displayId: string;
+};
+
 type BoxElements = {
     root: HTMLElement;
     title: HTMLElement;
@@ -102,6 +109,28 @@ function initWindowControls(): void {
     });
     refreshPageButton.addEventListener('click', () => {
         window.liveGallery.reload().catch(console.error);
+    });
+}
+
+function initPresetMenuControls(): void {
+    document.addEventListener('pointerdown', (event) => {
+        if (!presetMenu.open || !(event.target instanceof Node)) {
+            return;
+        }
+
+        if (!presetMenu.contains(event.target)) {
+            presetMenu.open = false;
+        }
+    });
+
+    document.addEventListener('focusin', (event) => {
+        if (!presetMenu.open || !(event.target instanceof Node)) {
+            return;
+        }
+
+        if (!presetMenu.contains(event.target)) {
+            presetMenu.open = false;
+        }
     });
 }
 
@@ -325,6 +354,8 @@ function renderBox(box: GalleryBox, index: number): void {
             drawMeter(canvas, event.args[0] as LevelPayload);
         } else if (event.channel === 'gallery-error') {
             console.warn(`Box ${box.name || box.id} player error:`, event.args[0]);
+        } else if (event.channel === 'gallery-screen-share-source') {
+            rememberScreenShareSource(box, event.args[0] as Partial<DesktopSource>);
         }
     });
     webview.addEventListener('did-fail-load', (event) => {
@@ -385,10 +416,13 @@ function renderBox(box: GalleryBox, index: number): void {
         const formData = new FormData(form);
         box.name = String(formData.get('name') ?? '');
         box.type = String(formData.get('type') ?? 'YT') as BoxType;
+        const rawValue = String(formData.get('value') ?? '');
         box.value =
             box.type === 'YT' || box.type === 'YN'
-                ? extractYouTubeId(String(formData.get('value') ?? ''))
-                : String(formData.get('value') ?? '');
+                ? extractYouTubeId(rawValue)
+                : box.type === 'SS'
+                  ? normalizeScreenShareFormValue(rawValue, box.value)
+                  : rawValue;
         setEditing(form, false);
         syncBoxControls(
             {
@@ -448,18 +482,96 @@ function syncBoxControls(entry: BoxElements, box: GalleryBox): void {
 }
 
 function setValueField(form: HTMLFormElement, type: BoxType, value: string): void {
+    const screenShareValue = parseScreenShareValue(value);
     form.querySelector<HTMLElement>('.value-slot')!.innerHTML =
         type === 'SS'
             ? `<select name="value" class="select select-xs">
-                <option value="">Display audio / default</option>
+                <option value="${escapeAttribute(serializeScreenShareValue({ ...screenShareValue, micDeviceId: '' }))}">Display audio / default</option>
                 ${mics
                     .map(
                         (mic) =>
-                            `<option value="${mic.deviceId}" ${value === mic.deviceId ? 'selected' : ''}>${mic.label}</option>`,
+                            `<option value="${escapeAttribute(
+                                serializeScreenShareValue({
+                                    ...screenShareValue,
+                                    micDeviceId: mic.deviceId,
+                                }),
+                            )}" ${screenShareValue.micDeviceId === mic.deviceId ? 'selected' : ''}>${escapeHtml(mic.label)}</option>`,
                     )
                     .join('')}
               </select>`
-            : `<input name="value" class="input input-xs" type="text" placeholder="URL, ID, or microphone device" value="${value}" />`;
+            : `<input name="value" class="input input-xs" type="text" placeholder="URL, ID, or microphone device" value="${escapeAttribute(value)}" />`;
+}
+
+function parseScreenShareValue(value: string): ScreenShareValue {
+    try {
+        const parsed = JSON.parse(value) as Partial<ScreenShareValue>;
+        return {
+            micDeviceId: String(parsed.micDeviceId ?? ''),
+            sourceId: String(parsed.sourceId ?? ''),
+            sourceName: String(parsed.sourceName ?? ''),
+            displayId: String(parsed.displayId ?? ''),
+        };
+    } catch {
+        return {
+            micDeviceId: '',
+            sourceId: '',
+            sourceName: '',
+            displayId: '',
+        };
+    }
+}
+
+function serializeScreenShareValue(value: ScreenShareValue): string {
+    return JSON.stringify({
+        micDeviceId: value.micDeviceId,
+        sourceId: value.sourceId,
+        sourceName: value.sourceName,
+        displayId: value.displayId,
+    });
+}
+
+function normalizeScreenShareFormValue(rawValue: string, previousValue: string): string {
+    const value = parseScreenShareValue(rawValue);
+    const previous = parseScreenShareValue(previousValue);
+    return serializeScreenShareValue({
+        micDeviceId: value.micDeviceId,
+        sourceId: value.sourceId || previous.sourceId,
+        sourceName: value.sourceName || previous.sourceName,
+        displayId: value.displayId || previous.displayId,
+    });
+}
+
+function rememberScreenShareSource(box: GalleryBox, source: Partial<DesktopSource>): void {
+    if (box.type !== 'SS') {
+        return;
+    }
+
+    const value = parseScreenShareValue(box.value);
+    box.value = serializeScreenShareValue({
+        ...value,
+        sourceId: String(source.id ?? ''),
+        sourceName: String(source.name ?? ''),
+        displayId: String(source.displayId ?? ''),
+    });
+    saveState();
+
+    const entry = elements.get(box.id);
+    if (entry) {
+        setValueField(entry.form, box.type, box.value);
+    }
+}
+
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeAttribute(value: string): string {
+    return escapeHtml(value);
 }
 
 async function loadMics(): Promise<void> {
@@ -969,6 +1081,7 @@ document.getElementById('lowest-quality')!.addEventListener('click', () => {
 rotationBoxesInput.addEventListener('input', sanitizeRotationBoxesInput);
 
 initWindowControls();
+initPresetMenuControls();
 initZoomControls();
 initUpdateControls();
 loadState();
