@@ -6,6 +6,11 @@ custom URLs, HLS links, and screen shares.
 
 <img width="1372" height="380" alt="image" src="https://github.com/user-attachments/assets/61a912f2-2a03-4cb1-afeb-b618fc6ad01b" />
 
+## Download
+
+Live Gallery can be downloaded from the project's GitHub Releases page. The app
+is currently available only for Windows.
+
 ## Features
 
 - Monitor several live players in one desktop window.
