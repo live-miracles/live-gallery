@@ -393,7 +393,7 @@ function renderBox(box: GalleryBox, index: number): void {
           </select>
           <div class="value-slot"></div>
           <div class="mt-1 flex justify-center gap-2">
-            <button type="button" class="cancel btn btn-xs min-w-16">Cancel</button>
+            <button type="button" class="cancel btn btn-error btn-soft btn-xs min-w-16">Cancel</button>
             <button type="submit" class="btn btn-secondary btn-xs min-w-16">Save</button>
           </div>
         </form>
@@ -637,6 +637,18 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
     if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) {
         control.addEventListener('input', () => clearBoxValueError(form));
     }
+    if (type === 'YT' && control instanceof HTMLInputElement) {
+        control.addEventListener('paste', (event) => {
+            const pastedText = event.clipboardData?.getData('text');
+            if (!pastedText) {
+                return;
+            }
+
+            event.preventDefault();
+            control.value = extractYouTubeId(pastedText);
+            clearBoxValueError(form);
+        });
+    }
 }
 
 function requiresBoxValue(type: BoxType): boolean {
@@ -783,8 +795,8 @@ async function openScreenSharePicker(boxId: string): Promise<void> {
           <div class="flex min-w-0 items-center justify-between gap-3">
             <h2 class="truncate text-lg font-semibold">Select a screen or window</h2>
             <div class="flex gap-2">
+              <button type="button" class="screen-picker-cancel btn btn-error btn-soft btn-sm">Cancel</button>
               <button type="button" class="screen-picker-reset btn btn-secondary btn-sm btn-soft">Reset</button>
-              <button type="button" class="screen-picker-cancel btn btn-sm">Cancel</button>
             </div>
           </div>
           <div class="screen-picker-sources grid min-h-0 auto-rows-min grid-cols-[repeat(auto-fill,minmax(280px,1fr))] content-start gap-3 overflow-auto pr-1"></div>

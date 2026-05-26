@@ -18,29 +18,50 @@ export type GallerySettings = {
 
 const separator = '|';
 const youtubeEmbedOrigin = 'https://live-gallery.local';
+const youtubeIdPattern = /^[a-zA-Z0-9_-]{11}$/;
 
 export function createId(): string {
     return crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
 }
 
 export function extractYouTubeId(input: string): string {
+    const trimmed = input.trim();
     try {
-        const url = new URL(input.trim());
+        const url = new URL(trimmed);
         const videoParam = url.searchParams.get('v');
-        if (videoParam) {
+        if (videoParam && youtubeIdPattern.test(videoParam)) {
             return videoParam;
         }
-        if (url.hostname === 'youtu.be') {
-            return url.pathname.slice(1);
-        }
-        if (url.pathname.startsWith('/live/')) {
-            return url.pathname.slice('/live/'.length);
+
+        const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
+        const isYouTubeHost =
+            hostname === 'youtube.com' ||
+            hostname.endsWith('.youtube.com') ||
+            hostname === 'youtube-nocookie.com' ||
+            hostname.endsWith('.youtube-nocookie.com');
+        const pathId = url.pathname
+            .split('/')
+            .filter(Boolean)
+            .find((segment, index, segments) => {
+                if (hostname === 'youtu.be') {
+                    return index === 0 && youtubeIdPattern.test(segment);
+                }
+
+                return (
+                    isYouTubeHost &&
+                    ['embed', 'live', 'shorts', 'v'].includes(segments[index - 1] ?? '') &&
+                    youtubeIdPattern.test(segment)
+                );
+            });
+
+        if (pathId) {
+            return pathId;
         }
     } catch {
-        return input.trim();
+        return trimmed;
     }
 
-    return input.trim();
+    return trimmed;
 }
 
 export function parseSheetRows(input: string): GalleryBox[] {
@@ -52,8 +73,6 @@ export function parseSheetRows(input: string): GalleryBox[] {
             const [first = '', second = ''] = line.split('\t');
             const left = extractYouTubeId(first);
             const right = extractYouTubeId(second);
-            const youtubeIdPattern = /^[a-zA-Z0-9_-]{11}$/;
-
             if (youtubeIdPattern.test(right)) {
                 return makeBox(left || String(index + 1), 'YT', right);
             }
