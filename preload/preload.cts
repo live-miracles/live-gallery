@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld('liveGallery', {
         ipcRenderer.invoke('gallery:set-zoom', percent) as Promise<number>,
     changeZoom: (delta: number): Promise<number> =>
         ipcRenderer.invoke('gallery:change-zoom', delta) as Promise<number>,
+    getContentWidth: (): Promise<number> =>
+        ipcRenderer.invoke('gallery:get-content-width') as Promise<number>,
+    getDesktopSources: (): Promise<DesktopSource[]> =>
+        ipcRenderer.invoke('gallery:get-desktop-sources') as Promise<DesktopSource[]>,
     copyText: (text: string): Promise<void> =>
         ipcRenderer.invoke('gallery:copy-text', text) as Promise<void>,
     toggleFullscreen: (): Promise<void> =>
@@ -63,4 +67,11 @@ type PresetBox = {
 type SavedPreset = {
     name: string;
     boxes: PresetBox[];
+};
+
+type DesktopSource = {
+    id: string;
+    name: string;
+    displayId: string;
+    thumbnail: string;
 };

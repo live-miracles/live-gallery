@@ -41,6 +41,8 @@ let mics: MediaDeviceInfo[] = [];
 let rotationTimer = 0;
 let clipboardToastTimer = 0;
 let draggedId = '';
+let micsPromise: Promise<void> | null = null;
+let currentZoomPercent = 100;
 
 const gallery = mustGet<HTMLElement>('gallery');
 const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
@@ -74,6 +76,10 @@ const settings: GallerySettings = {
     autoLive: true,
 };
 
+const minZoomPercent = 20;
+const maxZoomPercent = 300;
+const zoomFitMarginPx = 16;
+
 const fullscreenIcon = `
     <svg
       aria-hidden="true"
@@ -100,9 +106,14 @@ function mustGet<T extends HTMLElement>(id: string): T {
 }
 
 function setZoomStatus(percent: number): void {
+    currentZoomPercent = percent;
     zoomStatusButton.textContent = `${percent}%`;
-    zoomOutButton.disabled = percent <= 20;
-    zoomInButton.disabled = percent >= 300;
+    zoomOutButton.disabled = percent <= minZoomPercent;
+    zoomInButton.disabled = percent >= maxZoomPercent || getHorizontalBoxCapacity(percent) <= 1;
+}
+
+function getBoxTitle(box: GalleryBox): string {
+    return box.name ? `${box.type}: ${box.name}` : box.type;
 }
 
 function initZoomControls(): void {
@@ -110,14 +121,78 @@ function initZoomControls(): void {
     window.liveGallery.onZoomChanged(setZoomStatus);
 
     zoomOutButton.addEventListener('click', () => {
-        window.liveGallery.changeZoom(-1).then(setZoomStatus).catch(console.error);
+        setZoomForHorizontalBoxDelta(1).catch(console.error);
     });
     zoomInButton.addEventListener('click', () => {
-        window.liveGallery.changeZoom(1).then(setZoomStatus).catch(console.error);
+        setZoomForHorizontalBoxDelta(-1).catch(console.error);
     });
     zoomStatusButton.addEventListener('click', () => {
         window.liveGallery.setZoom(100).then(setZoomStatus).catch(console.error);
     });
+}
+
+function getBoxOuterWidth(): number {
+    const box = elements.values().next().value?.root;
+    if (!box) {
+        return 287;
+    }
+
+    const style = window.getComputedStyle(box);
+    return box.offsetWidth + parseFloat(style.marginLeft) + parseFloat(style.marginRight);
+}
+
+function getFallbackContentWidth(): number {
+    return Math.round((document.documentElement.clientWidth * currentZoomPercent) / 100);
+}
+
+async function getContentWidth(): Promise<number> {
+    const width = await window.liveGallery.getContentWidth();
+    return width > 0 ? width : getFallbackContentWidth();
+}
+
+function getHorizontalBoxCapacity(
+    zoomPercent: number,
+    contentWidth = getFallbackContentWidth(),
+): number {
+    const boxWidth = getBoxOuterWidth();
+    const viewportWidth = (contentWidth * 100) / zoomPercent;
+    return Math.max(1, Math.floor((viewportWidth - zoomFitMarginPx) / boxWidth));
+}
+
+function getZoomForHorizontalBoxCapacity(capacity: number, contentWidth: number): number {
+    const requiredWidth = capacity * getBoxOuterWidth() + zoomFitMarginPx;
+    let zoom = Math.max(
+        minZoomPercent,
+        Math.min(maxZoomPercent, Math.floor((contentWidth * 100) / requiredWidth)),
+    );
+
+    while (zoom > minZoomPercent && getHorizontalBoxCapacity(zoom, contentWidth) < capacity) {
+        zoom -= 1;
+    }
+
+    while (zoom < maxZoomPercent && getHorizontalBoxCapacity(zoom + 1, contentWidth) >= capacity) {
+        zoom += 1;
+    }
+
+    return zoom;
+}
+
+async function setZoomForHorizontalBoxDelta(deltaBoxes: -1 | 1): Promise<void> {
+    const contentWidth = await getContentWidth();
+    const currentCapacity = getHorizontalBoxCapacity(currentZoomPercent, contentWidth);
+    const targetCapacity = currentCapacity + deltaBoxes;
+    if (targetCapacity < 1) {
+        return;
+    }
+
+    const targetZoom = getZoomForHorizontalBoxCapacity(targetCapacity, contentWidth);
+
+    if (targetZoom === currentZoomPercent) {
+        return;
+    }
+
+    const appliedZoom = await window.liveGallery.setZoom(targetZoom);
+    setZoomStatus(appliedZoom);
 }
 
 function initWindowControls(): void {
@@ -154,7 +229,7 @@ function initPresetMenuControls(): void {
 function initUpdateControls(): void {
     window.liveGallery.onUpdateAvailable(() => {
         updateToast.classList.remove('hidden');
-        updateText.textContent = 'A new version is ready to download.';
+        updateText.textContent = 'Update available';
         updateProgress.classList.add('hidden');
         updateProgress.value = 0;
         updateDownloadButton.classList.remove('hidden');
@@ -166,7 +241,7 @@ function initUpdateControls(): void {
         updateToast.classList.remove('hidden');
         updateProgress.classList.remove('hidden');
         updateProgress.value = progress;
-        updateText.textContent = `Downloading: ${progress.toFixed(1)}%`;
+        updateText.textContent = `Downloading ${Math.round(progress)}%`;
         updateDownloadButton.classList.add('hidden');
         updateDismissButton.classList.add('hidden');
         updateRestartButton.classList.add('hidden');
@@ -174,7 +249,7 @@ function initUpdateControls(): void {
 
     window.liveGallery.onUpdateReady(() => {
         updateToast.classList.remove('hidden');
-        updateText.textContent = 'Update downloaded. Restart to install it.';
+        updateText.textContent = 'Update ready';
         updateProgress.classList.add('hidden');
         updateDownloadButton.classList.add('hidden');
         updateDismissButton.classList.remove('hidden');
@@ -294,11 +369,11 @@ function addBox(): void {
 function renderBox(box: GalleryBox, index: number): void {
     const root = document.createElement('article');
     root.className =
-        'bg-base-200 border-base-300 relative m-1 h-fit w-[279px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border';
+        'bg-base-200 border-base-content/25 relative m-1 h-fit w-[279px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
     root.innerHTML = `
-        <div class="group bg-base-300 relative flex h-5 w-full items-center overflow-hidden">
+        <div class="group bg-base-300 border-base-content/10 relative flex h-5 w-full items-center overflow-hidden border-b">
           <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag">☰</button>
-          <span class="box-number badge badge-sm badge-neutral absolute top-0 left-1 z-20 h-5 min-h-0"></span>
+          <span class="box-number badge badge-sm badge-neutral absolute top-0 left-1 z-20 h-5 min-h-0 cursor-grab select-none" title="Drag"></span>
           <strong class="box-title bg-base-300 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-sm font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
           <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Expand" aria-label="Expand">${fullscreenIcon}</button>
           <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute or unmute">🔇</button>
@@ -311,7 +386,6 @@ function renderBox(box: GalleryBox, index: number): void {
           <input name="name" class="input input-xs" type="text" placeholder="Name" />
           <select name="type" class="select select-xs">
             <option value="YT">YouTube</option>
-            <option value="YN">YouTube Private</option>
             <option value="JW">JW Player</option>
             <option value="VC">VdoCipher</option>
             <option value="SS">Screen Share</option>
@@ -323,7 +397,7 @@ function renderBox(box: GalleryBox, index: number): void {
             <button type="submit" class="btn btn-secondary btn-xs min-w-16">Save</button>
           </div>
         </form>
-        <div class="viewport relative h-37.5 overflow-hidden bg-black">
+        <div class="viewport bg-base-200 relative h-37.5 overflow-hidden">
           <div class="absolute top-0 right-2.5 bottom-0 left-0 overflow-hidden">
             <webview class="player bg-neutral absolute top-0 left-0 h-[160%] w-[160%] origin-top-left scale-[0.625]" style="color-scheme: light" allowpopups></webview>
           </div>
@@ -373,6 +447,11 @@ function renderBox(box: GalleryBox, index: number): void {
             console.warn(`Box ${box.name || box.id} player error:`, event.args[0]);
         } else if (event.channel === 'gallery-screen-share-source') {
             rememberScreenShareSource(box, event.args[0] as Partial<DesktopSource>);
+        } else if (event.channel === 'gallery-open-screen-share-picker') {
+            openScreenSharePicker(box.id).catch((error) => {
+                console.error('Could not open screen share picker:', error);
+                showToast('Could not load windows');
+            });
         }
     });
     webview.addEventListener('did-fail-load', (event) => {
@@ -403,39 +482,76 @@ function renderBox(box: GalleryBox, index: number): void {
     root.querySelector<HTMLButtonElement>('.remove')!.addEventListener('click', () =>
         removeBox(box.id),
     );
-    root.querySelector<HTMLButtonElement>('.solo')!.addEventListener('click', () =>
-        soloBox(box.id),
-    );
+    root.querySelector<HTMLButtonElement>('.solo')!.addEventListener('click', () => {
+        disableRotationAudio();
+        soloBox(box.id);
+    });
     root.querySelector<HTMLButtonElement>('.cancel')!.addEventListener('click', () =>
         setEditing(form, false),
     );
     muteButton.addEventListener('click', () => toggleMute(box.id));
     (form.elements.namedItem('type') as HTMLSelectElement).addEventListener('change', () => {
         const type = (form.elements.namedItem('type') as HTMLSelectElement).value as BoxType;
-        setValueField(form, type, '');
+        const currentValue = String(new FormData(form).get('value') ?? '');
+        setValueField(
+            form,
+            type,
+            type === 'SS'
+                ? normalizeScreenShareFormValue('', currentValue)
+                : isScreenShareValue(currentValue)
+                  ? ''
+                  : currentValue,
+        );
+        clearBoxValueError(form);
         if (type === 'SS' && mics.length === 0) {
             loadMics().then(() => {
                 if ((form.elements.namedItem('type') as HTMLSelectElement).value === 'SS') {
-                    setValueField(form, type, '');
+                    setValueField(form, type, normalizeScreenShareFormValue('', currentValue));
                 }
             });
         }
     });
 
-    root.addEventListener('dragstart', () => {
+    root.addEventListener('dragstart', (event) => {
         draggedId = box.id;
+        root.classList.add('box-dragging');
+        gallery.classList.add('gallery-dragging');
+        event.dataTransfer?.setData('text/plain', box.id);
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+        }
     });
-    root.addEventListener('dragover', (event) => event.preventDefault());
-    root.addEventListener('drop', () => moveBox(draggedId, box.id));
+    root.addEventListener('dragend', () => {
+        draggedId = '';
+        root.classList.remove('box-dragging');
+        gallery.classList.remove('gallery-dragging');
+    });
+    root.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'move';
+        }
+    });
+    root.addEventListener('drop', (event) => {
+        event.preventDefault();
+        moveBox(draggedId, box.id);
+    });
 
     form.addEventListener('submit', (event) => {
         event.preventDefault();
         const formData = new FormData(form);
-        box.name = String(formData.get('name') ?? '');
-        box.type = String(formData.get('type') ?? 'YT') as BoxType;
+        const nextType = String(formData.get('type') ?? 'YT') as BoxType;
         const rawValue = String(formData.get('value') ?? '');
+        if (requiresBoxValue(nextType) && !rawValue.trim()) {
+            showBoxValueError(form);
+            return;
+        }
+
+        clearBoxValueError(form);
+        box.name = String(formData.get('name') ?? '');
+        box.type = nextType;
         box.value =
-            box.type === 'YT' || box.type === 'YN'
+            box.type === 'YT'
                 ? extractYouTubeId(rawValue)
                 : box.type === 'SS'
                   ? normalizeScreenShareFormValue(rawValue, box.value)
@@ -480,7 +596,7 @@ function renderBox(box: GalleryBox, index: number): void {
 }
 
 function syncBoxControls(entry: BoxElements, box: GalleryBox): void {
-    entry.title.textContent = box.name || box.type;
+    entry.title.textContent = getBoxTitle(box);
     entry.muteButton.textContent = box.muted ? '🔇' : '🔈';
     setUnmuted(entry.root, !box.muted);
     setEditing(entry.form, !box.value);
@@ -516,7 +632,39 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
                     )
                     .join('')}
               </select>`
-            : `<input name="value" class="input input-xs" type="text" placeholder="URL, ID, or microphone device" value="${escapeAttribute(value)}" />`;
+            : `<input name="value" class="input input-xs" type="text" placeholder="URL or ID" value="${escapeAttribute(value)}" />`;
+    const control = form.elements.namedItem('value');
+    if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) {
+        control.addEventListener('input', () => clearBoxValueError(form));
+    }
+}
+
+function requiresBoxValue(type: BoxType): boolean {
+    return type !== 'SS';
+}
+
+function showBoxValueError(form: HTMLFormElement): void {
+    const control = form.elements.namedItem('value');
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    control.classList.toggle('input-error', control instanceof HTMLInputElement);
+    control.classList.toggle('select-error', control instanceof HTMLSelectElement);
+    control.setAttribute('aria-invalid', 'true');
+    control.title = 'URL or ID is required.';
+    control.focus();
+}
+
+function clearBoxValueError(form: HTMLFormElement): void {
+    const control = form.elements.namedItem('value');
+    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    control.classList.remove('input-error', 'select-error');
+    control.removeAttribute('aria-invalid');
+    control.title = '';
 }
 
 function parseScreenShareValue(value: string): ScreenShareValue {
@@ -535,6 +683,26 @@ function parseScreenShareValue(value: string): ScreenShareValue {
             sourceName: '',
             displayId: '',
         };
+    }
+}
+
+function isScreenShareValue(value: string): boolean {
+    if (!value.trim()) {
+        return false;
+    }
+
+    try {
+        const parsed = JSON.parse(value) as Partial<ScreenShareValue>;
+        return (
+            typeof parsed === 'object' &&
+            parsed !== null &&
+            ('micDeviceId' in parsed ||
+                'sourceId' in parsed ||
+                'sourceName' in parsed ||
+                'displayId' in parsed)
+        );
+    } catch {
+        return false;
     }
 }
 
@@ -578,6 +746,142 @@ function rememberScreenShareSource(box: GalleryBox, source: Partial<DesktopSourc
     }
 }
 
+function resetScreenShareSource(box: GalleryBox): void {
+    if (box.type !== 'SS') {
+        return;
+    }
+
+    const value = parseScreenShareValue(box.value);
+    box.value = serializeScreenShareValue({
+        ...value,
+        sourceId: '',
+        sourceName: '',
+        displayId: '',
+    });
+    saveState();
+
+    const entry = elements.get(box.id);
+    if (entry) {
+        setValueField(entry.form, box.type, box.value);
+        sendCommand(box.id, { type: 'reset-screen-share' });
+    }
+}
+
+async function openScreenSharePicker(boxId: string): Promise<void> {
+    const box = boxes.find((item) => item.id === boxId);
+    if (!box || box.type !== 'SS') {
+        return;
+    }
+
+    const sources = await window.liveGallery.getDesktopSources();
+    const savedSource = findSavedDesktopSource(sources, parseScreenShareValue(box.value));
+    const overlay = document.createElement('section');
+    overlay.className =
+        'fixed inset-0 z-300 grid place-items-center bg-black/85 p-4 backdrop-blur-sm';
+    overlay.setAttribute('aria-label', 'Select a screen or window');
+    overlay.innerHTML = `
+        <div class="grid h-[min(760px,calc(100vh-2rem))] w-[min(1120px,calc(100vw-2rem))] grid-rows-[auto_1fr] gap-3 rounded-lg border border-base-content/25 bg-base-200 p-4 shadow-2xl shadow-black/70">
+          <div class="flex min-w-0 items-center justify-between gap-3">
+            <h2 class="truncate text-lg font-semibold">Select a screen or window</h2>
+            <div class="flex gap-2">
+              <button type="button" class="screen-picker-reset btn btn-secondary btn-sm btn-soft">Reset</button>
+              <button type="button" class="screen-picker-cancel btn btn-sm">Cancel</button>
+            </div>
+          </div>
+          <div class="screen-picker-sources grid min-h-0 auto-rows-min grid-cols-[repeat(auto-fill,minmax(280px,1fr))] content-start gap-3 overflow-auto pr-1"></div>
+        </div>
+    `;
+
+    const close = (): void => overlay.remove();
+    const renderSources = (items: DesktopSource[]): void => {
+        const sourcesNode = overlay.querySelector<HTMLElement>('.screen-picker-sources')!;
+        sourcesNode.replaceChildren();
+        const selected = findSavedDesktopSource(items, parseScreenShareValue(box.value));
+        items.forEach((source) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = [
+                'grid',
+                'grid-rows-[auto_1.25rem]',
+                'gap-2',
+                'rounded-md',
+                'border',
+                'p-1.5',
+                'text-left',
+                'text-sm',
+                'text-base-content',
+                'transition',
+                source === selected
+                    ? 'border-secondary bg-secondary/20'
+                    : 'border-base-content/20 bg-base-300/70 hover:border-secondary/80 hover:bg-base-300',
+            ].join(' ');
+
+            const image = document.createElement('img');
+            image.alt = '';
+            image.src = source.thumbnail;
+            image.className = 'aspect-video w-full rounded bg-black object-contain';
+
+            const label = document.createElement('span');
+            label.className = 'truncate';
+            label.textContent = source.name;
+
+            button.title = source.name;
+            button.append(image, label);
+            button.addEventListener('click', () => {
+                sendCommand(boxId, { type: 'start-screen-share', source });
+                close();
+            });
+            sourcesNode.appendChild(button);
+        });
+    };
+
+    overlay
+        .querySelector<HTMLButtonElement>('.screen-picker-cancel')!
+        .addEventListener('click', close);
+    overlay
+        .querySelector<HTMLButtonElement>('.screen-picker-reset')!
+        .addEventListener('click', () => {
+            resetScreenShareSource(box);
+            close();
+        });
+    overlay.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            close();
+        }
+    });
+
+    renderSources(sources);
+    document.body.appendChild(overlay);
+    overlay.querySelector<HTMLButtonElement>('.screen-picker-cancel')!.focus();
+}
+
+function findSavedDesktopSource(
+    sources: DesktopSource[],
+    saved: ScreenShareValue,
+): DesktopSource | null {
+    if (saved.sourceId) {
+        const exact = sources.find((source) => source.id === saved.sourceId);
+        if (exact) {
+            return exact;
+        }
+    }
+
+    if (saved.displayId) {
+        const displayMatch = sources.find(
+            (source) => source.displayId && source.displayId === saved.displayId,
+        );
+        if (displayMatch) {
+            return displayMatch;
+        }
+    }
+
+    if (saved.sourceName) {
+        return sources.find((source) => source.name === saved.sourceName) ?? null;
+    }
+
+    return null;
+}
+
 function escapeHtml(value: string): string {
     return value
         .replace(/&/g, '&amp;')
@@ -592,6 +896,21 @@ function escapeAttribute(value: string): string {
 }
 
 async function loadMics(): Promise<void> {
+    if (mics.length > 0) {
+        return;
+    }
+
+    if (micsPromise) {
+        return micsPromise;
+    }
+
+    micsPromise = loadMicsOnce().finally(() => {
+        micsPromise = null;
+    });
+    return micsPromise;
+}
+
+async function loadMicsOnce(): Promise<void> {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
             audio: {
@@ -722,6 +1041,15 @@ function soloBox(boxId: string): void {
     boxes.forEach((item) => toggleMute(item.id, item.id !== boxId));
 }
 
+function disableRotationAudio(): void {
+    if (!settings.muteRotation && !muteRotationInput.checked) {
+        return;
+    }
+
+    muteRotationInput.checked = false;
+    updateAllSettings();
+}
+
 function removeBox(boxId: string): void {
     const index = boxes.findIndex((box) => box.id === boxId);
     if (index >= 0) {
@@ -751,10 +1079,10 @@ function moveBox(sourceId: string, targetId: string): void {
     }
 
     const [source] = boxes.splice(sourceIndex, 1);
-    boxes.splice(sourceIndex < targetIndex ? targetIndex - 1 : targetIndex, 0, source);
+    boxes.splice(targetIndex, 0, source);
     const sourceRoot = elements.get(sourceId)!.root;
-    const targetRoot = elements.get(targetId)!.root;
-    gallery.insertBefore(sourceRoot, targetRoot);
+    const nextBox = boxes[targetIndex + 1];
+    gallery.insertBefore(sourceRoot, nextBox ? elements.get(nextBox.id)!.root : null);
     updateBoxNumbers();
     saveState();
     restartRotation();
@@ -809,17 +1137,17 @@ function restartRotation(): void {
     }
 
     let index = 0;
-    rotationTimer = window.setInterval(
-        () => {
-            const selected = getRotationBoxes();
-            if (selected.length === 0) {
-                return;
-            }
-            soloBox(selected[index % selected.length].id);
-            index += 1;
-        },
-        Math.max(1, settings.rotationTime) * 1000,
-    );
+    const rotate = (): void => {
+        const selected = getRotationBoxes();
+        if (selected.length === 0) {
+            return;
+        }
+        soloBox(selected[index % selected.length].id);
+        index += 1;
+    };
+
+    rotate();
+    rotationTimer = window.setInterval(rotate, Math.max(1, settings.rotationTime) * 1000);
 }
 
 function getRotationBoxes(): GalleryBox[] {
@@ -892,7 +1220,7 @@ function presetToBoxes(presetBoxes: PresetBox[]): GalleryBox[] {
 }
 
 function normalizePresetBoxType(type: string): BoxType {
-    const allowed = new Set<BoxType>(['YT', 'YN', 'JW', 'VC', 'SS', 'FB', 'CU']);
+    const allowed = new Set<BoxType>(['YT', 'JW', 'VC', 'SS', 'FB', 'CU']);
     return allowed.has(type as BoxType) ? (type as BoxType) : 'YT';
 }
 
@@ -1110,6 +1438,9 @@ initWindowControls();
 initPresetMenuControls();
 initZoomControls();
 initUpdateControls();
+loadMics().catch((error) => {
+    console.error('Error preloading microphones:', error);
+});
 loadState();
 render();
 refreshSavedPresets();

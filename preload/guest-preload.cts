@@ -4,7 +4,9 @@ type GalleryCommand =
     | { type: 'mute'; muted: boolean }
     | { type: 'audio-levels'; enabled: boolean }
     | { type: 'auto-live'; enabled: boolean }
-    | { type: 'lowest-quality' };
+    | { type: 'lowest-quality' }
+    | { type: 'start-screen-share'; source: DesktopSource }
+    | { type: 'reset-screen-share' };
 
 type AudioTools = {
     context: AudioContext;
@@ -41,6 +43,9 @@ contextBridge.exposeInMainWorld('liveGalleryGuest', {
             name: source.name,
             displayId: source.displayId,
         });
+    },
+    openScreenSharePicker: (): void => {
+        ipcRenderer.sendToHost('gallery-open-screen-share-picker');
     },
 });
 
@@ -374,6 +379,12 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
                 message: error instanceof Error ? error.message : String(error),
             });
         });
+    } else if (command.type === 'start-screen-share') {
+        window.dispatchEvent(
+            new CustomEvent('live-gallery-start-screen-share', { detail: command.source }),
+        );
+    } else if (command.type === 'reset-screen-share') {
+        window.dispatchEvent(new CustomEvent('live-gallery-reset-screen-share'));
     }
 });
 

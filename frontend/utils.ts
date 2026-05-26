@@ -1,4 +1,4 @@
-export type BoxType = 'YT' | 'YN' | 'JW' | 'VC' | 'SS' | 'FB' | 'CU';
+export type BoxType = 'YT' | 'JW' | 'VC' | 'SS' | 'FB' | 'CU';
 
 export type GalleryBox = {
     id: string;
@@ -132,13 +132,12 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
         return box.value;
     }
 
-    if (box.type === 'YT' || box.type === 'YN') {
-        const host = box.type === 'YT' ? 'youtube.com' : 'youtube-nocookie.com';
+    if (box.type === 'YT') {
         params.set('origin', youtubeEmbedOrigin);
         params.set('mute', '1');
         params.set('playsinline', '1');
         params.set('widget_referrer', youtubeEmbedOrigin);
-        return `https://www.${host}/embed/${extractYouTubeId(box.value)}?autoplay=1&enablejsapi=1&iv_load_policy=3&${params.toString()}`;
+        return `https://www.youtube.com/embed/${extractYouTubeId(box.value)}?autoplay=1&enablejsapi=1&iv_load_policy=3&${params.toString()}`;
     }
 
     if (box.type === 'JW') {
@@ -157,6 +156,6 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
 }
 
 function normalizeType(value: string): BoxType {
-    const allowed = new Set(['YT', 'YN', 'JW', 'VC', 'SS', 'FB', 'CU']);
+    const allowed = new Set(['YT', 'JW', 'VC', 'SS', 'FB', 'CU']);
     return allowed.has(value) ? (value as BoxType) : 'YT';
 }

@@ -25,6 +25,8 @@ declare global {
             getZoom: () => Promise<number>;
             setZoom: (percent: number) => Promise<number>;
             changeZoom: (delta: number) => Promise<number>;
+            getContentWidth: () => Promise<number>;
+            getDesktopSources: () => Promise<DesktopSource[]>;
             copyText: (text: string) => Promise<void>;
             toggleFullscreen: () => Promise<void>;
             reload: () => Promise<void>;
@@ -45,6 +47,7 @@ declare global {
             getDesktopSources: () => Promise<DesktopSource[]>;
             connectScreenShareAudio: () => void;
             rememberScreenShareSource: (source: DesktopSource) => void;
+            openScreenSharePicker: () => void;
         };
     }
 }

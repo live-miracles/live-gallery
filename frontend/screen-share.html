@@ -36,27 +36,41 @@
         position: absolute;
         inset: 0;
         display: none;
-        grid-template-rows: auto 1fr;
-        gap: 10px;
-        padding: 12px;
+        place-items: center;
+        padding: 20px;
         overflow: hidden;
-        background: #05070a;
+        background: rgb(0 0 0 / 0.86);
       }
 
       .picker.open {
         display: grid;
       }
 
+      .picker-panel {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 14px;
+        width: min(1120px, calc(100vw - 32px));
+        height: min(760px, calc(100vh - 32px));
+        min-height: 0;
+        border: 1px solid rgb(255 255 255 / 0.2);
+        border-radius: 10px;
+        padding: 16px;
+        background: #090d12;
+        box-shadow: 0 24px 80px rgb(0 0 0 / 0.6);
+      }
+
       .picker-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: 12px;
+        min-width: 0;
       }
 
       .picker-title {
         overflow: hidden;
-        font-size: 13px;
+        font-size: 18px;
         font-weight: 700;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -64,8 +78,8 @@
 
       .refresh {
         border: 1px solid rgb(255 255 255 / 0.24);
-        border-radius: 4px;
-        padding: 4px 7px;
+        border-radius: 6px;
+        padding: 7px 10px;
         background: rgb(255 255 255 / 0.08);
         color: white;
         cursor: pointer;
@@ -79,18 +93,20 @@
 
       .sources {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+        min-height: 0;
         overflow: auto;
+        padding-right: 4px;
       }
 
       .source {
         display: grid;
-        gap: 5px;
+        gap: 8px;
         align-content: start;
         border: 1px solid rgb(255 255 255 / 0.16);
-        border-radius: 6px;
-        padding: 5px;
+        border-radius: 8px;
+        padding: 8px;
         background: rgb(255 255 255 / 0.06);
         color: white;
         cursor: pointer;
@@ -111,15 +127,15 @@
       .source img {
         width: 100%;
         aspect-ratio: 16 / 9;
-        border-radius: 3px;
+        border-radius: 5px;
         background: #111820;
         object-fit: contain;
       }
 
       .source span {
         overflow: hidden;
-        font-size: 11px;
-        line-height: 1.25;
+        font-size: 13px;
+        line-height: 1.35;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
@@ -145,14 +161,16 @@
     <video autoplay></video>
     <button class="start">Click to Share Window</button>
     <section class="picker" aria-label="Select a screen or window">
-      <div class="picker-header">
-        <div class="picker-title">Select a screen or window</div>
-        <div class="picker-actions">
-          <button class="refresh" type="button">Refresh</button>
-          <button class="cancel" type="button">Cancel</button>
+      <div class="picker-panel">
+        <div class="picker-header">
+          <div class="picker-title">Select a screen or window</div>
+          <div class="picker-actions">
+            <button class="refresh" type="button">Refresh</button>
+            <button class="cancel" type="button">Cancel</button>
+          </div>
         </div>
+        <div class="sources"></div>
       </div>
-      <div class="sources"></div>
     </section>
     <script>
       const video = document.querySelector('video');
@@ -312,8 +330,7 @@
 
       async function openPicker() {
         startButton.textContent = 'Click to Share Window';
-        picker.classList.add('open');
-        await loadSources();
+        window.liveGalleryGuest.openScreenSharePicker();
       }
 
       startButton.addEventListener('click', () => {
@@ -341,6 +358,28 @@
             picker.classList.remove('open');
           });
         }
+      });
+
+      window.addEventListener('live-gallery-start-screen-share', (event) => {
+        startShare(event.detail).catch((error) => {
+          console.error(error);
+          startButton.textContent = 'Could not start screen share. Click to try again.';
+        });
+      });
+
+      window.addEventListener('live-gallery-reset-screen-share', () => {
+        savedScreenShareValue = {
+          ...savedScreenShareValue,
+          sourceId: '',
+          sourceName: '',
+          displayId: '',
+        };
+        restoredSourceId = '';
+        stopActiveStream();
+        video.srcObject = null;
+        document.body.classList.remove('active');
+        picker.classList.remove('open');
+        startButton.textContent = 'Click to Share Window';
       });
 
       window.addEventListener('DOMContentLoaded', () => {

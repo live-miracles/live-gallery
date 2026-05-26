@@ -3,6 +3,14 @@
     themes: dim;
 }
 
+:root:has([data-theme='dim']),
+[data-theme='dim'] {
+    --color-base-100: #000;
+    --color-base-200: #101010;
+    --color-base-300: #1a1a1a;
+    --color-neutral: #030303;
+}
+
 .box-tool-btn {
     @apply mx-1 h-5 min-h-0 w-5 px-0 text-xs leading-none;
 }
@@ -11,8 +19,30 @@
     @apply ml-auto;
 }
 
+.app-header {
+    z-index: 40;
+}
+
 .app-header:has(#preset-menu[open]) {
     z-index: 200;
+}
+
+.gallery-dragging webview {
+    pointer-events: none;
+}
+
+.box-dragging {
+    cursor: grabbing;
+    opacity: 0.78;
+    transform: scale(1.03);
+    transition:
+        opacity 120ms ease,
+        transform 120ms ease;
+}
+
+.box-dragging .drag-handle,
+.box-dragging .box-number {
+    cursor: grabbing;
 }
 
 .box-expanded {
@@ -21,7 +51,7 @@
     right: 0 !important;
     bottom: 0 !important;
     left: 0 !important;
-    z-index: 30 !important;
+    z-index: 250 !important;
     width: 100vw !important;
     height: 100dvh !important;
     max-width: none !important;

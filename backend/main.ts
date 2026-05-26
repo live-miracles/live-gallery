@@ -35,6 +35,10 @@ ipcMain.handle('gallery:set-zoom', (_event, percent: number) => setAppZoom(perce
 ipcMain.handle('gallery:change-zoom', (_event, delta: number) =>
     changeAppZoom(delta * zoomStepPercent),
 );
+ipcMain.handle('gallery:get-content-width', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win?.getContentBounds().width ?? 0;
+});
 ipcMain.handle('gallery:copy-text', (_event, text: string) => {
     clipboard.writeText(text);
 });
@@ -340,10 +344,7 @@ function syncAppZoomFromWindow(win: BrowserWindow): void {
 }
 
 function setAppZoom(percent: number): number {
-    appZoomPercent = Math.max(
-        minZoomPercent,
-        Math.min(maxZoomPercent, Math.round(percent / zoomStepPercent) * zoomStepPercent),
-    );
+    appZoomPercent = Math.max(minZoomPercent, Math.min(maxZoomPercent, Math.round(percent)));
     BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.setZoomFactor(appZoomPercent / 100);
         win.webContents.send('gallery:zoom-changed', appZoomPercent);
@@ -456,7 +457,7 @@ function configureAppSession(): void {
 
     session.defaultSession.webRequest.onBeforeSendHeaders(
         {
-            urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*'],
+            urls: ['*://*.youtube.com/*'],
         },
         (details, callback) => {
             callback({
