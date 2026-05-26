@@ -32,9 +32,6 @@ configureChromiumSwitches();
 
 ipcMain.handle('gallery:get-zoom', () => appZoomPercent);
 ipcMain.handle('gallery:set-zoom', (_event, percent: number) => setAppZoom(percent));
-ipcMain.handle('gallery:change-zoom', (_event, delta: number) =>
-    changeAppZoom(delta * zoomStepPercent),
-);
 ipcMain.handle('gallery:get-content-width', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     return win?.getContentBounds().width ?? 0;

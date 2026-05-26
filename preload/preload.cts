@@ -7,8 +7,6 @@ contextBridge.exposeInMainWorld('liveGallery', {
     getZoom: (): Promise<number> => ipcRenderer.invoke('gallery:get-zoom') as Promise<number>,
     setZoom: (percent: number): Promise<number> =>
         ipcRenderer.invoke('gallery:set-zoom', percent) as Promise<number>,
-    changeZoom: (delta: number): Promise<number> =>
-        ipcRenderer.invoke('gallery:change-zoom', delta) as Promise<number>,
     getContentWidth: (): Promise<number> =>
         ipcRenderer.invoke('gallery:get-content-width') as Promise<number>,
     getDesktopSources: (): Promise<DesktopSource[]> =>

@@ -24,7 +24,6 @@ declare global {
             guestPreloadUrl: string;
             getZoom: () => Promise<number>;
             setZoom: (percent: number) => Promise<number>;
-            changeZoom: (delta: number) => Promise<number>;
             getContentWidth: () => Promise<number>;
             getDesktopSources: () => Promise<DesktopSource[]>;
             copyText: (text: string) => Promise<void>;

@@ -774,7 +774,6 @@ async function openScreenSharePicker(boxId: string): Promise<void> {
     }
 
     const sources = await window.liveGallery.getDesktopSources();
-    const savedSource = findSavedDesktopSource(sources, parseScreenShareValue(box.value));
     const overlay = document.createElement('section');
     overlay.className =
         'fixed inset-0 z-300 grid place-items-center bg-black/85 p-4 backdrop-blur-sm';
