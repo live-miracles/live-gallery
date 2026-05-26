@@ -1219,7 +1219,7 @@ function presetToBoxes(presetBoxes: PresetBox[]): GalleryBox[] {
 }
 
 function normalizePresetBoxType(type: string): BoxType {
-    const allowed = new Set<BoxType>(['YT', 'JW', 'VC', 'SS', 'FB', 'CU']);
+    const allowed = new Set<BoxType>(['YT', 'JW', 'VC', 'SS', 'CU']);
     return allowed.has(type as BoxType) ? (type as BoxType) : 'YT';
 }
 

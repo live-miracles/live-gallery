@@ -1,4 +1,4 @@
-export type BoxType = 'YT' | 'JW' | 'VC' | 'SS' | 'FB' | 'CU';
+export type BoxType = 'YT' | 'JW' | 'VC' | 'SS' | 'CU';
 
 export type GalleryBox = {
     id: string;
@@ -141,21 +141,18 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
     }
 
     if (box.type === 'JW') {
-        return `https://player.controlhub.innerengineering.vualto.com/Player/Index/${box.value}?viewUnpublished=True&${params.toString()}`;
+        // TODO: replace with actual JW player URL provided by user in the UI
+        return `https://your.website.com/Player/Index/${box.value}?viewUnpublished=True&${params.toString()}`;
     }
 
     if (box.type === 'VC') {
         return `https://player.vdocipher.com/live?liveId=${box.value}&preview=true&autoplay=1&${params.toString()}`;
     }
 
-    if (box.type === 'FB') {
-        return `https://www.facebook.com/video/embed?video_id=${box.value}&${params.toString()}`;
-    }
-
     return box.value;
 }
 
 function normalizeType(value: string): BoxType {
-    const allowed = new Set(['YT', 'JW', 'VC', 'SS', 'FB', 'CU']);
+    const allowed = new Set(['YT', 'JW', 'VC', 'SS', 'CU']);
     return allowed.has(value) ? (value as BoxType) : 'YT';
 }

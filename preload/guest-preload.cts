@@ -323,7 +323,7 @@ function clickAutoLive(): void {
 
     const liveBadge = querySelectorAllShadows<HTMLElement>('.ytwPlayerTimeDisplayTimeElapsed')[0];
     if (!liveBadge) {
-        console.error('YouTube auto-live failed: .ytp-live-badge was not found.');
+        console.error('YouTube auto-live failed: live badge element was not found.');
         return;
     }
 
@@ -341,24 +341,37 @@ function startAutoLiveLoop(): void {
 }
 
 async function setLowestYouTubeQuality(): Promise<void> {
-    const settingsButton = querySelectorAllShadows<HTMLElement>('.ytp-settings-button')[0];
+    const settingsButton = querySelectorAllShadows<HTMLElement>('.player-settings-icon')[0];
     if (!settingsButton) {
+        console.error('YouTube set quality failed: settings button was not found.');
         return;
     }
 
     settingsButton.click();
     await sleep(300);
 
-    const menuItems = querySelectorAllShadows<HTMLElement>('.ytp-menuitem');
+    const menuItems = querySelectorAllShadows<HTMLElement>('.ytListItemViewModelTitle');
     const qualityItem = menuItems.find((item) =>
         item.textContent?.toLowerCase().includes('quality'),
     );
+    if (!qualityItem) {
+        console.error('YouTube set quality failed: quality item was not found in the menu.');
+        return;
+    }
     qualityItem?.click();
     await sleep(300);
 
-    const qualityOptions = querySelectorAllShadows<HTMLElement>('.ytp-menuitem').filter((item) =>
-        /\d+p|auto/i.test(item.textContent ?? ''),
+    const qualityOptions = querySelectorAllShadows<HTMLElement>('.ytListItemViewModelTitle').filter(
+        (item) => {
+            const text = item.textContent ?? '';
+            return /\d+p/i.test(text) && !/\bauto\b/i.test(text);
+        },
     );
+    if (qualityOptions.length === 0) {
+        console.error('YouTube set quality failed: no quality options were found.');
+        return;
+    }
+
     const lowest = qualityOptions[qualityOptions.length - 1];
     lowest?.click();
 }
