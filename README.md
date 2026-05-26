@@ -4,6 +4,8 @@ Live Gallery is an Electron app for monitoring multiple live sources at once:
 YouTube, privacy-enhanced YouTube embeds, JW Player, VdoCipher, Facebook embeds,
 custom URLs, HLS links, and screen shares.
 
+<img width="1372" height="380" alt="image" src="https://github.com/user-attachments/assets/61a912f2-2a03-4cb1-afeb-b618fc6ad01b" />
+
 ## Features
 
 - Monitor several live players in one desktop window.
