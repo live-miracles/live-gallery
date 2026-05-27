@@ -747,8 +747,8 @@ function rememberScreenShareSource(box: GalleryBox, source: Partial<DesktopSourc
     box.value = serializeScreenShareValue({
         ...value,
         sourceId: String(source.id ?? ''),
-        sourceName: String(source.name ?? ''),
-        displayId: String(source.displayId ?? ''),
+        sourceName: '',
+        displayId: '',
     });
     saveState();
 
@@ -870,27 +870,7 @@ function findSavedDesktopSource(
     sources: DesktopSource[],
     saved: ScreenShareValue,
 ): DesktopSource | null {
-    if (saved.sourceId) {
-        const exact = sources.find((source) => source.id === saved.sourceId);
-        if (exact) {
-            return exact;
-        }
-    }
-
-    if (saved.displayId) {
-        const displayMatch = sources.find(
-            (source) => source.displayId && source.displayId === saved.displayId,
-        );
-        if (displayMatch) {
-            return displayMatch;
-        }
-    }
-
-    if (saved.sourceName) {
-        return sources.find((source) => source.name === saved.sourceName) ?? null;
-    }
-
-    return null;
+    return sources.find((source) => source.id === saved.sourceId) ?? null;
 }
 
 function escapeHtml(value: string): string {
