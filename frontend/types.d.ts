@@ -31,6 +31,7 @@ declare global {
             reload: () => Promise<void>;
             exportPreset: (boxes: PresetBox[]) => Promise<boolean>;
             importPreset: () => Promise<PresetBox[] | null>;
+            importPresetFromClipboard: () => Promise<PresetBox[] | null>;
             listPresets: () => Promise<SavedPreset[]>;
             savePreset: (name: string, boxes: PresetBox[]) => Promise<SavedPreset[]>;
             renamePreset: (oldName: string, newName: string) => Promise<SavedPreset[]>;

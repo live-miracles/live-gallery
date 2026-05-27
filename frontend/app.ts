@@ -1223,6 +1223,16 @@ function loadPresetBoxes(presetBoxes: PresetBox[]): void {
     render();
 }
 
+function importPresetBoxes(presetBoxes: PresetBox[] | null): void {
+    if (!presetBoxes) {
+        return;
+    }
+
+    loadPresetBoxes(presetBoxes);
+    showToast('Preset imported');
+    presetMenu.open = false;
+}
+
 function renderSavedPresets(presets: SavedPreset[]): void {
     savedPresetList.replaceChildren();
 
@@ -1395,17 +1405,20 @@ document.getElementById('export-preset')!.addEventListener('click', () => {
 document.getElementById('import-preset')!.addEventListener('click', () => {
     window.liveGallery
         .importPreset()
-        .then((presetBoxes) => {
-            if (!presetBoxes) {
-                return;
-            }
-            loadPresetBoxes(presetBoxes);
-            showToast('Preset imported');
-            presetMenu.open = false;
-        })
+        .then(importPresetBoxes)
         .catch((error) => {
             console.error('Could not import preset:', error);
             showToast('Import failed');
+        });
+});
+
+document.getElementById('import-preset-clipboard')!.addEventListener('click', () => {
+    window.liveGallery
+        .importPresetFromClipboard()
+        .then(importPresetBoxes)
+        .catch((error) => {
+            console.error('Could not import preset from clipboard:', error);
+            showToast('Clipboard import failed');
         });
 });
 

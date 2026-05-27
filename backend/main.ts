@@ -77,6 +77,14 @@ ipcMain.handle('gallery:import-preset', async (event) => {
 
     return readPresetFile(result.filePaths[0]);
 });
+ipcMain.handle('gallery:import-preset-from-clipboard', () => {
+    const raw = clipboard.readText();
+    if (!raw.trim()) {
+        return null;
+    }
+
+    return normalizePresetBoxes(JSON.parse(raw) as unknown);
+});
 ipcMain.handle('gallery:list-presets', () => readSavedPresets());
 ipcMain.handle('gallery:save-preset', async (_event, name: string, boxes: PresetBox[]) => {
     const presetName = normalizePresetName(name);

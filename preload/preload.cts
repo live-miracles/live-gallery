@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('liveGallery', {
         ipcRenderer.invoke('gallery:export-preset', boxes) as Promise<boolean>,
     importPreset: (): Promise<PresetBox[] | null> =>
         ipcRenderer.invoke('gallery:import-preset') as Promise<PresetBox[] | null>,
+    importPresetFromClipboard: (): Promise<PresetBox[] | null> =>
+        ipcRenderer.invoke('gallery:import-preset-from-clipboard') as Promise<PresetBox[] | null>,
     listPresets: (): Promise<SavedPreset[]> =>
         ipcRenderer.invoke('gallery:list-presets') as Promise<SavedPreset[]>,
     savePreset: (name: string, boxes: PresetBox[]): Promise<SavedPreset[]> =>
