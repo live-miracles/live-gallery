@@ -24,6 +24,7 @@ const zoomStepPercent = 10;
 const minZoomPercent = 20;
 const maxZoomPercent = 300;
 const presetsFileName = 'presets.json';
+const youtubeIdPattern = /^[a-zA-Z0-9_-]{11}$/;
 let appZoomPercent = 100;
 const shortcutWebContents = new WeakSet<Electron.WebContents>();
 let updatesAreConfigured = false;
@@ -83,7 +84,7 @@ ipcMain.handle('gallery:import-preset-from-clipboard', () => {
         return null;
     }
 
-    return normalizePresetBoxes(JSON.parse(raw) as unknown);
+    return parseClipboardPreset(raw);
 });
 ipcMain.handle('gallery:list-presets', () => readSavedPresets());
 ipcMain.handle('gallery:save-preset', async (_event, name: string, boxes: PresetBox[]) => {
@@ -389,6 +390,85 @@ function normalizePresetBoxes(value: unknown): PresetBox[] {
             value: String(item.value ?? ''),
         };
     });
+}
+
+function parseClipboardPreset(raw: string): PresetBox[] {
+    try {
+        return normalizePresetBoxes(JSON.parse(raw) as unknown);
+    } catch {
+        const boxes = parseYouTubePresetLines(raw);
+        if (boxes.length > 0) {
+            return boxes;
+        }
+        throw new Error('Clipboard does not contain a preset or YouTube links.');
+    }
+}
+
+function parseYouTubePresetLines(raw: string): PresetBox[] {
+    return raw
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line, index) => parseYouTubePresetLine(line, index))
+        .filter((box): box is PresetBox => Boolean(box));
+}
+
+function parseYouTubePresetLine(line: string, index: number): PresetBox | null {
+    const match = line.match(
+        /\b(?:https?:\/\/)?(?:(?:[a-z0-9-]+\.)*(?:youtube\.com|youtube-nocookie\.com)|youtu\.be)\/\S+/i,
+    );
+    const candidate = (match?.[0] ?? line).replace(/[),.;]+$/, '');
+    const videoId = extractYouTubeId(candidate);
+    if (!youtubeIdPattern.test(videoId)) {
+        return null;
+    }
+
+    const name = match ? line.slice(0, match.index).trim() : '';
+    return {
+        name: name || String(index + 1),
+        type: 'YT',
+        value: videoId,
+    };
+}
+
+function extractYouTubeId(input: string): string {
+    const trimmed = input.trim();
+    try {
+        const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+        const videoParam = url.searchParams.get('v');
+        if (videoParam && youtubeIdPattern.test(videoParam)) {
+            return videoParam;
+        }
+
+        const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
+        const isYouTubeHost =
+            hostname === 'youtube.com' ||
+            hostname.endsWith('.youtube.com') ||
+            hostname === 'youtube-nocookie.com' ||
+            hostname.endsWith('.youtube-nocookie.com');
+        const pathId = url.pathname
+            .split('/')
+            .filter(Boolean)
+            .find((segment, index, segments) => {
+                if (hostname === 'youtu.be') {
+                    return index === 0 && youtubeIdPattern.test(segment);
+                }
+
+                return (
+                    isYouTubeHost &&
+                    ['embed', 'live', 'shorts', 'v'].includes(segments[index - 1] ?? '') &&
+                    youtubeIdPattern.test(segment)
+                );
+            });
+
+        if (pathId) {
+            return pathId;
+        }
+    } catch {
+        return trimmed;
+    }
+
+    return trimmed;
 }
 
 function sortPresets(presets: SavedPreset[]): SavedPreset[] {

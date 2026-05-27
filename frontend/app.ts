@@ -63,6 +63,7 @@ const updateDismissButton = mustGet<HTMLButtonElement>('update-dismiss-btn');
 const updateDownloadButton = mustGet<HTMLButtonElement>('update-download-btn');
 const updateRestartButton = mustGet<HTMLButtonElement>('update-restart-btn');
 const clipboardToast = mustGet<HTMLElement>('clipboard-toast');
+const clipboardToastAlert = mustGet<HTMLElement>('clipboard-toast-alert');
 const clipboardToastText = mustGet<HTMLElement>('clipboard-toast-text');
 const presetNameDialog = mustGet<HTMLDialogElement>('preset-name-dialog');
 const presetNameTitle = mustGet<HTMLElement>('preset-name-title');
@@ -450,7 +451,7 @@ function renderBox(box: GalleryBox, index: number): void {
         } else if (event.channel === 'gallery-open-screen-share-picker') {
             openScreenSharePicker(box.id).catch((error) => {
                 console.error('Could not open screen share picker:', error);
-                showToast('Could not load windows');
+                showToast('Could not load windows', 'error');
             });
         }
     });
@@ -1189,9 +1190,11 @@ function updateAllSettings(): void {
     restartRotation();
 }
 
-function showToast(message: string): void {
+function showToast(message: string, variant: 'success' | 'error' = 'success'): void {
     window.clearTimeout(clipboardToastTimer);
     clipboardToastText.textContent = message;
+    clipboardToastAlert.classList.toggle('alert-success', variant === 'success');
+    clipboardToastAlert.classList.toggle('alert-error', variant === 'error');
     clipboardToast.classList.remove('hidden');
     clipboardToastTimer = window.setTimeout(() => {
         clipboardToast.classList.add('hidden');
@@ -1269,7 +1272,7 @@ function renderSavedPresets(presets: SavedPreset[]): void {
             event.stopPropagation();
             renameSavedPreset(preset.name).catch((error) => {
                 console.error('Could not rename preset:', error);
-                showToast('Rename failed');
+                showToast('Rename failed', 'error');
             });
         });
 
@@ -1295,7 +1298,7 @@ function refreshSavedPresets(): void {
         .then(renderSavedPresets)
         .catch((error) => {
             console.error('Could not load presets:', error);
-            showToast('Could not load presets');
+            showToast('Could not load presets', 'error');
         });
 }
 
@@ -1341,7 +1344,7 @@ async function saveCurrentPreset(): Promise<void> {
         })
         .catch((error) => {
             console.error('Could not save preset:', error);
-            showToast('Save failed');
+            showToast('Save failed', 'error');
         });
 }
 
@@ -1356,7 +1359,7 @@ async function renameSavedPreset(oldName: string): Promise<void> {
         .then(renderSavedPresets)
         .catch((error) => {
             console.error('Could not rename preset:', error);
-            showToast('Rename failed');
+            showToast('Rename failed', 'error');
         });
 }
 
@@ -1373,7 +1376,7 @@ function deleteSavedPreset(name: string): void {
         })
         .catch((error) => {
             console.error('Could not delete preset:', error);
-            showToast('Delete failed');
+            showToast('Delete failed', 'error');
         });
 }
 
@@ -1398,7 +1401,7 @@ document.getElementById('export-preset')!.addEventListener('click', () => {
         })
         .catch((error) => {
             console.error('Could not export preset:', error);
-            showToast('Export failed');
+            showToast('Export failed', 'error');
         });
 });
 
@@ -1408,7 +1411,7 @@ document.getElementById('import-preset')!.addEventListener('click', () => {
         .then(importPresetBoxes)
         .catch((error) => {
             console.error('Could not import preset:', error);
-            showToast('Import failed');
+            showToast('Import failed', 'error');
         });
 });
 
@@ -1418,14 +1421,14 @@ document.getElementById('import-preset-clipboard')!.addEventListener('click', ()
         .then(importPresetBoxes)
         .catch((error) => {
             console.error('Could not import preset from clipboard:', error);
-            showToast('Clipboard import failed');
+            showToast('Clipboard import failed', 'error');
         });
 });
 
 document.getElementById('save-preset')!.addEventListener('click', () => {
     saveCurrentPreset().catch((error) => {
         console.error('Could not save preset:', error);
-        showToast('Save failed');
+        showToast('Save failed', 'error');
     });
 });
 
