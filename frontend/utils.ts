@@ -15,6 +15,15 @@ export type GallerySettings = {
     rotationTime: number;
     autoLive: boolean;
     jwServerHost: string;
+    alertSound: boolean;
+    alertVideoBuffering: boolean;
+    alertVideoRepeatedBuffering: boolean;
+    alertVideoFrozen: boolean;
+    alertAudioSilent: boolean;
+    alertAudioDropouts: boolean;
+    alertAudioClipping: boolean;
+    alertAudioChannelMissing: boolean;
+    alertAudioImbalance: boolean;
 };
 
 const separator = '|';

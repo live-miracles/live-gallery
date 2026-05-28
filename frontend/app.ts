@@ -7,12 +7,8 @@ import {
     getPlayerUrl,
     makeBox,
 } from './utils.js';
-
-type LevelPayload = {
-    boxId: string;
-    left: number;
-    right: number;
-};
+import { createAlertController, type HealthPayload, type LevelPayload } from './alerts.js';
+import { createPresetController } from './presets.js';
 
 type ScreenShareValue = {
     micDeviceId: string;
@@ -49,8 +45,26 @@ const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
 const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
+const alertSoundInput = mustGet<HTMLInputElement>('alert-sound');
+const alertVideoBufferingInput = mustGet<HTMLInputElement>('alert-video-buffering');
+const alertVideoRepeatedBufferingInput = mustGet<HTMLInputElement>(
+    'alert-video-repeated-buffering',
+);
+const alertVideoFrozenInput = mustGet<HTMLInputElement>('alert-video-frozen');
+const alertAudioSilentInput = mustGet<HTMLInputElement>('alert-audio-silent');
+const alertAudioDropoutsInput = mustGet<HTMLInputElement>('alert-audio-dropouts');
+const alertAudioClippingInput = mustGet<HTMLInputElement>('alert-audio-clipping');
+const alertAudioChannelMissingInput = mustGet<HTMLInputElement>('alert-audio-channel-missing');
+const alertAudioImbalanceInput = mustGet<HTMLInputElement>('alert-audio-imbalance');
 const presetMenu = mustGet<HTMLDetailsElement>('preset-menu');
 const savedPresetList = mustGet<HTMLElement>('saved-preset-list');
+const newPresetButton = mustGet<HTMLButtonElement>('new-preset');
+const exportPresetButton = mustGet<HTMLButtonElement>('export-preset');
+const importPresetButton = mustGet<HTMLButtonElement>('import-preset');
+const importPresetClipboardButton = mustGet<HTMLButtonElement>('import-preset-clipboard');
+const savePresetButton = mustGet<HTMLButtonElement>('save-preset');
+const alertsButton = mustGet<HTMLButtonElement>('alerts-button');
+const alertsCount = mustGet<HTMLElement>('alerts-count');
 const fullscreenButton = mustGet<HTMLButtonElement>('toggle-fullscreen');
 const refreshPageButton = mustGet<HTMLButtonElement>('refresh-page');
 const zoomOutButton = mustGet<HTMLButtonElement>('zoom-out');
@@ -69,6 +83,8 @@ const presetNameDialog = mustGet<HTMLDialogElement>('preset-name-dialog');
 const presetNameTitle = mustGet<HTMLElement>('preset-name-title');
 const presetNameInput = mustGet<HTMLInputElement>('preset-name-input');
 const docsDialog = mustGet<HTMLDialogElement>('docs-dialog');
+const alertsDialog = mustGet<HTMLDialogElement>('alerts-dialog');
+const alertsList = mustGet<HTMLElement>('alerts-list');
 const settingsDialog = mustGet<HTMLDialogElement>('settings-dialog');
 const settingsForm = mustGet<HTMLFormElement>('settings-form');
 const jwServerHostInput = mustGet<HTMLInputElement>('jw-server-host');
@@ -80,6 +96,15 @@ const settings: GallerySettings = {
     rotationTime: 5,
     autoLive: true,
     jwServerHost: 'https://your.website.com/Player/Index/',
+    alertSound: true,
+    alertVideoBuffering: true,
+    alertVideoRepeatedBuffering: true,
+    alertVideoFrozen: true,
+    alertAudioSilent: true,
+    alertAudioDropouts: true,
+    alertAudioClipping: true,
+    alertAudioChannelMissing: true,
+    alertAudioImbalance: true,
 };
 
 const minZoomPercent = 20;
@@ -102,6 +127,32 @@ const fullscreenIcon = `
       <path d="M3 16v3a2 2 0 0 0 2 2h3" />
     </svg>
 `;
+
+const alertController = createAlertController({
+    settings,
+    boxes,
+    elements,
+    alertsButton,
+    alertsCount,
+    alertsList,
+    getBoxTitle,
+});
+
+const presetController = createPresetController({
+    boxes,
+    presetMenu,
+    savedPresetList,
+    presetNameDialog,
+    presetNameTitle,
+    presetNameInput,
+    newPresetButton,
+    exportPresetButton,
+    importPresetButton,
+    importPresetClipboardButton,
+    savePresetButton,
+    render,
+    showToast,
+});
 
 function mustGet<T extends HTMLElement>(id: string): T {
     const element = document.getElementById(id);
@@ -280,6 +331,15 @@ function syncSettingsFromControls(): void {
     settings.rotationTime = Math.max(1, Number(rotationTimeInput.value) || 1);
     settings.autoLive = autoLiveInput.checked;
     settings.jwServerHost = jwServerHostInput.value.trim();
+    settings.alertSound = alertSoundInput.checked;
+    settings.alertVideoBuffering = alertVideoBufferingInput.checked;
+    settings.alertVideoRepeatedBuffering = alertVideoRepeatedBufferingInput.checked;
+    settings.alertVideoFrozen = alertVideoFrozenInput.checked;
+    settings.alertAudioSilent = alertAudioSilentInput.checked;
+    settings.alertAudioDropouts = alertAudioDropoutsInput.checked;
+    settings.alertAudioClipping = alertAudioClippingInput.checked;
+    settings.alertAudioChannelMissing = alertAudioChannelMissingInput.checked;
+    settings.alertAudioImbalance = alertAudioImbalanceInput.checked;
 }
 
 function syncControlsFromSettings(): void {
@@ -288,6 +348,15 @@ function syncControlsFromSettings(): void {
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
     jwServerHostInput.value = settings.jwServerHost;
+    alertSoundInput.checked = settings.alertSound;
+    alertVideoBufferingInput.checked = settings.alertVideoBuffering;
+    alertVideoRepeatedBufferingInput.checked = settings.alertVideoRepeatedBuffering;
+    alertVideoFrozenInput.checked = settings.alertVideoFrozen;
+    alertAudioSilentInput.checked = settings.alertAudioSilent;
+    alertAudioDropoutsInput.checked = settings.alertAudioDropouts;
+    alertAudioClippingInput.checked = settings.alertAudioClipping;
+    alertAudioChannelMissingInput.checked = settings.alertAudioChannelMissing;
+    alertAudioImbalanceInput.checked = settings.alertAudioImbalance;
     syncRotationControlsVisibility();
     updateRotationBoxesValidity();
 }
@@ -351,6 +420,15 @@ function loadState(): void {
     Object.assign(settings, storedSettings);
     settings.audioLevels = true;
     settings.jwServerHost = String(settings.jwServerHost ?? '');
+    settings.alertSound = storedSettings.alertSound ?? true;
+    settings.alertVideoBuffering = storedSettings.alertVideoBuffering ?? true;
+    settings.alertVideoRepeatedBuffering = storedSettings.alertVideoRepeatedBuffering ?? true;
+    settings.alertVideoFrozen = storedSettings.alertVideoFrozen ?? true;
+    settings.alertAudioSilent = storedSettings.alertAudioSilent ?? true;
+    settings.alertAudioDropouts = storedSettings.alertAudioDropouts ?? true;
+    settings.alertAudioClipping = storedSettings.alertAudioClipping ?? true;
+    settings.alertAudioChannelMissing = storedSettings.alertAudioChannelMissing ?? true;
+    settings.alertAudioImbalance = storedSettings.alertAudioImbalance ?? true;
     syncControlsFromSettings();
     boxes.splice(0, boxes.length, ...(sharedBoxes.length > 0 ? sharedBoxes : storedBoxes));
 
@@ -363,6 +441,7 @@ function render(): void {
     gallery.replaceChildren();
     elements.clear();
     boxes.forEach((box, index) => renderBox(box, index));
+    alertController.resetAll();
     saveState();
     restartRotation();
 }
@@ -380,9 +459,9 @@ function renderBox(box: GalleryBox, index: number): void {
     root.className =
         'bg-base-200 border-base-content/25 relative m-1 h-fit w-[279px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
     root.innerHTML = `
-        <div class="group bg-base-300 border-base-content/10 relative flex h-5 w-full items-center overflow-hidden border-b">
+        <div class="box-header group bg-base-300 border-base-content/10 relative flex h-5 w-full items-center overflow-hidden border-b">
           <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag">☰</button>
-          <span class="box-number badge badge-sm badge-neutral absolute top-0 left-1 z-20 h-5 min-h-0 cursor-grab select-none" title="Drag"></span>
+          <span class="box-number absolute top-0 left-7 z-20 h-5 cursor-grab select-none text-sm leading-5 font-semibold" title="Drag"></span>
           <strong class="box-title bg-base-300 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-sm font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
           <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Expand" aria-label="Expand">${fullscreenIcon}</button>
           <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute or unmute">🔇</button>
@@ -451,7 +530,11 @@ function renderBox(box: GalleryBox, index: number): void {
     );
     webview.addEventListener('ipc-message', (event) => {
         if (event.channel === 'gallery-level') {
-            drawMeter(canvas, event.args[0] as LevelPayload);
+            const payload = event.args[0] as LevelPayload;
+            drawMeter(canvas, payload);
+            alertController.updateAudioHealth(payload);
+        } else if (event.channel === 'gallery-health') {
+            alertController.updateFromHealth(event.args[0] as HealthPayload);
         } else if (event.channel === 'gallery-error') {
             console.warn(`Box ${box.name || box.id} player error:`, event.args[0]);
         } else if (event.channel === 'gallery-screen-share-source') {
@@ -972,6 +1055,7 @@ function loadWebview(box: GalleryBox, forceReload = false): void {
 
     if (entry.webview.getAttribute('src') === src) {
         if (forceReload) {
+            alertController.clearBox(box.id);
             if (entry.webviewReady) {
                 entry.webview.reloadIgnoringCache();
             }
@@ -981,6 +1065,7 @@ function loadWebview(box: GalleryBox, forceReload = false): void {
 
     entry.webviewReady = false;
     entry.pendingCommands = [];
+    alertController.clearBox(box.id);
     entry.webview.src = src;
 }
 
@@ -1056,6 +1141,7 @@ function removeBox(boxId: string): void {
         const [removed] = boxes.splice(index, 1);
         elements.get(removed.id)?.root.remove();
         elements.delete(removed.id);
+        alertController.clearBox(removed.id);
 
         if (boxes.length === 0) {
             addBox();
@@ -1191,6 +1277,7 @@ function updateAllSettings(): void {
     sanitizeRotationBoxesInput();
     syncSettingsFromControls();
     syncRotationControlsVisibility();
+    alertController.clearDisabled();
     boxes.forEach((box) => {
         sendCommand(box.id, { type: 'auto-live', enabled: settings.autoLive });
     });
@@ -1201,6 +1288,7 @@ function updateAllSettings(): void {
 function saveSettingsFromDialog(): void {
     const previousJwServerHost = settings.jwServerHost;
     syncSettingsFromControls();
+    alertController.clearDisabled();
     saveState();
 
     if (settings.jwServerHost !== previousJwServerHost) {
@@ -1221,185 +1309,6 @@ function showToast(message: string, variant: 'success' | 'error' = 'success'): v
     }, 1800);
 }
 
-function boxesToPreset(): PresetBox[] {
-    return boxes.map((box) => ({
-        name: box.name,
-        type: box.type,
-        value: box.value,
-    }));
-}
-
-function presetToBoxes(presetBoxes: PresetBox[]): GalleryBox[] {
-    return presetBoxes.map((box) => makeBox(box.name, normalizePresetBoxType(box.type), box.value));
-}
-
-function normalizePresetBoxType(type: string): BoxType {
-    const allowed = new Set<BoxType>(['YT', 'JW', 'VC', 'SS', 'CU']);
-    return allowed.has(type as BoxType) ? (type as BoxType) : 'YT';
-}
-
-function loadPresetBoxes(presetBoxes: PresetBox[]): void {
-    boxes.splice(0, boxes.length, ...presetToBoxes(presetBoxes));
-    if (boxes.length === 0) {
-        boxes.push(makeBox());
-    }
-    render();
-}
-
-function importPresetBoxes(presetBoxes: PresetBox[] | null): void {
-    if (!presetBoxes) {
-        return;
-    }
-
-    loadPresetBoxes(presetBoxes);
-    showToast('Preset imported');
-    presetMenu.open = false;
-}
-
-function renderSavedPresets(presets: SavedPreset[]): void {
-    savedPresetList.replaceChildren();
-
-    if (presets.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'text-base-content/60 px-2 py-1 text-xs';
-        empty.textContent = 'No saved presets';
-        savedPresetList.appendChild(empty);
-        return;
-    }
-
-    presets.forEach((preset) => {
-        const row = document.createElement('div');
-        row.className = 'grid grid-cols-[1fr_auto_auto] items-center gap-1';
-
-        const loadButton = document.createElement('button');
-        loadButton.type = 'button';
-        loadButton.className =
-            'btn btn-ghost btn-xs justify-start truncate hover:bg-secondary hover:text-secondary-content';
-        loadButton.textContent = preset.name;
-        loadButton.title = preset.name;
-        loadButton.addEventListener('click', () => {
-            loadPresetBoxes(preset.boxes);
-            presetMenu.open = false;
-        });
-
-        const renameButton = document.createElement('button');
-        renameButton.type = 'button';
-        renameButton.className = 'btn btn-secondary btn-xs btn-outline box-tool-btn';
-        renameButton.textContent = '✎';
-        renameButton.title = 'Rename preset';
-        renameButton.setAttribute('aria-label', 'Rename preset');
-        renameButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            renameSavedPreset(preset.name).catch((error) => {
-                console.error('Could not rename preset:', error);
-                showToast('Rename failed', 'error');
-            });
-        });
-
-        const deleteButton = document.createElement('button');
-        deleteButton.type = 'button';
-        deleteButton.className = 'btn btn-error btn-xs btn-outline box-tool-btn';
-        deleteButton.textContent = '✕';
-        deleteButton.title = 'Delete preset';
-        deleteButton.setAttribute('aria-label', 'Delete preset');
-        deleteButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            deleteSavedPreset(preset.name);
-        });
-
-        row.append(loadButton, renameButton, deleteButton);
-        savedPresetList.appendChild(row);
-    });
-}
-
-function refreshSavedPresets(): void {
-    window.liveGallery
-        .listPresets()
-        .then(renderSavedPresets)
-        .catch((error) => {
-            console.error('Could not load presets:', error);
-            showToast('Could not load presets', 'error');
-        });
-}
-
-function promptPresetName(message: string, defaultValue = ''): Promise<string | null> {
-    presetNameTitle.textContent = message;
-    presetNameInput.value = defaultValue;
-    presetMenu.open = false;
-    presetNameDialog.showModal();
-    requestAnimationFrame(() => {
-        presetNameInput.focus();
-        presetNameInput.select();
-    });
-
-    return new Promise((resolve) => {
-        presetNameDialog.addEventListener(
-            'close',
-            () => {
-                const name = presetNameInput.value.trim();
-                resolve(presetNameDialog.returnValue === 'default' && name ? name : null);
-            },
-            { once: true },
-        );
-    });
-}
-
-async function saveCurrentPreset(): Promise<void> {
-    const name = await promptPresetName('Preset name');
-    if (!name) {
-        return;
-    }
-
-    const presets = await window.liveGallery.listPresets();
-    const existing = presets.find((preset) => preset.name.toLowerCase() === name.toLowerCase());
-    if (existing && !window.confirm(`Preset "${existing.name}" already exists. Overwrite it?`)) {
-        return;
-    }
-
-    window.liveGallery
-        .savePreset(name, boxesToPreset())
-        .then((presets) => {
-            renderSavedPresets(presets);
-            showToast('Preset saved');
-        })
-        .catch((error) => {
-            console.error('Could not save preset:', error);
-            showToast('Save failed', 'error');
-        });
-}
-
-async function renameSavedPreset(oldName: string): Promise<void> {
-    const newName = await promptPresetName('Preset name', oldName);
-    if (!newName || newName === oldName) {
-        return;
-    }
-
-    window.liveGallery
-        .renamePreset(oldName, newName)
-        .then(renderSavedPresets)
-        .catch((error) => {
-            console.error('Could not rename preset:', error);
-            showToast('Rename failed', 'error');
-        });
-}
-
-function deleteSavedPreset(name: string): void {
-    if (!window.confirm(`Delete preset "${name}"?`)) {
-        return;
-    }
-
-    window.liveGallery
-        .deletePreset(name)
-        .then((presets) => {
-            renderSavedPresets(presets);
-            showToast('Preset deleted');
-        })
-        .catch((error) => {
-            console.error('Could not delete preset:', error);
-            showToast('Delete failed', 'error');
-        });
-}
-
 document.getElementById('add-box')!.addEventListener('click', () => {
     addBox();
 });
@@ -1407,6 +1316,12 @@ document.getElementById('add-box')!.addEventListener('click', () => {
 document.getElementById('docs-button')!.addEventListener('click', () => {
     presetMenu.open = false;
     docsDialog.showModal();
+});
+
+alertsButton.addEventListener('click', () => {
+    presetMenu.open = false;
+    alertController.render();
+    alertsDialog.showModal();
 });
 
 document.getElementById('settings-button')!.addEventListener('click', () => {
@@ -1427,56 +1342,14 @@ settingsForm.addEventListener('submit', (event) => {
     }
 });
 
-document.getElementById('new-preset')!.addEventListener('click', () => {
-    boxes.splice(0, boxes.length, makeBox());
-    render();
-    presetMenu.open = false;
-});
-
-document.getElementById('export-preset')!.addEventListener('click', () => {
-    window.liveGallery
-        .exportPreset(boxesToPreset())
-        .then((exported) => {
-            if (exported) {
-                showToast('Preset exported');
-                presetMenu.open = false;
-            }
-        })
-        .catch((error) => {
-            console.error('Could not export preset:', error);
-            showToast('Export failed', 'error');
-        });
-});
-
-document.getElementById('import-preset')!.addEventListener('click', () => {
-    window.liveGallery
-        .importPreset()
-        .then(importPresetBoxes)
-        .catch((error) => {
-            console.error('Could not import preset:', error);
-            showToast('Import failed', 'error');
-        });
-});
-
-document.getElementById('import-preset-clipboard')!.addEventListener('click', () => {
-    window.liveGallery
-        .importPresetFromClipboard()
-        .then(importPresetBoxes)
-        .catch((error) => {
-            console.error('Could not import preset from clipboard:', error);
-            showToast('Clipboard import failed', 'error');
-        });
-});
-
-document.getElementById('save-preset')!.addEventListener('click', () => {
-    saveCurrentPreset().catch((error) => {
-        console.error('Could not save preset:', error);
-        showToast('Save failed', 'error');
-    });
-});
-
 document.getElementById('lowest-quality')!.addEventListener('click', () => {
     boxes.forEach((box) => sendCommand(box.id, { type: 'lowest-quality' }));
+});
+
+alertSoundInput.addEventListener('change', () => {
+    settings.alertSound = alertSoundInput.checked;
+    saveState();
+    alertController.render();
 });
 
 [muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
@@ -1493,4 +1366,4 @@ loadMics().catch((error) => {
 });
 loadState();
 render();
-refreshSavedPresets();
+presetController.refresh();

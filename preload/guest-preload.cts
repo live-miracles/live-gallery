@@ -31,6 +31,8 @@ type DesktopSource = {
     thumbnail: string;
 };
 
+type VideoHealthAlert = 'video-buffering' | 'video-repeated-buffering' | 'video-frozen';
+
 contextBridge.exposeInMainWorld('liveGalleryGuest', {
     getDesktopSources: (): Promise<DesktopSource[]> =>
         ipcRenderer.invoke('gallery:get-desktop-sources') as Promise<DesktopSource[]>,
@@ -61,11 +63,17 @@ let connectedElement: HTMLMediaElement | null = null;
 let connectedStream: MediaStream | null = null;
 let selectedMicStream: MediaStream | null = null;
 let emitLevelsStarted = false;
+let mediaHealthStarted = false;
 let autoLiveTimer = 0;
 const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
 const BUFF_SIZE = 64;
 const SMOOTHING_TIME = 0.8;
 const RMS_GAIN = 2.3;
+const BUFFERING_ALERT_MS = 4000;
+const REPEATED_BUFFERING_WINDOW_MS = 60000;
+const REPEATED_BUFFERING_COUNT = 5;
+const FROZEN_ALERT_MS = 8000;
+const VIDEO_HEALTH_INTERVAL_MS = 500;
 
 function parseScreenShareValue(value: string): { micDeviceId: string } {
     try {
@@ -301,6 +309,8 @@ function connectMedia(media: HTMLMediaElement): void {
 }
 
 function watchMedia(media: HTMLMediaElement): void {
+    startMediaHealthLoop(media);
+
     if (isScreenShare) {
         window.addEventListener('live-gallery-media-ready', connectScreenShareAudioFromPage);
         return;
@@ -314,6 +324,86 @@ function watchMedia(media: HTMLMediaElement): void {
         keepMediaAudibleForMeter(media);
         connectMedia(media);
     }, 500);
+}
+
+function sendVideoHealth(kind: VideoHealthAlert, active: boolean): void {
+    ipcRenderer.sendToHost('gallery-health', {
+        boxId,
+        kind,
+        active,
+    });
+}
+
+function startMediaHealthLoop(media: HTMLMediaElement): void {
+    if (mediaHealthStarted) {
+        return;
+    }
+
+    mediaHealthStarted = true;
+    let hasStarted = false;
+    let bufferingSince = 0;
+    let lastTime = media.currentTime;
+    let lastTimeChangedAt = performance.now();
+    let bufferingActive = false;
+    let wasBuffering = false;
+    let repeatedBufferingActive = false;
+    let bufferingEvents: number[] = [];
+    let frozenActive = false;
+
+    const markStarted = (): void => {
+        hasStarted = true;
+        lastTime = media.currentTime;
+        lastTimeChangedAt = performance.now();
+    };
+
+    media.addEventListener('playing', markStarted);
+    media.addEventListener('timeupdate', () => {
+        if (media.currentTime !== lastTime) {
+            hasStarted = true;
+            lastTime = media.currentTime;
+            lastTimeChangedAt = performance.now();
+        }
+    });
+
+    window.setInterval(() => {
+        const now = performance.now();
+        const expectedPlaying = hasStarted && !media.paused && !media.ended;
+        const isBuffering = expectedPlaying && media.readyState < media.HAVE_FUTURE_DATA;
+
+        if (isBuffering) {
+            bufferingSince ||= now;
+        } else {
+            bufferingSince = 0;
+        }
+
+        if (isBuffering && !wasBuffering) {
+            bufferingEvents.push(now);
+        }
+        wasBuffering = isBuffering;
+        bufferingEvents = bufferingEvents.filter(
+            (eventTime) => now - eventTime <= REPEATED_BUFFERING_WINDOW_MS,
+        );
+
+        const nextRepeatedBufferingActive = bufferingEvents.length >= REPEATED_BUFFERING_COUNT;
+        if (nextRepeatedBufferingActive !== repeatedBufferingActive) {
+            repeatedBufferingActive = nextRepeatedBufferingActive;
+            sendVideoHealth('video-repeated-buffering', repeatedBufferingActive);
+        }
+
+        const nextBufferingActive =
+            Boolean(bufferingSince) && now - bufferingSince >= BUFFERING_ALERT_MS;
+        if (nextBufferingActive !== bufferingActive) {
+            bufferingActive = nextBufferingActive;
+            sendVideoHealth('video-buffering', bufferingActive);
+        }
+
+        const nextFrozenActive =
+            expectedPlaying && !nextBufferingActive && now - lastTimeChangedAt >= FROZEN_ALERT_MS;
+        if (nextFrozenActive !== frozenActive) {
+            frozenActive = nextFrozenActive;
+            sendVideoHealth('video-frozen', frozenActive);
+        }
+    }, VIDEO_HEALTH_INTERVAL_MS);
 }
 
 function clickAutoLive(): void {

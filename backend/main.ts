@@ -241,12 +241,12 @@ function createApplicationMenu(): void {
                 {
                     label: 'Zoom In',
                     accelerator: 'CmdOrCtrl+=',
-                    click: () => changeAppZoom(zoomStepPercent),
+                    click: () => changeAppZoomStep(1),
                 },
                 {
                     label: 'Zoom Out',
                     accelerator: 'CmdOrCtrl+-',
-                    click: () => changeAppZoom(-zoomStepPercent),
+                    click: () => changeAppZoomStep(-1),
                 },
                 { type: 'separator' },
                 { role: 'togglefullscreen' },
@@ -299,7 +299,7 @@ function installAppShortcuts(win: BrowserWindow, contents: Electron.WebContents)
             if (zoomDirection === 0) {
                 setAppZoom(100);
             } else {
-                changeAppZoom(zoomDirection * zoomStepPercent);
+                changeAppZoomStep(zoomDirection);
             }
         }
     });
@@ -340,8 +340,12 @@ function getZoomDirection(input: Electron.Input): -1 | 0 | 1 | null {
     return null;
 }
 
-function changeAppZoom(deltaPercent: number): number {
-    return setAppZoom(appZoomPercent + deltaPercent);
+function changeAppZoomStep(direction: -1 | 1): number {
+    const nextZoom =
+        direction > 0
+            ? Math.floor(appZoomPercent / zoomStepPercent) * zoomStepPercent + zoomStepPercent
+            : Math.ceil(appZoomPercent / zoomStepPercent) * zoomStepPercent - zoomStepPercent;
+    return setAppZoom(nextZoom);
 }
 
 function syncAppZoomFromWindow(win: BrowserWindow): void {

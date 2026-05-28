@@ -32,6 +32,10 @@
         </div>
       </details>
       <button id="docs-button" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 px-2">Docs</button>
+      <button id="alerts-button" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 px-2">
+        Alerts
+        <span id="alerts-count" class="badge badge-error badge-xs hidden">0</span>
+      </button>
       <button id="add-box" class="btn btn-secondary btn-xs min-h-0 h-6 w-6 px-0 text-lg leading-none" title="Add box" aria-label="Add box">+</button>
       <section
         class="absolute left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 max-[980px]:static max-[980px]:order-3 max-[980px]:w-full max-[980px]:translate-x-0"
@@ -56,6 +60,39 @@
           <span class="swap-off badge badge-outline h-6 px-2">YouTube Live</span>
         </label>
         <button id="lowest-quality" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6">Low Quality</button>
+        <label class="swap cursor-pointer" title="Beep on new alerts" aria-label="Beep on new alerts">
+          <input id="alert-sound" type="checkbox" checked />
+          <span class="swap-on btn btn-secondary btn-xs min-h-0 h-6 w-6 px-0">
+            <svg
+              aria-hidden="true"
+              class="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
+              <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+            </svg>
+          </span>
+          <span class="swap-off btn btn-secondary btn-xs btn-outline min-h-0 h-6 w-6 px-0">
+            <svg
+              aria-hidden="true"
+              class="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
+              <path d="M17 17H3c0-2 3-2 3-9a6 6 0 0 1 .4-2.2" />
+              <path d="M11 3.1A6 6 0 0 1 18 8c0 1.7.2 3 .5 4" />
+              <path d="M2 2l20 20" />
+            </svg>
+          </span>
+        </label>
         <button id="settings-button" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 w-6 px-0" title="Settings" aria-label="Settings">
           <svg
             aria-hidden="true"
@@ -208,9 +245,21 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
       </form>
     </dialog>
 
+    <dialog id="alerts-dialog" class="modal">
+      <form method="dialog">
+        <div class="modal-box bg-base-100 border-error/60 shadow-error/20 w-175 max-w-[calc(100vw-2rem)] border shadow-2xl">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold">Alerts</h2>
+            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" aria-label="Close alerts">✕</button>
+          </div>
+          <div id="alerts-list" class="grid gap-2 text-sm"></div>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="settings-dialog" class="modal">
       <form id="settings-form" method="dialog">
-        <div class="modal-box bg-base-100 border-secondary/60 shadow-secondary/20 max-w-2xl border shadow-2xl">
+        <div class="modal-box bg-base-100 border-secondary/60 shadow-secondary/20 w-175 max-w-[calc(100vw-2rem)] border shadow-2xl">
           <div class="mb-4 flex items-center justify-between gap-3">
             <h2 class="text-xl font-semibold">Settings</h2>
             <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" formnovalidate aria-label="Close settings">✕</button>
@@ -222,6 +271,49 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
               </span>
               <input id="jw-server-host" class="input input-bordered w-full" type="url" placeholder="https://my-server.com/Player/" />
             </label>
+            <section class="grid gap-3">
+              <h3 class="font-semibold">Alerts</h3>
+              <div class="grid gap-4 md:grid-cols-2">
+                <div class="border-base-content/15 grid content-start gap-2 border-t pt-3">
+                  <h4 class="text-base-content/70 text-xs font-semibold uppercase">Video</h4>
+                  <label class="flex items-center justify-between gap-3">
+                    <span>Video buffering</span>
+                    <input id="alert-video-buffering" class="toggle toggle-error" type="checkbox" checked />
+                  </label>
+                  <label class="flex items-center justify-between gap-3">
+                    <span>Repeated buffering</span>
+                    <input id="alert-video-repeated-buffering" class="toggle toggle-error" type="checkbox" checked />
+                  </label>
+                  <label class="flex items-center justify-between gap-3">
+                    <span>Video frozen</span>
+                    <input id="alert-video-frozen" class="toggle toggle-error" type="checkbox" checked />
+                  </label>
+                </div>
+                <div class="border-base-content/15 grid content-start gap-2 border-t pt-3">
+                  <h4 class="text-base-content/70 text-xs font-semibold uppercase">Audio</h4>
+                  <label class="flex items-center justify-between gap-3">
+                    <span>Audio silent</span>
+                    <input id="alert-audio-silent" class="toggle toggle-error" type="checkbox" checked />
+                  </label>
+                  <label class="flex items-center justify-between gap-3">
+                    <span>Audio dropouts</span>
+                    <input id="alert-audio-dropouts" class="toggle toggle-error" type="checkbox" checked />
+                  </label>
+                  <label class="flex items-center justify-between gap-3">
+                    <span>Audio clipping</span>
+                    <input id="alert-audio-clipping" class="toggle toggle-error" type="checkbox" checked />
+                  </label>
+                  <label class="flex items-center justify-between gap-3">
+                    <span>Audio one channel missing</span>
+                    <input id="alert-audio-channel-missing" class="toggle toggle-error" type="checkbox" checked />
+                  </label>
+                  <label class="flex items-center justify-between gap-3">
+                    <span>Audio imbalance</span>
+                    <input id="alert-audio-imbalance" class="toggle toggle-error" type="checkbox" checked />
+                  </label>
+                </div>
+              </div>
+            </section>
           </div>
           <div class="modal-action">
             <button value="cancel" formnovalidate class="btn">Cancel</button>

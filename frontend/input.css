@@ -45,6 +45,11 @@
     cursor: grabbing;
 }
 
+.box-alert .box-header,
+.box-alert .box-title {
+    @apply bg-error text-error-content;
+}
+
 .box-expanded {
     position: fixed !important;
     top: 0 !important;
