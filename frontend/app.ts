@@ -68,6 +68,10 @@ const clipboardToastText = mustGet<HTMLElement>('clipboard-toast-text');
 const presetNameDialog = mustGet<HTMLDialogElement>('preset-name-dialog');
 const presetNameTitle = mustGet<HTMLElement>('preset-name-title');
 const presetNameInput = mustGet<HTMLInputElement>('preset-name-input');
+const docsDialog = mustGet<HTMLDialogElement>('docs-dialog');
+const settingsDialog = mustGet<HTMLDialogElement>('settings-dialog');
+const settingsForm = mustGet<HTMLFormElement>('settings-form');
+const jwServerHostInput = mustGet<HTMLInputElement>('jw-server-host');
 
 const settings: GallerySettings = {
     audioLevels: true,
@@ -75,6 +79,7 @@ const settings: GallerySettings = {
     rotationBoxes: '',
     rotationTime: 5,
     autoLive: true,
+    jwServerHost: 'https://your.website.com/Player/Index/',
 };
 
 const minZoomPercent = 20;
@@ -274,6 +279,7 @@ function syncSettingsFromControls(): void {
     settings.rotationBoxes = rotationBoxesInput.value;
     settings.rotationTime = Math.max(1, Number(rotationTimeInput.value) || 1);
     settings.autoLive = autoLiveInput.checked;
+    settings.jwServerHost = jwServerHostInput.value.trim();
 }
 
 function syncControlsFromSettings(): void {
@@ -281,6 +287,7 @@ function syncControlsFromSettings(): void {
     rotationBoxesInput.value = settings.rotationBoxes;
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
+    jwServerHostInput.value = settings.jwServerHost;
     syncRotationControlsVisibility();
     updateRotationBoxesValidity();
 }
@@ -343,6 +350,7 @@ function loadState(): void {
 
     Object.assign(settings, storedSettings);
     settings.audioLevels = true;
+    settings.jwServerHost = String(settings.jwServerHost ?? '');
     syncControlsFromSettings();
     boxes.splice(0, boxes.length, ...(sharedBoxes.length > 0 ? sharedBoxes : storedBoxes));
 
@@ -1190,6 +1198,18 @@ function updateAllSettings(): void {
     restartRotation();
 }
 
+function saveSettingsFromDialog(): void {
+    const previousJwServerHost = settings.jwServerHost;
+    syncSettingsFromControls();
+    saveState();
+
+    if (settings.jwServerHost !== previousJwServerHost) {
+        boxes.filter((box) => box.type === 'JW').forEach((box) => loadWebview(box));
+    }
+
+    showToast('Settings saved');
+}
+
 function showToast(message: string, variant: 'success' | 'error' = 'success'): void {
     window.clearTimeout(clipboardToastTimer);
     clipboardToastText.textContent = message;
@@ -1382,6 +1402,29 @@ function deleteSavedPreset(name: string): void {
 
 document.getElementById('add-box')!.addEventListener('click', () => {
     addBox();
+});
+
+document.getElementById('docs-button')!.addEventListener('click', () => {
+    presetMenu.open = false;
+    docsDialog.showModal();
+});
+
+document.getElementById('settings-button')!.addEventListener('click', () => {
+    syncControlsFromSettings();
+    settingsDialog.showModal();
+    requestAnimationFrame(() => {
+        jwServerHostInput.focus();
+        jwServerHostInput.select();
+    });
+});
+
+settingsForm.addEventListener('submit', (event) => {
+    const submitter = (event as SubmitEvent).submitter;
+    if (submitter instanceof HTMLButtonElement && submitter.value === 'default') {
+        saveSettingsFromDialog();
+    } else {
+        syncControlsFromSettings();
+    }
 });
 
 document.getElementById('new-preset')!.addEventListener('click', () => {

@@ -14,6 +14,7 @@ export type GallerySettings = {
     rotationBoxes: string;
     rotationTime: number;
     autoLive: boolean;
+    jwServerHost: string;
 };
 
 const separator = '|';
@@ -160,8 +161,9 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
     }
 
     if (box.type === 'JW') {
-        // TODO: replace with actual JW player URL provided by user in the UI
-        return `https://your.website.com/Player/Index/${box.value}?viewUnpublished=True&${params.toString()}`;
+        const url = `${normalizeJwServerHost(settings.jwServerHost)}${box.value}`;
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}viewUnpublished=True&${params.toString()}`;
     }
 
     if (box.type === 'VC') {
@@ -169,6 +171,11 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
     }
 
     return box.value;
+}
+
+function normalizeJwServerHost(value: string): string {
+    const host = value.trim() || 'https://your.website.com/Player/Index/';
+    return host.endsWith('/') ? host : `${host}/`;
 }
 
 function normalizeType(value: string): BoxType {
