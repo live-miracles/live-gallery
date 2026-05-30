@@ -75,9 +75,9 @@ const audioImbalanceAlertMs = 20000;
 const audioDropoutWindowMs = 30000;
 const audioDropoutCount = 5;
 const audioClippingDb = -1;
-const audioClippingWindowMs = 5000;
+const audioClippingWindowMs = 7000;
 const audioClippingCooldownMs = 1000;
-const audioClippingCount = 3;
+const audioClippingCount = 5;
 
 export function createAlertController({
     settings,
