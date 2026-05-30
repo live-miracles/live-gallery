@@ -437,12 +437,12 @@ function render(): void {
 function addBox(): void {
     const box = makeBox();
     boxes.push(box);
-    renderBox(box, boxes.length - 1);
+    renderBox(box, boxes.length - 1, true);
     saveState();
     restartRotation();
 }
 
-function renderBox(box: GalleryBox, index: number): void {
+function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
         'bg-base-200 border-base-content/25 relative m-1 h-fit w-[279px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
@@ -514,6 +514,7 @@ function renderBox(box: GalleryBox, index: number): void {
             pendingCommands: [],
         },
         box,
+        isEditing,
     );
 
     webview.setAttribute('preload', window.liveGallery.guestPreloadUrl);
@@ -663,6 +664,7 @@ function renderBox(box: GalleryBox, index: number): void {
                 pendingCommands: [],
             },
             box,
+            false,
         );
         loadWebview(box);
         saveState();
@@ -688,11 +690,11 @@ function renderBox(box: GalleryBox, index: number): void {
     loadWebview(box);
 }
 
-function syncBoxControls(entry: BoxElements, box: GalleryBox): void {
+function syncBoxControls(entry: BoxElements, box: GalleryBox, isEditing: boolean): void {
     entry.title.textContent = getBoxTitle(box);
     entry.muteButton.innerHTML = icon(box.muted ? 'volume-x' : 'volume-2');
     setUnmuted(entry.root, !box.muted);
-    setEditing(entry.form, !box.value);
+    setEditing(entry.form, isEditing);
 
     (entry.form.elements.namedItem('name') as HTMLInputElement).value = box.name;
     (entry.form.elements.namedItem('type') as HTMLSelectElement).value = box.type;
@@ -712,7 +714,7 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
     form.querySelector<HTMLElement>('.value-slot')!.innerHTML =
         type === 'SS'
             ? `<select name="value" class="select select-xs">
-                <option value="${escapeAttribute(serializeScreenShareValue({ ...screenShareValue, micDeviceId: '' }))}">Display audio / default</option>
+                <option value="${escapeAttribute(serializeScreenShareValue({ ...screenShareValue, micDeviceId: '' }))}">None</option>
                 ${mics
                     .map(
                         (mic) =>
@@ -744,8 +746,8 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
     }
 }
 
-function requiresBoxValue(type: BoxType): boolean {
-    return type !== 'SS';
+function requiresBoxValue(_type: BoxType): boolean {
+    return false;
 }
 
 function showBoxValueError(form: HTMLFormElement): void {
