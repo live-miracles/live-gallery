@@ -69,3 +69,12 @@
 .box-expanded > .viewport {
     height: calc(100dvh - 22px) !important;
 }
+
+.box-expanded > .box-form {
+    right: 0 !important;
+    left: 0 !important;
+    margin-right: auto !important;
+    margin-left: auto !important;
+    translate: none !important;
+    transform: none !important;
+}

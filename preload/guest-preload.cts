@@ -491,6 +491,12 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
     }
 });
 
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        ipcRenderer.sendToHost('gallery-escape');
+    }
+});
+
 window.addEventListener('DOMContentLoaded', () => {
     connectSelectedScreenShareMic().catch((error: unknown) => {
         ipcRenderer.sendToHost('gallery-error', {

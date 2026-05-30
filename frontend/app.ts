@@ -8,7 +8,10 @@ import {
     makeBox,
 } from './utils.js';
 import { createAlertController, type HealthPayload, type LevelPayload } from './alerts.js';
+import { icon } from './icons.js';
 import { createPresetController } from './presets.js';
+
+document.getElementById('add-box')!.innerHTML = icon('plus');
 
 type ScreenShareValue = {
     micDeviceId: string;
@@ -112,30 +115,6 @@ const settings: GallerySettings = {
 const minZoomPercent = 20;
 const maxZoomPercent = 300;
 const zoomFitMarginPx = 16;
-
-const fullscreenIcon = `
-    <svg
-      aria-hidden="true"
-      class="h-3.5 w-3.5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.25"
-      stroke-linecap="round"
-      stroke-linejoin="round">
-      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-      <path d="M16 3h3a2 2 0 0 1 2 2v3" />
-      <path d="M21 16v3a2 2 0 0 1-2 2h-3" />
-      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-    </svg>
-`;
-
-const eyeIcon = `
-    <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-`;
 
 const alertController = createAlertController({
     settings,
@@ -469,18 +448,18 @@ function renderBox(box: GalleryBox, index: number): void {
         'bg-base-200 border-base-content/25 relative m-1 h-fit w-[279px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
     root.innerHTML = `
         <div class="box-header group bg-base-300 border-base-content/10 relative flex h-5 w-full items-center overflow-hidden border-b">
-          <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag">☰</button>
+          <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag" aria-label="Drag">${icon('grip')}</button>
           <span class="box-number absolute top-0 left-7 z-20 h-5 cursor-grab select-none text-sm leading-5 font-semibold" title="Drag"></span>
           <strong class="box-title bg-base-300 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-sm font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
-          <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Expand" aria-label="Expand">${fullscreenIcon}</button>
-          <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute or unmute">🔇</button>
-          <button class="solo btn btn-secondary btn-xs btn-soft box-tool-btn" title="Solo this box">S</button>
-          <button class="alert-visibility btn btn-secondary btn-xs btn-soft box-tool-btn" title="Hide alerts" aria-label="Hide alerts" disabled>${eyeIcon}</button>
-          <button class="edit btn btn-secondary btn-xs btn-soft box-tool-btn" title="Edit">✎</button>
-          <button class="reload btn btn-secondary btn-xs btn-soft box-tool-btn" title="Reload">↻</button>
-          <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove">✕</button>
+          <button class="alert-visibility btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Hide alerts" aria-label="Hide alerts" disabled>${icon('eye')}</button>
+          <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute or unmute" aria-label="Mute or unmute"></button>
+          <button class="solo btn btn-secondary btn-xs btn-soft box-tool-btn" title="Solo this box" aria-label="Solo this box">${icon('headphones')}</button>
+          <button class="reload btn btn-secondary btn-xs btn-soft box-tool-btn" title="Reload" aria-label="Reload">${icon('refresh')}</button>
+          <button class="edit btn btn-secondary btn-xs btn-soft box-tool-btn" title="Edit" aria-label="Edit">${icon('pencil')}</button>
+          <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove" aria-label="Remove">${icon('trash')}</button>
+          <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn" title="Expand" aria-label="Expand">${icon('maximize')}</button>
         </div>
-        <form class="box-form bg-base-200/80 border-base-300 absolute top-7 left-1/2 z-20 hidden w-4/5 -translate-x-1/2 grid-cols-1 gap-1 rounded-lg border p-2 shadow-lg backdrop-blur-sm">
+        <form class="box-form bg-base-200/80 border-base-300 absolute top-7 left-1/2 z-20 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1 rounded-lg border p-2 shadow-lg backdrop-blur-sm">
           <input name="name" class="input input-xs" type="text" placeholder="Name" />
           <select name="type" class="select select-xs">
             <option value="YT">YouTube</option>
@@ -491,7 +470,7 @@ function renderBox(box: GalleryBox, index: number): void {
           </select>
           <div class="value-slot"></div>
           <div class="mt-1 flex justify-center gap-2">
-            <button type="button" class="cancel btn btn-error btn-soft btn-xs min-w-16">Cancel</button>
+            <button type="button" class="cancel btn btn-xs min-w-16">Cancel</button>
             <button type="submit" class="btn btn-secondary btn-xs min-w-16">Save</button>
           </div>
         </form>
@@ -559,6 +538,8 @@ function renderBox(box: GalleryBox, index: number): void {
                 console.error('Could not open screen share picker:', error);
                 showToast('Could not load windows', 'error');
             });
+        } else if (event.channel === 'gallery-escape') {
+            closeExpandedBox();
         }
     });
     webview.addEventListener('did-fail-load', (event) => {
@@ -709,7 +690,7 @@ function renderBox(box: GalleryBox, index: number): void {
 
 function syncBoxControls(entry: BoxElements, box: GalleryBox): void {
     entry.title.textContent = getBoxTitle(box);
-    entry.muteButton.textContent = box.muted ? '🔇' : '🔈';
+    entry.muteButton.innerHTML = icon(box.muted ? 'volume-x' : 'volume-2');
     setUnmuted(entry.root, !box.muted);
     setEditing(entry.form, !box.value);
 
@@ -1053,6 +1034,22 @@ function toggleExpanded(root: HTMLElement, viewport: HTMLElement): void {
     viewport.classList.toggle('h-37.5', !isExpanded);
 }
 
+function closeExpandedBox(): boolean {
+    const root = gallery.querySelector<HTMLElement>('.box-expanded');
+    if (!root) {
+        return false;
+    }
+
+    const viewport = root.querySelector<HTMLElement>('.viewport');
+    if (!viewport) {
+        return false;
+    }
+
+    root.classList.remove('box-expanded');
+    viewport.classList.add('h-37.5');
+    return true;
+}
+
 function updateBoxNumbers(): void {
     boxes.forEach((box, index) => {
         elements.get(box.id)!.number.textContent = String(index + 1);
@@ -1125,7 +1122,7 @@ function toggleMute(boxId: string, forceMuted?: boolean): void {
 
     box.muted = forceMuted ?? !box.muted;
     setUnmuted(entry.root, !box.muted);
-    entry.muteButton.textContent = box.muted ? '🔇' : '🔈';
+    entry.muteButton.innerHTML = icon(box.muted ? 'volume-x' : 'volume-2');
     sendCommand(box.id, { type: 'mute', muted: box.muted });
     saveState();
 }
@@ -1368,6 +1365,13 @@ settingsForm.addEventListener('submit', (event) => {
 
 document.getElementById('lowest-quality')!.addEventListener('click', () => {
     boxes.forEach((box) => sendCommand(box.id, { type: 'lowest-quality' }));
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && closeExpandedBox()) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
 });
 
 alertSoundInput.addEventListener('change', () => {

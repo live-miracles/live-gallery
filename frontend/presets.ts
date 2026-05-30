@@ -1,4 +1,5 @@
 import { BoxType, GalleryBox, makeBox } from './utils.js';
+import { icon } from './icons.js';
 
 type ToastVariant = 'success' | 'error';
 
@@ -94,7 +95,7 @@ export function createPresetController({
             const renameButton = document.createElement('button');
             renameButton.type = 'button';
             renameButton.className = 'btn btn-secondary btn-xs btn-outline box-tool-btn';
-            renameButton.textContent = '✎';
+            renameButton.innerHTML = icon('pencil');
             renameButton.title = 'Rename preset';
             renameButton.setAttribute('aria-label', 'Rename preset');
             renameButton.addEventListener('click', (event) => {
@@ -108,7 +109,7 @@ export function createPresetController({
             const deleteButton = document.createElement('button');
             deleteButton.type = 'button';
             deleteButton.className = 'btn btn-error btn-xs btn-outline box-tool-btn';
-            deleteButton.textContent = '✕';
+            deleteButton.innerHTML = icon('trash');
             deleteButton.title = 'Delete preset';
             deleteButton.setAttribute('aria-label', 'Delete preset');
             deleteButton.addEventListener('click', (event) => {

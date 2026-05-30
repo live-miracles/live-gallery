@@ -10,7 +10,9 @@
     <header
       class="app-header bg-base-300/95 border-base-content/25 sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1.5 border-b px-2 py-1 shadow-lg shadow-black/40">
       <details id="preset-menu" class="dropdown">
-        <summary class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 px-2">Preset</summary>
+        <summary class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none [&::-webkit-details-marker]:hidden">
+          Preset
+        </summary>
         <div class="dropdown-content bg-base-200/60 border-base-content/20 z-100 mt-1 w-72 rounded-md border p-1 shadow-2xl backdrop-blur-md">
           <button id="new-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
             New Preset
@@ -31,12 +33,16 @@
           <div id="saved-preset-list" class="grid gap-1"></div>
         </div>
       </details>
-      <button id="docs-button" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 px-2">Docs</button>
-      <button id="alerts-button" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 px-2">
+      <button id="docs-button" class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none">Docs</button>
+      <button id="alerts-button" class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none">
         Alerts
         <span id="alerts-count" class="badge badge-error badge-xs hidden">0</span>
       </button>
-      <button id="add-box" class="btn btn-secondary btn-xs min-h-0 h-6 w-6 px-0 text-lg leading-none" title="Add box" aria-label="Add box">+</button>
+      <button
+        id="add-box"
+        class="btn btn-secondary btn-xs h-6 min-h-0 w-6 items-center px-0 text-lg leading-none"
+        title="Add box"
+        aria-label="Add box"></button>
       <section
         class="absolute left-1/2 flex -translate-x-1/2 flex-wrap items-center justify-center gap-1.5 max-[980px]:static max-[980px]:order-3 max-[980px]:w-full max-[980px]:translate-x-0"
         aria-label="Gallery controls">
@@ -59,7 +65,7 @@
           <span class="swap-on badge badge-secondary h-6 px-2">YouTube Live</span>
           <span class="swap-off badge badge-outline h-6 px-2">YouTube Live</span>
         </label>
-        <button id="lowest-quality" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6">Low Quality</button>
+        <button id="lowest-quality" class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 items-center">Low Quality</button>
         <label class="swap cursor-pointer" title="Beep on new alerts" aria-label="Beep on new alerts">
           <input id="alert-sound" type="checkbox" checked />
           <span class="swap-on btn btn-secondary btn-xs min-h-0 h-6 w-6 px-0">
@@ -93,7 +99,11 @@
             </svg>
           </span>
         </label>
-        <button id="settings-button" class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 w-6 px-0" title="Settings" aria-label="Settings">
+        <button
+          id="settings-button"
+          class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
+          title="Settings"
+          aria-label="Settings">
           <svg
             aria-hidden="true"
             class="h-3.5 w-3.5"
@@ -205,10 +215,23 @@
 
     <dialog id="docs-dialog" class="modal">
       <form method="dialog">
-        <div class="modal-box bg-base-100 border-secondary/60 shadow-secondary/20 max-w-3xl border shadow-2xl">
+        <div class="modal-box bg-base-200/80 border-base-300 max-w-3xl border shadow-lg backdrop-blur-sm">
           <div class="mb-4 flex items-center justify-between gap-3">
             <h2 class="text-xl font-semibold">Live Gallery Docs</h2>
-            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" aria-label="Close documentation">✕</button>
+            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" aria-label="Close documentation">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </button>
           </div>
           <div class="grid gap-4 text-sm leading-6">
             <section>
@@ -247,10 +270,23 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
 
     <dialog id="alerts-dialog" class="modal">
       <form method="dialog">
-        <div class="modal-box bg-base-100 border-error/60 shadow-error/20 w-175 max-w-[calc(100vw-2rem)] border shadow-2xl">
+        <div class="modal-box bg-base-200/80 border-base-300 w-175 max-w-[calc(100vw-2rem)] border shadow-lg backdrop-blur-sm">
           <div class="mb-4 flex items-center justify-between gap-3">
             <h2 class="text-xl font-semibold">Alerts</h2>
-            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" aria-label="Close alerts">✕</button>
+            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" aria-label="Close alerts">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </button>
           </div>
           <div id="alerts-list" class="grid gap-2 text-sm"></div>
         </div>
@@ -259,10 +295,23 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
 
     <dialog id="settings-dialog" class="modal">
       <form id="settings-form" method="dialog">
-        <div class="modal-box bg-base-100 border-secondary/60 shadow-secondary/20 w-175 max-w-[calc(100vw-2rem)] border shadow-2xl">
+        <div class="modal-box bg-base-200/80 border-base-300 w-175 max-w-[calc(100vw-2rem)] border shadow-lg backdrop-blur-sm">
           <div class="mb-4 flex items-center justify-between gap-3">
             <h2 class="text-xl font-semibold">Settings</h2>
-            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" formnovalidate aria-label="Close settings">✕</button>
+            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" formnovalidate aria-label="Close settings">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </button>
           </div>
           <div class="grid gap-4 text-sm">
             <label class="form-control">

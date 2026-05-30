@@ -1,4 +1,5 @@
 import { GalleryBox, GallerySettings } from './utils.js';
+import { icon } from './icons.js';
 
 export type LevelPayload = {
     boxId: string;
@@ -227,7 +228,7 @@ export function createAlertController({
 
             entry.root.classList.toggle('box-alert', hasActiveBoxAlerts);
             entry.alertToggleButton.disabled = !hasActiveBoxAlerts;
-            entry.alertToggleButton.innerHTML = isHidden ? eyeOffIcon : eyeIcon;
+            entry.alertToggleButton.innerHTML = icon(isHidden ? 'eye-off' : 'eye');
             entry.alertToggleButton.title = isHidden ? 'Show alerts' : 'Hide alerts';
             entry.alertToggleButton.setAttribute(
                 'aria-label',
@@ -409,22 +410,6 @@ export function createAlertController({
         updateFromHealth,
     };
 }
-
-const eyeIcon = `
-    <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-`;
-
-const eyeOffIcon = `
-    <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10.7 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.2 3.2" />
-      <path d="M6.6 6.6C3.6 8.6 2 12 2 12s3.5 7 10 7a10.7 10.7 0 0 0 5.4-1.5" />
-      <path d="M14.1 14.1A3 3 0 0 1 9.9 9.9" />
-      <path d="M3 3l18 18" />
-    </svg>
-`;
 
 function alertKey(boxId: string, kind: AlertKind): string {
     return `${boxId}:${kind}`;
