@@ -1247,7 +1247,7 @@ function drawMeter(canvas: HTMLCanvasElement, payload: LevelPayload): void {
 function updateMeterClipHold(payload: LevelPayload): void {
     const now = performance.now();
     const hold = meterClipHoldUntil.get(payload.boxId) ?? { left: 0, right: 0 };
-    const holdUntil = now + 3000;
+    const holdUntil = now + 2000;
 
     if (payload.left >= -1) {
         hold.left = holdUntil;

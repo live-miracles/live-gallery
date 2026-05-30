@@ -39,7 +39,8 @@ type AudioHealthState = {
     silentSince: number;
     channelMissingSince: number;
     imbalanceSince: number;
-    clippingSeconds: number[];
+    clippingEvents: number[];
+    lastClippingNoticeAt: number;
     dropoutSamples: number[];
     wasSignal: boolean;
 };
@@ -74,7 +75,8 @@ const audioImbalanceAlertMs = 20000;
 const audioDropoutWindowMs = 30000;
 const audioDropoutCount = 5;
 const audioClippingDb = -1;
-const audioClippingWindowSeconds = 5;
+const audioClippingWindowMs = 5000;
+const audioClippingCooldownMs = 1000;
 const audioClippingCount = 3;
 
 export function createAlertController({
@@ -104,7 +106,8 @@ export function createAlertController({
             silentSince: 0,
             channelMissingSince: 0,
             imbalanceSince: 0,
-            clippingSeconds: [],
+            clippingEvents: [],
+            lastClippingNoticeAt: 0,
             dropoutSamples: [],
             wasSignal: false,
         };
@@ -165,17 +168,17 @@ export function createAlertController({
         setAlert(payload.boxId, 'audio-dropouts', state.dropoutSamples.length >= audioDropoutCount);
 
         const isClipping = db >= audioClippingDb;
-        const clippingSecond = Math.floor(now / 1000);
-        if (isClipping && !state.clippingSeconds.includes(clippingSecond)) {
-            state.clippingSeconds.push(clippingSecond);
+        if (isClipping && now - state.lastClippingNoticeAt >= audioClippingCooldownMs) {
+            state.clippingEvents.push(now);
+            state.lastClippingNoticeAt = now;
         }
-        state.clippingSeconds = state.clippingSeconds.filter(
-            (second) => clippingSecond - second < audioClippingWindowSeconds,
+        state.clippingEvents = state.clippingEvents.filter(
+            (time) => now - time <= audioClippingWindowMs,
         );
         setAlert(
             payload.boxId,
             'audio-clipping',
-            state.clippingSeconds.length >= audioClippingCount,
+            state.clippingEvents.length >= audioClippingCount,
         );
 
         state.wasSignal = isSignal;
