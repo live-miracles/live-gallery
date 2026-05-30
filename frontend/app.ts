@@ -27,6 +27,8 @@ type BoxElements = {
     webview: Electron.WebviewTag;
     canvas: HTMLCanvasElement;
     muteButton: HTMLButtonElement;
+    alertToggleButton: HTMLButtonElement;
+    alertOverlay: HTMLElement;
     webviewReady: boolean;
     pendingCommands: Record<string, unknown>[];
 };
@@ -125,6 +127,13 @@ const fullscreenIcon = `
       <path d="M16 3h3a2 2 0 0 1 2 2v3" />
       <path d="M21 16v3a2 2 0 0 1-2 2h-3" />
       <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+    </svg>
+`;
+
+const eyeIcon = `
+    <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
 `;
 
@@ -466,6 +475,7 @@ function renderBox(box: GalleryBox, index: number): void {
           <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Expand" aria-label="Expand">${fullscreenIcon}</button>
           <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute or unmute">🔇</button>
           <button class="solo btn btn-secondary btn-xs btn-soft box-tool-btn" title="Solo this box">S</button>
+          <button class="alert-visibility btn btn-secondary btn-xs btn-soft box-tool-btn" title="Hide alerts" aria-label="Hide alerts" disabled>${eyeIcon}</button>
           <button class="edit btn btn-secondary btn-xs btn-soft box-tool-btn" title="Edit">✎</button>
           <button class="reload btn btn-secondary btn-xs btn-soft box-tool-btn" title="Reload">↻</button>
           <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove">✕</button>
@@ -490,6 +500,7 @@ function renderBox(box: GalleryBox, index: number): void {
             <webview class="player bg-neutral absolute top-0 left-0 h-[160%] w-[160%] origin-top-left scale-[0.625]" style="color-scheme: light" allowpopups></webview>
           </div>
           <canvas class="meter pointer-events-none absolute top-0 right-0 h-full w-2.5 bg-black/30" width="10" height="180"></canvas>
+          <div class="alert-overlay pointer-events-none absolute inset-0 z-20 hidden place-items-center p-3"></div>
           <div class="empty-state text-base-content/60 pointer-events-none absolute inset-0 grid place-items-center p-5 text-center">Configure this box to load a live source.</div>
         </div>`;
 
@@ -501,6 +512,8 @@ function renderBox(box: GalleryBox, index: number): void {
     const webview = root.querySelector<Electron.WebviewTag>('webview')!;
     const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
     const muteButton = root.querySelector<HTMLButtonElement>('.mute')!;
+    const alertToggleButton = root.querySelector<HTMLButtonElement>('.alert-visibility')!;
+    const alertOverlay = root.querySelector<HTMLElement>('.alert-overlay')!;
 
     root.dataset.id = box.id;
     root.draggable = true;
@@ -516,6 +529,8 @@ function renderBox(box: GalleryBox, index: number): void {
             webview,
             canvas,
             muteButton,
+            alertToggleButton,
+            alertOverlay,
             webviewReady: false,
             pendingCommands: [],
         },
@@ -578,6 +593,7 @@ function renderBox(box: GalleryBox, index: number): void {
         disableRotationAudio();
         soloBox(box.id);
     });
+    alertToggleButton.addEventListener('click', () => alertController.toggleBoxAlerts(box.id));
     root.querySelector<HTMLButtonElement>('.cancel')!.addEventListener('click', () =>
         setEditing(form, false),
     );
@@ -660,6 +676,8 @@ function renderBox(box: GalleryBox, index: number): void {
                 webview,
                 canvas,
                 muteButton,
+                alertToggleButton,
+                alertOverlay,
                 webviewReady: false,
                 pendingCommands: [],
             },
@@ -681,6 +699,8 @@ function renderBox(box: GalleryBox, index: number): void {
         webview,
         canvas,
         muteButton,
+        alertToggleButton,
+        alertOverlay,
         webviewReady: false,
         pendingCommands: [],
     });
@@ -1226,6 +1246,10 @@ function restartRotation(): void {
     const rotate = (): void => {
         const selected = getRotationBoxes();
         if (selected.length === 0) {
+            return;
+        }
+        if (selected.length === 1) {
+            toggleMute(selected[0].id, false);
             return;
         }
         soloBox(selected[index % selected.length].id);

@@ -37,13 +37,16 @@ type AudioHealthState = {
     silentSince: number;
     channelMissingSince: number;
     imbalanceSince: number;
-    clippingSamples: number[];
+    clippingEvents: number[];
     dropoutSamples: number[];
     wasSignal: boolean;
+    wasClipping: boolean;
 };
 
 type BoxEntry = {
     root: HTMLElement;
+    alertToggleButton: HTMLButtonElement;
+    alertOverlay: HTMLElement;
 };
 
 type AlertControllerOptions = {
@@ -59,7 +62,7 @@ type AlertControllerOptions = {
 export type AlertController = ReturnType<typeof createAlertController>;
 
 const alertHistoryMs = 5 * 60 * 1000;
-const alertBeepIntervalMs = 5000;
+const alertBeepIntervalMs = 1000;
 const audioSignalDb = -50;
 const audioSilentDb = -85;
 const audioSilentAlertMs = 15000;
@@ -69,8 +72,8 @@ const audioImbalanceAlertMs = 20000;
 const audioDropoutWindowMs = 30000;
 const audioDropoutCount = 5;
 const audioClippingDb = -1;
-const audioClippingWindowMs = 10000;
-const audioClippingCount = 10;
+const audioClippingWindowMs = 5000;
+const audioClippingCount = 3;
 
 export function createAlertController({
     settings,
@@ -83,6 +86,7 @@ export function createAlertController({
 }: AlertControllerOptions) {
     const alerts = new Map<string, AlertRecord>();
     const audioHealth = new Map<string, AudioHealthState>();
+    const hiddenBoxAlerts = new Set<string>();
     let alertBeepTimer = 0;
 
     function updateFromHealth(payload: HealthPayload): void {
@@ -97,9 +101,10 @@ export function createAlertController({
             silentSince: 0,
             channelMissingSince: 0,
             imbalanceSince: 0,
-            clippingSamples: [],
+            clippingEvents: [],
             dropoutSamples: [],
             wasSignal: false,
+            wasClipping: false,
         };
 
         const isSignal = db > audioSignalDb;
@@ -157,19 +162,21 @@ export function createAlertController({
         );
         setAlert(payload.boxId, 'audio-dropouts', state.dropoutSamples.length >= audioDropoutCount);
 
-        if (db >= audioClippingDb) {
-            state.clippingSamples.push(now);
+        const isClipping = db >= audioClippingDb;
+        if (isClipping && !state.wasClipping) {
+            state.clippingEvents.push(now);
         }
-        state.clippingSamples = state.clippingSamples.filter(
+        state.clippingEvents = state.clippingEvents.filter(
             (time) => now - time <= audioClippingWindowMs,
         );
         setAlert(
             payload.boxId,
             'audio-clipping',
-            state.clippingSamples.length >= audioClippingCount,
+            state.clippingEvents.length >= audioClippingCount,
         );
 
         state.wasSignal = isSignal;
+        state.wasClipping = isClipping;
         audioHealth.set(payload.boxId, state);
     }
 
@@ -178,12 +185,14 @@ export function createAlertController({
             .filter((key) => key.startsWith(`${boxId}:`))
             .forEach((key) => alerts.delete(key));
         audioHealth.delete(boxId);
+        hiddenBoxAlerts.delete(boxId);
         render();
     }
 
     function resetAll(): void {
         alerts.clear();
         audioHealth.clear();
+        hiddenBoxAlerts.clear();
         render();
     }
 
@@ -212,10 +221,36 @@ export function createAlertController({
         syncAlertBeepLoop(activeAlerts.length > 0);
 
         elements.forEach((entry, boxId) => {
-            entry.root.classList.toggle(
-                'box-alert',
-                activeAlerts.some((alert) => alert.boxId === boxId),
+            const boxAlerts = activeAlerts.filter((alert) => alert.boxId === boxId);
+            const hasActiveBoxAlerts = boxAlerts.length > 0;
+            const isHidden = hiddenBoxAlerts.has(boxId);
+
+            entry.root.classList.toggle('box-alert', hasActiveBoxAlerts);
+            entry.alertToggleButton.disabled = !hasActiveBoxAlerts;
+            entry.alertToggleButton.innerHTML = isHidden ? eyeOffIcon : eyeIcon;
+            entry.alertToggleButton.title = isHidden ? 'Show alerts' : 'Hide alerts';
+            entry.alertToggleButton.setAttribute(
+                'aria-label',
+                isHidden ? 'Show alerts' : 'Hide alerts',
             );
+            entry.alertOverlay.replaceChildren();
+            entry.alertOverlay.classList.toggle('hidden', !hasActiveBoxAlerts || isHidden);
+            entry.alertOverlay.classList.toggle('grid', hasActiveBoxAlerts && !isHidden);
+
+            if (!hasActiveBoxAlerts || isHidden) {
+                return;
+            }
+
+            const stack = document.createElement('div');
+            stack.className = 'grid max-w-[calc(100%-1rem)] gap-1.5';
+            boxAlerts.forEach((alert) => {
+                const badge = document.createElement('div');
+                badge.className =
+                    'alert alert-error min-h-0 justify-center rounded-md border-error-content/20 px-3 py-1.5 text-center text-xs font-semibold shadow-lg shadow-black/50';
+                badge.textContent = alert.message;
+                stack.appendChild(badge);
+            });
+            entry.alertOverlay.appendChild(stack);
         });
 
         alertsList.replaceChildren();
@@ -337,7 +372,7 @@ export function createAlertController({
         oscillator.type = 'sine';
         oscillator.frequency.value = 880;
         gain.gain.setValueAtTime(0.0001, context.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.27, context.currentTime + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.24);
         oscillator.connect(gain);
         gain.connect(context.destination);
@@ -355,15 +390,41 @@ export function createAlertController({
         });
     }
 
+    function toggleBoxAlerts(boxId: string): void {
+        if (hiddenBoxAlerts.has(boxId)) {
+            hiddenBoxAlerts.delete(boxId);
+        } else {
+            hiddenBoxAlerts.add(boxId);
+        }
+        render();
+    }
+
     return {
         clearBox,
         clearDisabled,
         render,
         resetAll,
+        toggleBoxAlerts,
         updateAudioHealth,
         updateFromHealth,
     };
 }
+
+const eyeIcon = `
+    <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+`;
+
+const eyeOffIcon = `
+    <svg aria-hidden="true" viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.7 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.2 3.2" />
+      <path d="M6.6 6.6C3.6 8.6 2 12 2 12s3.5 7 10 7a10.7 10.7 0 0 0 5.4-1.5" />
+      <path d="M14.1 14.1A3 3 0 0 1 9.9 9.9" />
+      <path d="M3 3l18 18" />
+    </svg>
+`;
 
 function alertKey(boxId: string, kind: AlertKind): string {
     return `${boxId}:${kind}`;
