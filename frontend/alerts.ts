@@ -28,6 +28,7 @@ type AlertRecord = {
     kind: AlertKind;
     message: string;
     active: boolean;
+    activeSince: number;
     firstSeenAt: number;
     lastSeenAt: number;
     resolvedAt?: number;
@@ -62,6 +63,7 @@ type AlertControllerOptions = {
 export type AlertController = ReturnType<typeof createAlertController>;
 
 const alertHistoryMs = 5 * 60 * 1000;
+const alertMinimumActiveMs = 5000;
 const alertBeepIntervalMs = 1000;
 const audioSignalDb = -50;
 const audioSilentDb = -85;
@@ -87,6 +89,7 @@ export function createAlertController({
     const alerts = new Map<string, AlertRecord>();
     const audioHealth = new Map<string, AudioHealthState>();
     const hiddenBoxAlerts = new Set<string>();
+    const alertResolveTimers = new Map<string, number>();
     let alertBeepTimer = 0;
 
     function updateFromHealth(payload: HealthPayload): void {
@@ -182,13 +185,18 @@ export function createAlertController({
     function clearBox(boxId: string): void {
         Array.from(alerts.keys())
             .filter((key) => key.startsWith(`${boxId}:`))
-            .forEach((key) => alerts.delete(key));
+            .forEach((key) => {
+                clearAlertResolveTimer(key);
+                alerts.delete(key);
+            });
         audioHealth.delete(boxId);
         hiddenBoxAlerts.delete(boxId);
         render();
     }
 
     function resetAll(): void {
+        alertResolveTimers.forEach((timer) => window.clearTimeout(timer));
+        alertResolveTimers.clear();
         alerts.clear();
         audioHealth.clear();
         hiddenBoxAlerts.clear();
@@ -301,24 +309,31 @@ export function createAlertController({
         let changed = false;
 
         if (active) {
+            clearAlertResolveTimer(key);
             if (existing?.active) {
                 existing.lastSeenAt = now;
+                existing.resolvedAt = undefined;
             } else {
                 alerts.set(key, {
                     boxId,
                     kind,
                     message: getAlertMessage(kind),
                     active: true,
+                    activeSince: now,
                     firstSeenAt: existing?.firstSeenAt ?? now,
                     lastSeenAt: now,
                 });
                 changed = true;
             }
         } else if (existing?.active) {
-            existing.active = false;
-            existing.lastSeenAt = now;
-            existing.resolvedAt = now;
-            changed = true;
+            const activeForMs = now - existing.activeSince;
+            if (activeForMs < alertMinimumActiveMs) {
+                scheduleAlertResolve(key, alertMinimumActiveMs - activeForMs);
+            } else {
+                resolveAlert(existing, now);
+                clearAlertResolveTimer(key);
+                changed = true;
+            }
         } else if (!existing) {
             return;
         }
@@ -327,6 +342,40 @@ export function createAlertController({
         if (changed) {
             render();
         }
+    }
+
+    function resolveAlert(alert: AlertRecord, now = Date.now()): void {
+        alert.active = false;
+        alert.lastSeenAt = now;
+        alert.resolvedAt = now;
+    }
+
+    function scheduleAlertResolve(key: string, delayMs: number): void {
+        if (alertResolveTimers.has(key)) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            alertResolveTimers.delete(key);
+            const alert = alerts.get(key);
+            if (!alert?.active) {
+                return;
+            }
+
+            resolveAlert(alert);
+            render();
+        }, delayMs);
+        alertResolveTimers.set(key, timer);
+    }
+
+    function clearAlertResolveTimer(key: string): void {
+        const timer = alertResolveTimers.get(key);
+        if (timer === undefined) {
+            return;
+        }
+
+        window.clearTimeout(timer);
+        alertResolveTimers.delete(key);
     }
 
     function isAlertEnabled(kind: AlertKind): boolean {

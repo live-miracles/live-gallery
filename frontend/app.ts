@@ -44,6 +44,7 @@ let clipboardToastTimer = 0;
 let draggedId = '';
 let micsPromise: Promise<void> | null = null;
 let currentZoomPercent = 100;
+const meterClipHoldUntil = new Map<string, { left: number; right: number }>();
 
 const gallery = mustGet<HTMLElement>('gallery');
 const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
@@ -1190,6 +1191,7 @@ function removeBox(boxId: string): void {
         const [removed] = boxes.splice(index, 1);
         elements.get(removed.id)?.root.remove();
         elements.delete(removed.id);
+        meterClipHoldUntil.delete(removed.id);
         alertController.clearBox(removed.id);
 
         if (boxes.length === 0) {
@@ -1226,6 +1228,7 @@ function moveBox(sourceId: string, targetId: string): void {
 function drawMeter(canvas: HTMLCanvasElement, payload: LevelPayload): void {
     if (!settings.audioLevels) {
         canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+        meterClipHoldUntil.delete(payload.boxId);
         return;
     }
 
@@ -1235,8 +1238,44 @@ function drawMeter(canvas: HTMLCanvasElement, payload: LevelPayload): void {
     }
 
     context.clearRect(0, 0, canvas.width, canvas.height);
+    updateMeterClipHold(payload);
     drawChannel(context, 0, payload.left);
     drawChannel(context, canvas.width / 2, payload.right);
+    drawClipHoldTiles(context, payload.boxId);
+}
+
+function updateMeterClipHold(payload: LevelPayload): void {
+    const now = performance.now();
+    const hold = meterClipHoldUntil.get(payload.boxId) ?? { left: 0, right: 0 };
+    const holdUntil = now + 3000;
+
+    if (payload.left >= -1) {
+        hold.left = holdUntil;
+    }
+    if (payload.right >= -1) {
+        hold.right = holdUntil;
+    }
+
+    meterClipHoldUntil.set(payload.boxId, hold);
+}
+
+function drawClipHoldTiles(context: CanvasRenderingContext2D, boxId: string): void {
+    const hold = meterClipHoldUntil.get(boxId);
+    if (!hold) {
+        return;
+    }
+
+    const now = performance.now();
+    const width = context.canvas.width / 2;
+    const height = Math.max(2, Math.round(context.canvas.height * 0.03));
+
+    context.fillStyle = '#ff0000';
+    if (hold.left > now) {
+        context.fillRect(0, 0, width, height);
+    }
+    if (hold.right > now) {
+        context.fillRect(width, 0, width, height);
+    }
 }
 
 function drawChannel(context: CanvasRenderingContext2D, x: number, db: number): void {
