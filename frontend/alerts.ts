@@ -38,10 +38,9 @@ type AudioHealthState = {
     silentSince: number;
     channelMissingSince: number;
     imbalanceSince: number;
-    clippingEvents: number[];
+    clippingSeconds: number[];
     dropoutSamples: number[];
     wasSignal: boolean;
-    wasClipping: boolean;
 };
 
 type BoxEntry = {
@@ -73,7 +72,7 @@ const audioImbalanceAlertMs = 20000;
 const audioDropoutWindowMs = 30000;
 const audioDropoutCount = 5;
 const audioClippingDb = -1;
-const audioClippingWindowMs = 5000;
+const audioClippingWindowSeconds = 5;
 const audioClippingCount = 3;
 
 export function createAlertController({
@@ -102,10 +101,9 @@ export function createAlertController({
             silentSince: 0,
             channelMissingSince: 0,
             imbalanceSince: 0,
-            clippingEvents: [],
+            clippingSeconds: [],
             dropoutSamples: [],
             wasSignal: false,
-            wasClipping: false,
         };
 
         const isSignal = db > audioSignalDb;
@@ -164,20 +162,20 @@ export function createAlertController({
         setAlert(payload.boxId, 'audio-dropouts', state.dropoutSamples.length >= audioDropoutCount);
 
         const isClipping = db >= audioClippingDb;
-        if (isClipping && !state.wasClipping) {
-            state.clippingEvents.push(now);
+        const clippingSecond = Math.floor(now / 1000);
+        if (isClipping && !state.clippingSeconds.includes(clippingSecond)) {
+            state.clippingSeconds.push(clippingSecond);
         }
-        state.clippingEvents = state.clippingEvents.filter(
-            (time) => now - time <= audioClippingWindowMs,
+        state.clippingSeconds = state.clippingSeconds.filter(
+            (second) => clippingSecond - second < audioClippingWindowSeconds,
         );
         setAlert(
             payload.boxId,
             'audio-clipping',
-            state.clippingEvents.length >= audioClippingCount,
+            state.clippingSeconds.length >= audioClippingCount,
         );
 
         state.wasSignal = isSignal;
-        state.wasClipping = isClipping;
         audioHealth.set(payload.boxId, state);
     }
 
@@ -225,15 +223,14 @@ export function createAlertController({
             const boxAlerts = activeAlerts.filter((alert) => alert.boxId === boxId);
             const hasActiveBoxAlerts = boxAlerts.length > 0;
             const isHidden = hiddenBoxAlerts.has(boxId);
+            const alertToggleLabel = isHidden
+                ? 'Show alerts for this box'
+                : 'Hide alerts for this box';
 
             entry.root.classList.toggle('box-alert', hasActiveBoxAlerts);
-            entry.alertToggleButton.disabled = !hasActiveBoxAlerts;
             entry.alertToggleButton.innerHTML = icon(isHidden ? 'eye-off' : 'eye');
-            entry.alertToggleButton.title = isHidden ? 'Show alerts' : 'Hide alerts';
-            entry.alertToggleButton.setAttribute(
-                'aria-label',
-                isHidden ? 'Show alerts' : 'Hide alerts',
-            );
+            entry.alertToggleButton.title = alertToggleLabel;
+            entry.alertToggleButton.setAttribute('aria-label', alertToggleLabel);
             entry.alertOverlay.replaceChildren();
             entry.alertOverlay.classList.toggle('hidden', !hasActiveBoxAlerts || isHidden);
             entry.alertOverlay.classList.toggle('grid', hasActiveBoxAlerts && !isHidden);

@@ -448,16 +448,16 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         'bg-base-200 border-base-content/25 relative m-1 h-fit w-[279px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
     root.innerHTML = `
         <div class="box-header group bg-base-300 border-base-content/10 relative flex h-5 w-full items-center overflow-hidden border-b">
-          <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag" aria-label="Drag">${icon('grip')}</button>
-          <span class="box-number absolute top-0 left-7 z-20 h-5 cursor-grab select-none text-sm leading-5 font-semibold" title="Drag"></span>
+          <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
+          <span class="box-number absolute top-0 left-7 z-20 h-5 cursor-grab select-none text-sm leading-5 font-semibold" title="Drag to reorder this box"></span>
           <strong class="box-title bg-base-300 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-sm font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
-          <button class="alert-visibility btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Hide alerts" aria-label="Hide alerts" disabled>${icon('eye')}</button>
-          <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute or unmute" aria-label="Mute or unmute"></button>
-          <button class="solo btn btn-secondary btn-xs btn-soft box-tool-btn" title="Solo this box" aria-label="Solo this box">${icon('headphones')}</button>
-          <button class="reload btn btn-secondary btn-xs btn-soft box-tool-btn" title="Reload" aria-label="Reload">${icon('refresh')}</button>
-          <button class="edit btn btn-secondary btn-xs btn-soft box-tool-btn" title="Edit" aria-label="Edit">${icon('pencil')}</button>
-          <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove" aria-label="Remove">${icon('trash')}</button>
-          <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn" title="Expand" aria-label="Expand">${icon('maximize')}</button>
+          <button class="alert-visibility btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
+          <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
+          <button class="solo btn btn-secondary btn-xs btn-soft box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
+          <button class="reload btn btn-secondary btn-xs btn-soft box-tool-btn" title="Reload this box" aria-label="Reload this box">${icon('refresh')}</button>
+          <button class="edit btn btn-secondary btn-xs btn-soft box-tool-btn" title="Edit this box" aria-label="Edit this box">${icon('pencil')}</button>
+          <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
+          <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
         </div>
         <form class="box-form bg-base-200/80 border-base-300 absolute top-7 left-1/2 z-20 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1 rounded-lg border p-2 shadow-lg backdrop-blur-sm">
           <input name="name" class="input input-xs" type="text" placeholder="Name" />
@@ -486,16 +486,20 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const title = root.querySelector<HTMLElement>('.box-title')!;
     const number = root.querySelector<HTMLElement>('.box-number')!;
     const form = root.querySelector<HTMLFormElement>('.box-form')!;
+    const dragHandle = root.querySelector<HTMLButtonElement>('.drag-handle')!;
     const viewport = root.querySelector<HTMLElement>('.viewport')!;
     const emptyState = root.querySelector<HTMLElement>('.empty-state')!;
     const webview = root.querySelector<Electron.WebviewTag>('webview')!;
     const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
     const muteButton = root.querySelector<HTMLButtonElement>('.mute')!;
+    const expandButton = root.querySelector<HTMLButtonElement>('.expand')!;
     const alertToggleButton = root.querySelector<HTMLButtonElement>('.alert-visibility')!;
     const alertOverlay = root.querySelector<HTMLElement>('.alert-overlay')!;
 
     root.dataset.id = box.id;
-    root.draggable = true;
+    [dragHandle, number].forEach((dragTarget) => {
+        dragTarget.draggable = true;
+    });
     number.textContent = String(index + 1);
     syncBoxControls(
         {
@@ -559,8 +563,9 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         sendCommand(box.id, { type: 'mute', muted: box.muted });
     });
 
-    root.querySelector<HTMLButtonElement>('.expand')!.addEventListener('click', () => {
+    expandButton.addEventListener('click', () => {
         toggleExpanded(root, viewport);
+        syncExpandButtonTitle(expandButton, root);
     });
     root.querySelector<HTMLButtonElement>('.edit')!.addEventListener('click', () => {
         setEditing(form, true);
@@ -603,12 +608,19 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     });
 
     root.addEventListener('dragstart', (event) => {
+        const dragSource = event.target instanceof HTMLElement ? event.target : null;
+        if (!dragSource?.closest('.drag-handle, .box-number')) {
+            event.preventDefault();
+            return;
+        }
+
         draggedId = box.id;
         root.classList.add('box-dragging');
         gallery.classList.add('gallery-dragging');
         event.dataTransfer?.setData('text/plain', box.id);
         if (event.dataTransfer) {
             event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setDragImage(root, root.offsetWidth / 2, 10);
         }
     });
     root.addEventListener('dragend', () => {
@@ -693,6 +705,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
 function syncBoxControls(entry: BoxElements, box: GalleryBox, isEditing: boolean): void {
     entry.title.textContent = getBoxTitle(box);
     entry.muteButton.innerHTML = icon(box.muted ? 'volume-x' : 'volume-2');
+    syncMuteButtonTitle(entry.muteButton, box.muted);
     setUnmuted(entry.root, !box.muted);
     setEditing(entry.form, isEditing);
 
@@ -1025,6 +1038,18 @@ function setEditing(form: HTMLFormElement, isEditing: boolean): void {
     form.classList.toggle('grid', isEditing);
 }
 
+function syncMuteButtonTitle(button: HTMLButtonElement, isMuted: boolean): void {
+    const label = isMuted ? 'Unmute this box' : 'Mute this box';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+}
+
+function syncExpandButtonTitle(button: HTMLButtonElement, root: HTMLElement): void {
+    const label = root.classList.contains('box-expanded') ? 'Collapse this box' : 'Expand this box';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+}
+
 function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
     root.classList.toggle('outline-secondary', isUnmuted);
     root.classList.toggle('outline-4', isUnmuted);
@@ -1049,6 +1074,10 @@ function closeExpandedBox(): boolean {
 
     root.classList.remove('box-expanded');
     viewport.classList.add('h-37.5');
+    const expandButton = root.querySelector<HTMLButtonElement>('.expand');
+    if (expandButton) {
+        syncExpandButtonTitle(expandButton, root);
+    }
     return true;
 }
 
@@ -1125,6 +1154,7 @@ function toggleMute(boxId: string, forceMuted?: boolean): void {
     box.muted = forceMuted ?? !box.muted;
     setUnmuted(entry.root, !box.muted);
     entry.muteButton.innerHTML = icon(box.muted ? 'volume-x' : 'volume-2');
+    syncMuteButtonTitle(entry.muteButton, box.muted);
     sendCommand(box.id, { type: 'mute', muted: box.muted });
     saveState();
 }
