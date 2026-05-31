@@ -452,13 +452,13 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
           <span class="box-number absolute top-0 left-7 z-20 h-5 cursor-grab select-none text-sm leading-5 font-semibold" title="Drag to reorder this box"></span>
           <strong class="box-title bg-base-300 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-sm font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
-          <button class="alert-visibility btn btn-secondary btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
+          <button class="alert-visibility btn btn-accent btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
           <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
-          <button class="solo btn btn-secondary btn-xs btn-soft box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
-          <button class="reload btn btn-secondary btn-xs btn-soft box-tool-btn" title="Reload this box" aria-label="Reload this box">${icon('refresh')}</button>
-          <button class="edit btn btn-secondary btn-xs btn-soft box-tool-btn" title="Edit this box" aria-label="Edit this box">${icon('pencil')}</button>
+          <button class="solo btn btn-accent btn-xs btn-soft box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
+          <button class="reload btn btn-accent btn-xs btn-soft box-tool-btn" title="Reload this box" aria-label="Reload this box">${icon('refresh')}</button>
+          <button class="edit btn btn-accent btn-xs btn-soft box-tool-btn" title="Edit this box" aria-label="Edit this box">${icon('pencil')}</button>
           <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
-          <button class="expand btn btn-secondary btn-xs btn-soft box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
+          <button class="expand btn btn-accent btn-xs btn-soft box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
         </div>
         <form class="box-form bg-base-200/80 border-base-300 absolute top-7 left-1/2 z-20 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1 rounded-lg border p-2 shadow-lg backdrop-blur-sm">
           <input name="name" class="input input-xs" type="text" placeholder="Name" />
@@ -472,7 +472,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           <div class="value-slot"></div>
           <div class="mt-1 flex justify-center gap-2">
             <button type="button" class="cancel btn btn-xs min-w-16">Cancel</button>
-            <button type="submit" class="btn btn-secondary btn-xs min-w-16">Save</button>
+            <button type="submit" class="btn btn-accent btn-xs min-w-16">Save</button>
           </div>
         </form>
         <div class="viewport bg-base-200 relative h-37.5 overflow-hidden">
@@ -905,7 +905,7 @@ async function openScreenSharePicker(boxId: string): Promise<void> {
             <h2 class="truncate text-lg font-semibold">Select a screen or window</h2>
             <div class="flex gap-2">
               <button type="button" class="screen-picker-cancel btn btn-error btn-soft btn-sm">Cancel</button>
-              <button type="button" class="screen-picker-reset btn btn-secondary btn-sm btn-soft">Reset</button>
+              <button type="button" class="screen-picker-reset btn btn-accent btn-sm btn-soft">Reset</button>
             </div>
           </div>
           <div class="screen-picker-sources grid min-h-0 auto-rows-min grid-cols-[repeat(auto-fill,minmax(280px,1fr))] content-start gap-3 overflow-auto pr-1"></div>
@@ -932,8 +932,8 @@ async function openScreenSharePicker(boxId: string): Promise<void> {
                 'text-base-content',
                 'transition',
                 source === selected
-                    ? 'border-secondary bg-secondary/20'
-                    : 'border-base-content/20 bg-base-300/70 hover:border-secondary/80 hover:bg-base-300',
+                    ? 'border-accent bg-accent/20'
+                    : 'border-base-content/20 bg-base-300/70 hover:border-accent/80 hover:bg-base-300',
             ].join(' ');
 
             const image = document.createElement('img');
@@ -1052,7 +1052,7 @@ function syncExpandButtonTitle(button: HTMLButtonElement, root: HTMLElement): vo
 }
 
 function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
-    root.classList.toggle('outline-secondary', isUnmuted);
+    root.classList.toggle('outline-accent', isUnmuted);
     root.classList.toggle('outline-4', isUnmuted);
 }
 

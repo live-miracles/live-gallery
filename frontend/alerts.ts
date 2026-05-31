@@ -227,7 +227,7 @@ export function createAlertController({
         alertsCount.textContent = String(activeAlerts.length);
         alertsCount.classList.toggle('hidden', activeAlerts.length === 0);
         alertsButton.classList.toggle('btn-error', activeAlerts.length > 0);
-        alertsButton.classList.toggle('btn-secondary', activeAlerts.length === 0);
+        alertsButton.classList.toggle('btn-accent', activeAlerts.length === 0);
         syncAlertBeepLoop(activeAlerts.length > 0);
 
         elements.forEach((entry, boxId) => {

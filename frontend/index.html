@@ -10,37 +10,33 @@
     <header
       class="app-header bg-base-300/95 border-base-content/25 sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1.5 border-b px-2 py-1 shadow-lg shadow-black/40">
       <details id="preset-menu" class="dropdown">
-        <summary class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none [&::-webkit-details-marker]:hidden">
+        <summary class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none [&::-webkit-details-marker]:hidden">
           Preset
         </summary>
         <div class="dropdown-content bg-base-200/60 border-base-content/20 z-100 mt-1 w-72 rounded-md border p-1 shadow-2xl backdrop-blur-md">
-          <button id="new-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
-            New Preset
-          </button>
-          <button id="export-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
+          <button id="new-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">New Preset</button>
+          <button id="export-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">
             Export Preset
           </button>
-          <button id="import-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
+          <button id="import-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">
             Import Preset (File)
           </button>
-          <button id="import-preset-clipboard" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
+          <button id="import-preset-clipboard" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">
             Import Preset (Clipboard)
           </button>
-          <button id="save-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-secondary hover:text-secondary-content">
-            Save Preset
-          </button>
+          <button id="save-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">Save Preset</button>
           <div class="divider my-1"></div>
           <div id="saved-preset-list" class="grid gap-1"></div>
         </div>
       </details>
-      <button id="docs-button" class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none">Docs</button>
-      <button id="alerts-button" class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none">
+      <button id="docs-button" class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none">Docs</button>
+      <button id="alerts-button" class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none">
         Alerts
         <span id="alerts-count" class="badge badge-error badge-xs hidden">0</span>
       </button>
       <button
         id="add-box"
-        class="btn btn-secondary btn-xs h-6 min-h-0 w-6 items-center px-0 text-lg leading-none"
+        class="btn btn-accent btn-xs h-6 min-h-0 w-6 items-center px-0 text-lg leading-none"
         title="Add box"
         aria-label="Add box"></button>
       <section
@@ -57,18 +53,18 @@
         </label>
         <label class="swap cursor-pointer">
           <input id="mute-rotation" type="checkbox" />
-          <span class="swap-on badge badge-secondary h-6 px-2">Rotate audio</span>
+          <span class="swap-on badge badge-accent h-6 px-2">Rotate audio</span>
           <span class="swap-off badge badge-outline h-6 px-2">Rotate audio</span>
         </label>
         <label class="swap cursor-pointer">
           <input id="auto-live" type="checkbox" checked />
-          <span class="swap-on badge badge-secondary h-6 px-2">YouTube Live</span>
+          <span class="swap-on badge badge-accent h-6 px-2">YouTube Live</span>
           <span class="swap-off badge badge-outline h-6 px-2">YouTube Live</span>
         </label>
-        <button id="lowest-quality" class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 items-center">Low Quality</button>
+        <button id="lowest-quality" class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center">Low Quality</button>
         <label class="swap cursor-pointer" title="Beep on new alerts" aria-label="Beep on new alerts">
           <input id="alert-sound" type="checkbox" checked />
-          <span class="swap-on btn btn-secondary btn-xs min-h-0 h-6 w-6 px-0">
+          <span class="swap-on btn btn-accent btn-xs min-h-0 h-6 w-6 px-0">
             <svg
               aria-hidden="true"
               class="h-3.5 w-3.5"
@@ -82,7 +78,7 @@
               <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
             </svg>
           </span>
-          <span class="swap-off btn btn-secondary btn-xs btn-outline min-h-0 h-6 w-6 px-0">
+          <span class="swap-off btn btn-accent btn-xs btn-outline min-h-0 h-6 w-6 px-0">
             <svg
               aria-hidden="true"
               class="h-3.5 w-3.5"
@@ -101,7 +97,7 @@
         </label>
         <button
           id="settings-button"
-          class="btn btn-secondary btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
+          class="btn btn-accent btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
           title="Settings"
           aria-label="Settings">
           <svg
@@ -123,21 +119,21 @@
         <section class="border-base-content/25 flex h-6 overflow-hidden rounded-md border" aria-label="Zoom controls">
           <button
             id="zoom-out"
-            class="btn btn-secondary btn-xs btn-soft border-base-content/20 h-6 min-h-0 rounded-none border-0 border-r px-2"
+            class="btn btn-accent btn-xs btn-soft border-base-content/20 h-6 min-h-0 rounded-none border-0 border-r px-2"
             title="Fit one more box">
             -
           </button>
           <button
             id="zoom-status"
-            class="btn btn-secondary btn-xs btn-soft border-base-content/20 h-6 min-h-0 w-14 rounded-none border-0 border-r px-1 font-mono"
+            class="btn btn-accent btn-xs btn-soft border-base-content/20 h-6 min-h-0 w-14 rounded-none border-0 border-r px-1 font-mono"
             title="Reset zoom">
             100%
           </button>
-          <button id="zoom-in" class="btn btn-secondary btn-xs btn-soft h-6 min-h-0 rounded-none border-0 px-2" title="Fit one fewer box">+</button>
+          <button id="zoom-in" class="btn btn-accent btn-xs btn-soft h-6 min-h-0 rounded-none border-0 px-2" title="Fit one fewer box">+</button>
         </section>
         <button
           id="refresh-page"
-          class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 w-6 px-0"
+          class="btn btn-accent btn-xs btn-outline min-h-0 h-6 w-6 px-0"
           title="Refresh page (Ctrl+R)"
           aria-label="Refresh page">
           <svg
@@ -157,7 +153,7 @@
         </button>
         <button
           id="toggle-fullscreen"
-          class="btn btn-secondary btn-xs btn-outline min-h-0 h-6 w-6 px-0"
+          class="btn btn-accent btn-xs btn-outline min-h-0 h-6 w-6 px-0"
           title="Enter or exit fullscreen (F11)"
           aria-label="Enter or exit fullscreen">
           <svg
@@ -186,11 +182,11 @@
       id="update-toast"
       class="alert border-base-300 bg-base-200 fixed bottom-3 left-3 z-50 hidden w-auto max-w-[calc(100vw-1.5rem)] items-center gap-2 py-2 shadow-lg">
       <div id="update-text" class="min-w-28 whitespace-nowrap text-sm font-semibold">Update available</div>
-      <progress id="update-progress" class="progress progress-secondary hidden w-24" value="0" max="100"></progress>
+      <progress id="update-progress" class="progress progress-accent hidden w-24" value="0" max="100"></progress>
       <div class="flex justify-end gap-2">
         <button id="update-dismiss-btn" class="btn btn-xs">Later</button>
-        <button id="update-download-btn" class="btn btn-secondary btn-xs">Download</button>
-        <button id="update-restart-btn" class="btn btn-secondary btn-xs hidden">Restart</button>
+        <button id="update-download-btn" class="btn btn-accent btn-xs">Download</button>
+        <button id="update-restart-btn" class="btn btn-accent btn-xs hidden">Restart</button>
       </div>
     </aside>
 
@@ -207,7 +203,7 @@
           <input id="preset-name-input" class="input input-bordered w-full" type="text" required autofocus />
           <div class="modal-action">
             <button value="cancel" formnovalidate class="btn">Cancel</button>
-            <button id="preset-name-save" value="default" class="btn btn-secondary">Save</button>
+            <button id="preset-name-save" value="default" class="btn btn-accent">Save</button>
           </div>
         </div>
       </form>
@@ -366,7 +362,7 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
           </div>
           <div class="modal-action">
             <button value="cancel" formnovalidate class="btn">Cancel</button>
-            <button value="default" class="btn btn-secondary">Save</button>
+            <button value="default" class="btn btn-accent">Save</button>
           </div>
         </div>
       </form>

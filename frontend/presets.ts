@@ -84,7 +84,7 @@ export function createPresetController({
             const loadButton = document.createElement('button');
             loadButton.type = 'button';
             loadButton.className =
-                'btn btn-ghost btn-xs justify-start truncate hover:bg-secondary hover:text-secondary-content';
+                'btn btn-ghost btn-xs justify-start truncate hover:bg-accent hover:text-accent-content';
             loadButton.textContent = preset.name;
             loadButton.title = preset.name;
             loadButton.addEventListener('click', () => {
@@ -94,7 +94,7 @@ export function createPresetController({
 
             const renameButton = document.createElement('button');
             renameButton.type = 'button';
-            renameButton.className = 'btn btn-secondary btn-xs btn-outline box-tool-btn';
+            renameButton.className = 'btn btn-accent btn-xs btn-outline box-tool-btn';
             renameButton.innerHTML = icon('pencil');
             renameButton.title = 'Rename preset';
             renameButton.setAttribute('aria-label', 'Rename preset');
