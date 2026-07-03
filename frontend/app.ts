@@ -52,6 +52,8 @@ const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
 const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
 const alertSoundInput = mustGet<HTMLInputElement>('alert-sound');
+const alertVolumeInput = mustGet<HTMLInputElement>('alert-volume');
+const alertVolumeValue = mustGet<HTMLElement>('alert-volume-value');
 const alertVideoBufferingInput = mustGet<HTMLInputElement>('alert-video-buffering');
 const alertVideoRepeatedBufferingInput = mustGet<HTMLInputElement>(
     'alert-video-repeated-buffering',
@@ -103,6 +105,7 @@ const settings: GallerySettings = {
     autoLive: true,
     jwServerHost: 'https://your.website.com/Player/Index/',
     alertSound: true,
+    alertVolume: 100,
     alertVideoBuffering: true,
     alertVideoRepeatedBuffering: true,
     alertVideoFrozen: true,
@@ -321,6 +324,7 @@ function syncSettingsFromControls(): void {
     settings.autoLive = autoLiveInput.checked;
     settings.jwServerHost = jwServerHostInput.value.trim();
     settings.alertSound = alertSoundInput.checked;
+    settings.alertVolume = clampAlertVolume(Number(alertVolumeInput.value));
     settings.alertVideoBuffering = alertVideoBufferingInput.checked;
     settings.alertVideoRepeatedBuffering = alertVideoRepeatedBufferingInput.checked;
     settings.alertVideoFrozen = alertVideoFrozenInput.checked;
@@ -338,6 +342,8 @@ function syncControlsFromSettings(): void {
     autoLiveInput.checked = settings.autoLive;
     jwServerHostInput.value = settings.jwServerHost;
     alertSoundInput.checked = settings.alertSound;
+    alertVolumeInput.value = String(settings.alertVolume);
+    updateAlertVolumeValue();
     alertVideoBufferingInput.checked = settings.alertVideoBuffering;
     alertVideoRepeatedBufferingInput.checked = settings.alertVideoRepeatedBuffering;
     alertVideoFrozenInput.checked = settings.alertVideoFrozen;
@@ -410,6 +416,7 @@ function loadState(): void {
     settings.audioLevels = true;
     settings.jwServerHost = String(settings.jwServerHost ?? '');
     settings.alertSound = storedSettings.alertSound ?? true;
+    settings.alertVolume = clampAlertVolume(storedSettings.alertVolume ?? 100);
     settings.alertVideoBuffering = storedSettings.alertVideoBuffering ?? true;
     settings.alertVideoRepeatedBuffering = storedSettings.alertVideoRepeatedBuffering ?? true;
     settings.alertVideoFrozen = storedSettings.alertVideoFrozen ?? true;
@@ -424,6 +431,18 @@ function loadState(): void {
     if (boxes.length === 0) {
         boxes.push(makeBox());
     }
+}
+
+function clampAlertVolume(value: number): number {
+    if (!Number.isFinite(value)) {
+        return 100;
+    }
+
+    return Math.max(0, Math.min(500, Math.round(value)));
+}
+
+function updateAlertVolumeValue(): void {
+    alertVolumeValue.textContent = `${clampAlertVolume(Number(alertVolumeInput.value))}%`;
 }
 
 function render(): void {
@@ -1450,6 +1469,8 @@ alertSoundInput.addEventListener('change', () => {
     saveState();
     alertController.render();
 });
+
+alertVolumeInput.addEventListener('input', updateAlertVolumeValue);
 
 [muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
     input.addEventListener('change', updateAllSettings);

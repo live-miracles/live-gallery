@@ -66,6 +66,8 @@ export type AlertController = ReturnType<typeof createAlertController>;
 const alertHistoryMs = 5 * 60 * 1000;
 const alertMinimumActiveMs = 5000;
 const alertBeepIntervalMs = 1000;
+const alertBeepMaxActiveMs = 60 * 1000;
+const alertBeepBaseGain = 0.27;
 const audioSignalDb = -50;
 const audioSilentDb = -85;
 const audioSilentAlertMs = 15000;
@@ -228,7 +230,7 @@ export function createAlertController({
         alertsCount.classList.toggle('hidden', activeAlerts.length === 0);
         alertsButton.classList.toggle('btn-error', activeAlerts.length > 0);
         alertsButton.classList.toggle('btn-accent', activeAlerts.length === 0);
-        syncAlertBeepLoop(activeAlerts.length > 0);
+        syncAlertBeepLoop(activeAlerts);
 
         elements.forEach((entry, boxId) => {
             const boxAlerts = activeAlerts.filter((alert) => alert.boxId === boxId);
@@ -395,11 +397,11 @@ export function createAlertController({
         return enabled[kind];
     }
 
-    function syncAlertBeepLoop(hasActiveAlerts: boolean): void {
+    function syncAlertBeepLoop(activeAlerts: AlertRecord[]): void {
         window.clearInterval(alertBeepTimer);
         alertBeepTimer = 0;
 
-        if (!hasActiveAlerts || !settings.alertSound) {
+        if (!settings.alertSound || settings.alertVolume <= 0 || !hasBeepableAlert(activeAlerts)) {
             return;
         }
 
@@ -408,7 +410,13 @@ export function createAlertController({
     }
 
     function beepForAlert(): void {
-        if (!settings.alertSound) {
+        if (
+            !settings.alertSound ||
+            settings.alertVolume <= 0 ||
+            !hasBeepableAlert(Array.from(alerts.values()))
+        ) {
+            window.clearInterval(alertBeepTimer);
+            alertBeepTimer = 0;
             return;
         }
 
@@ -421,14 +429,23 @@ export function createAlertController({
 
         oscillator.type = 'sine';
         oscillator.frequency.value = 880;
+        const volume = Math.max(0, Math.min(500, settings.alertVolume)) / 100;
+        const peakGain = Math.max(0.0001, alertBeepBaseGain * volume);
         gain.gain.setValueAtTime(0.0001, context.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.27, context.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(peakGain, context.currentTime + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.24);
         oscillator.connect(gain);
         gain.connect(context.destination);
         oscillator.start();
         oscillator.stop(context.currentTime + 0.25);
         window.setTimeout(() => context.close().catch(() => {}), 500);
+    }
+
+    function hasBeepableAlert(candidateAlerts: AlertRecord[]): boolean {
+        const now = Date.now();
+        return candidateAlerts.some(
+            (alert) => alert.active && now - alert.activeSince <= alertBeepMaxActiveMs,
+        );
     }
 
     function pruneAlerts(): void {

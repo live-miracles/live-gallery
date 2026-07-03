@@ -40,7 +40,7 @@
         title="Add box"
         aria-label="Add box"></button>
       <section
-        class="absolute left-1/2 flex max-w-full min-w-max -translate-x-1/2 flex-nowrap items-center justify-center gap-1.5 overflow-x-auto whitespace-nowrap max-[980px]:static max-[980px]:order-3 max-[980px]:w-full max-[980px]:min-w-0 max-[980px]:translate-x-0"
+        class="absolute left-1/2 flex max-w-full min-w-max -translate-x-1/2 flex-nowrap items-center justify-center gap-1.5 overflow-x-auto overflow-y-hidden whitespace-nowrap max-[980px]:static max-[980px]:order-3 max-[980px]:w-full max-[980px]:min-w-0 max-[980px]:translate-x-0"
         aria-label="Gallery controls">
         <label class="label p-0">
           <span class="sr-only">Rotation boxes</span>
@@ -291,7 +291,7 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
 
     <dialog id="settings-dialog" class="modal">
       <form id="settings-form" method="dialog">
-        <div class="modal-box bg-base-200/80 border-base-300 w-175 max-w-[calc(100vw-2rem)] border shadow-lg backdrop-blur-sm">
+        <div class="modal-box bg-base-200/60 border-base-300 w-175 max-w-[calc(100vw-2rem)] border shadow-lg backdrop-blur-md">
           <div class="mb-4 flex items-center justify-between gap-3">
             <h2 class="text-xl font-semibold">Settings</h2>
             <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" formnovalidate aria-label="Close settings">
@@ -318,43 +318,48 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
             </label>
             <section class="grid gap-3">
               <h3 class="font-semibold">Alerts</h3>
+              <label class="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                <span>Alert volume</span>
+                <input id="alert-volume" class="range range-accent range-sm w-full" type="range" min="0" max="500" step="10" value="100" />
+                <span id="alert-volume-value" class="badge badge-neutral badge-sm w-14 justify-center">100%</span>
+              </label>
               <div class="grid gap-4 md:grid-cols-2">
                 <div class="border-base-content/15 grid content-start gap-2 border-t pt-3">
                   <h4 class="text-base-content/70 text-xs font-semibold uppercase">Video</h4>
                   <label class="flex items-center justify-between gap-3">
                     <span>Video buffering</span>
-                    <input id="alert-video-buffering" class="toggle toggle-error" type="checkbox" checked />
+                    <input id="alert-video-buffering" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
                   <label class="flex items-center justify-between gap-3">
                     <span>Repeated buffering</span>
-                    <input id="alert-video-repeated-buffering" class="toggle toggle-error" type="checkbox" checked />
+                    <input id="alert-video-repeated-buffering" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
                   <label class="flex items-center justify-between gap-3">
                     <span>Video frozen</span>
-                    <input id="alert-video-frozen" class="toggle toggle-error" type="checkbox" checked />
+                    <input id="alert-video-frozen" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
                 </div>
                 <div class="border-base-content/15 grid content-start gap-2 border-t pt-3">
                   <h4 class="text-base-content/70 text-xs font-semibold uppercase">Audio</h4>
                   <label class="flex items-center justify-between gap-3">
                     <span>Audio silent</span>
-                    <input id="alert-audio-silent" class="toggle toggle-error" type="checkbox" checked />
+                    <input id="alert-audio-silent" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
                   <label class="flex items-center justify-between gap-3">
                     <span>Audio dropouts</span>
-                    <input id="alert-audio-dropouts" class="toggle toggle-error" type="checkbox" checked />
+                    <input id="alert-audio-dropouts" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
                   <label class="flex items-center justify-between gap-3">
                     <span>Audio clipping</span>
-                    <input id="alert-audio-clipping" class="toggle toggle-error" type="checkbox" checked />
+                    <input id="alert-audio-clipping" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
                   <label class="flex items-center justify-between gap-3">
                     <span>Audio one channel missing</span>
-                    <input id="alert-audio-channel-missing" class="toggle toggle-error" type="checkbox" checked />
+                    <input id="alert-audio-channel-missing" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
                   <label class="flex items-center justify-between gap-3">
                     <span>Audio imbalance</span>
-                    <input id="alert-audio-imbalance" class="toggle toggle-error" type="checkbox" checked />
+                    <input id="alert-audio-imbalance" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
                 </div>
               </div>

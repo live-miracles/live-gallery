@@ -16,6 +16,7 @@ export type GallerySettings = {
     autoLive: boolean;
     jwServerHost: string;
     alertSound: boolean;
+    alertVolume: number;
     alertVideoBuffering: boolean;
     alertVideoRepeatedBuffering: boolean;
     alertVideoFrozen: boolean;
