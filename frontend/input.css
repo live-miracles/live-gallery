@@ -12,7 +12,7 @@
 }
 
 .box-tool-btn {
-    @apply mx-1 h-5 min-h-0 w-5 px-0 text-xs leading-none;
+    @apply mx-1 h-[22px] min-h-0 w-5 px-0 text-xs leading-none;
 }
 
 .box-tool-btn-first {

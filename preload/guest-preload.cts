@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('liveGalleryGuest', {
             displayId: source.displayId,
         });
     },
+    notifyScreenShareEnded: (): void => {
+        disconnectScreenShareAudio();
+        ipcRenderer.sendToHost('gallery-screen-share-ended', { boxId });
+    },
     openScreenSharePicker: (): void => {
         ipcRenderer.sendToHost('gallery-open-screen-share-picker');
     },
@@ -235,9 +239,7 @@ function connectScreenShareAudio(stream: MediaStream): void {
         return;
     }
 
-    streamAudioTools?.source.disconnect();
-    streamAudioTools?.gain.disconnect();
-    streamAudioTools?.context.close().catch(() => {});
+    disconnectScreenShareAudio(false);
 
     try {
         const context = new AudioContext();
@@ -266,6 +268,18 @@ function connectScreenShareAudio(stream: MediaStream): void {
             boxId,
             message: error instanceof Error ? error.message : String(error),
         });
+    }
+}
+
+function disconnectScreenShareAudio(stopMic = true): void {
+    streamAudioTools?.source.disconnect();
+    streamAudioTools?.gain.disconnect();
+    streamAudioTools?.context.close().catch(() => {});
+    streamAudioTools = null;
+
+    if (stopMic) {
+        selectedMicStream?.getTracks().forEach((track) => track.stop());
+        selectedMicStream = null;
     }
 }
 
@@ -487,6 +501,7 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
             new CustomEvent('live-gallery-start-screen-share', { detail: command.source }),
         );
     } else if (command.type === 'reset-screen-share') {
+        disconnectScreenShareAudio();
         window.dispatchEvent(new CustomEvent('live-gallery-reset-screen-share'));
     }
 });

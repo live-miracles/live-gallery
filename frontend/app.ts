@@ -467,9 +467,9 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     root.className =
         'bg-base-200 border-base-content/25 relative m-1 h-fit w-[279px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
     root.innerHTML = `
-        <div class="box-header group bg-base-300 border-base-content/10 relative flex h-5 w-full items-center overflow-hidden border-b">
+        <div class="box-header group bg-base-300 border-base-content/10 relative flex h-[22px] w-full items-center overflow-hidden border-b">
           <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
-          <span class="box-number absolute top-0 left-7 z-20 h-5 cursor-grab select-none text-sm leading-5 font-semibold" title="Drag to reorder this box"></span>
+          <span class="box-number absolute top-0 left-7 z-20 h-[22px] cursor-grab select-none text-sm leading-[22px] font-semibold" title="Drag to reorder this box"></span>
           <strong class="box-title bg-base-300 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-sm font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
           <button class="alert-visibility btn btn-accent btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
           <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
@@ -479,7 +479,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
           <button class="expand btn btn-accent btn-xs btn-soft box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
         </div>
-        <form class="box-form bg-base-200/80 border-base-300 absolute top-7 left-1/2 z-20 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1 rounded-lg border p-2 shadow-lg backdrop-blur-sm">
+        <form class="box-form bg-base-200/80 border-base-300 absolute top-7 left-1/2 z-30 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1 rounded-lg border p-2 shadow-lg backdrop-blur-sm">
           <input name="name" class="input input-xs" type="text" placeholder="Name" />
           <select name="type" class="select select-xs">
             <option value="YT">YouTube</option>
@@ -558,6 +558,9 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
             console.warn(`Box ${box.name || box.id} player error:`, event.args[0]);
         } else if (event.channel === 'gallery-screen-share-source') {
             rememberScreenShareSource(box, event.args[0] as Partial<DesktopSource>);
+        } else if (event.channel === 'gallery-screen-share-ended') {
+            alertController.clearBox(box.id);
+            resetScreenShareSource(box);
         } else if (event.channel === 'gallery-open-screen-share-picker') {
             openScreenSharePicker(box.id).catch((error) => {
                 console.error('Could not open screen share picker:', error);
@@ -891,6 +894,7 @@ function resetScreenShareSource(box: GalleryBox): void {
         return;
     }
 
+    alertController.clearBox(box.id);
     const value = parseScreenShareValue(box.value);
     box.value = serializeScreenShareValue({
         ...value,

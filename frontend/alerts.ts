@@ -41,7 +41,7 @@ type AudioHealthState = {
     imbalanceSince: number;
     clippingEvents: number[];
     lastClippingNoticeAt: number;
-    dropoutSamples: number[];
+    dropoutSamples: boolean[];
     wasSignal: boolean;
 };
 
@@ -66,7 +66,7 @@ export type AlertController = ReturnType<typeof createAlertController>;
 const alertHistoryMs = 5 * 60 * 1000;
 const alertMinimumActiveMs = 5000;
 const alertBeepIntervalMs = 1000;
-const alertBeepMaxActiveMs = 60 * 1000;
+const alertBeepMaxActiveMs = 30 * 1000;
 const alertBeepBaseGain = 0.27;
 const audioSignalDb = -50;
 const audioSilentDb = -85;
@@ -74,8 +74,8 @@ const audioSilentAlertMs = 15000;
 const audioChannelMissingAlertMs = 15000;
 const audioImbalanceDb = 20;
 const audioImbalanceAlertMs = 20000;
-const audioDropoutWindowMs = 30000;
-const audioDropoutCount = 5;
+const audioDropoutWindowRounds = 10;
+const audioDropoutCount = 3;
 const audioClippingDb = -1;
 const audioClippingWindowMs = 7000;
 const audioClippingCooldownMs = 1000;
@@ -161,13 +161,14 @@ export function createAlertController({
             setAlert(payload.boxId, 'audio-imbalance', false);
         }
 
-        if (state.hasSignal && state.wasSignal && isSilent) {
-            state.dropoutSamples.push(now);
-        }
-        state.dropoutSamples = state.dropoutSamples.filter(
-            (time) => now - time <= audioDropoutWindowMs,
+        const isDropout = state.hasSignal && state.wasSignal && isSilent;
+        state.dropoutSamples.push(isDropout);
+        state.dropoutSamples = state.dropoutSamples.slice(-audioDropoutWindowRounds);
+        setAlert(
+            payload.boxId,
+            'audio-dropouts',
+            state.dropoutSamples.filter(Boolean).length >= audioDropoutCount,
         );
-        setAlert(payload.boxId, 'audio-dropouts', state.dropoutSamples.length >= audioDropoutCount);
 
         const isClipping = db >= audioClippingDb;
         if (isClipping && now - state.lastClippingNoticeAt >= audioClippingCooldownMs) {

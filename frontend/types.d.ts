@@ -47,6 +47,7 @@ declare global {
             getDesktopSources: () => Promise<DesktopSource[]>;
             connectScreenShareAudio: () => void;
             rememberScreenShareSource: (source: DesktopSource) => void;
+            notifyScreenShareEnded: () => void;
             openScreenSharePicker: () => void;
         };
     }

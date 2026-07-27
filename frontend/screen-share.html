@@ -148,11 +148,14 @@
           window.dispatchEvent(new CustomEvent('live-gallery-media-ready'));
           document.body.classList.add('active');
           displayStream.getVideoTracks()[0]?.addEventListener('ended', () => {
-            if (activeStream === stream) {
-              activeStream = null;
+            if (activeStream !== stream) {
+              return;
             }
+
+            activeStream = null;
             document.body.classList.remove('active');
             startButton.textContent = 'Click to Share Window';
+            window.liveGalleryGuest.notifyScreenShareEnded();
           });
         } catch (error) {
           console.error(error);
