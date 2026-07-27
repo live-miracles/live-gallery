@@ -52,12 +52,24 @@ npm run dist
 ## Publishing
 
 Publishing uses Electron Builder's GitHub publisher configuration from
-`package.json`. Put the required publishing credentials in `.env`, then run:
+`package.json`. Releases are published automatically when a version tag is
+pushed to GitHub.
+
+```bash
+npm version x.x.x
+git push origin master --tags
+```
+
+The tag push starts the release workflow, builds the Windows installer, and
+publishes a GitHub release for that tag.
+
+To publish manually from this machine instead, put the required publishing
+credentials in `.env`, then run:
 
 ```bash
 npm run publish
 ```
 
-The publish script builds the app and runs Electron Builder with
+The manual publish script builds the app and runs Electron Builder with
 `--publish=always`, so the generated release artifact is uploaded to the
 configured GitHub repository.

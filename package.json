@@ -39,7 +39,8 @@
         "publish": {
             "provider": "github",
             "owner": "live-miracles",
-            "repo": "live-gallery"
+            "repo": "live-gallery",
+            "releaseType": "release"
         }
     },
     "devDependencies": {

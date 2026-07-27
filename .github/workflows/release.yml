@@ -1,0 +1,32 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        name: Build and publish release
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: npm
+            - name: Ensure tag is on master
+              shell: bash
+              run: |
+                  git fetch origin master
+                  git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+            - run: npm ci
+            - run: npm run build
+            - run: npx electron-builder --publish=always
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
