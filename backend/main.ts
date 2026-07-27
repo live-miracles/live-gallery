@@ -20,7 +20,6 @@ const { autoUpdater } = updater;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 const youtubeEmbedOrigin = 'https://live-gallery.local';
-const zoomStepPercent = 10;
 const minZoomPercent = 20;
 const maxZoomPercent = 300;
 const presetsFileName = 'presets.json';
@@ -341,10 +340,11 @@ function getZoomDirection(input: Electron.Input): -1 | 0 | 1 | null {
 }
 
 function changeAppZoomStep(direction: -1 | 1): number {
+    const step = direction > 0 ? (appZoomPercent >= 100 ? 10 : 5) : appZoomPercent > 100 ? 10 : 5;
     const nextZoom =
         direction > 0
-            ? Math.floor(appZoomPercent / zoomStepPercent) * zoomStepPercent + zoomStepPercent
-            : Math.ceil(appZoomPercent / zoomStepPercent) * zoomStepPercent - zoomStepPercent;
+            ? Math.floor(appZoomPercent / step) * step + step
+            : Math.ceil(appZoomPercent / step) * step - step;
     return setAppZoom(nextZoom);
 }
 

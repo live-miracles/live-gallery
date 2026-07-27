@@ -118,7 +118,6 @@ const settings: GallerySettings = {
 
 const minZoomPercent = 20;
 const maxZoomPercent = 300;
-const zoomFitMarginPx = 16;
 
 const alertController = createAlertController({
     settings,
@@ -158,7 +157,7 @@ function setZoomStatus(percent: number): void {
     currentZoomPercent = percent;
     zoomStatusButton.textContent = `${percent}%`;
     zoomOutButton.disabled = percent <= minZoomPercent;
-    zoomInButton.disabled = percent >= maxZoomPercent || getHorizontalBoxCapacity(percent) <= 1;
+    zoomInButton.disabled = percent >= maxZoomPercent;
 }
 
 function getBoxTitle(box: GalleryBox): string {
@@ -170,77 +169,33 @@ function initZoomControls(): void {
     window.liveGallery.onZoomChanged(setZoomStatus);
 
     zoomOutButton.addEventListener('click', () => {
-        setZoomForHorizontalBoxDelta(1).catch(console.error);
+        changeZoomStep(-1).catch(console.error);
     });
     zoomInButton.addEventListener('click', () => {
-        setZoomForHorizontalBoxDelta(-1).catch(console.error);
+        changeZoomStep(1).catch(console.error);
     });
     zoomStatusButton.addEventListener('click', () => {
         window.liveGallery.setZoom(100).then(setZoomStatus).catch(console.error);
     });
 }
 
-function getBoxOuterWidth(): number {
-    const box = elements.values().next().value?.root;
-    if (!box) {
-        return 287;
-    }
-
-    const style = window.getComputedStyle(box);
-    return box.offsetWidth + parseFloat(style.marginLeft) + parseFloat(style.marginRight);
+function getNextZoomStep(direction: -1 | 1): number {
+    const step =
+        direction > 0 ? (currentZoomPercent >= 100 ? 10 : 5) : currentZoomPercent > 100 ? 10 : 5;
+    const nextZoom =
+        direction > 0
+            ? Math.floor(currentZoomPercent / step) * step + step
+            : Math.ceil(currentZoomPercent / step) * step - step;
+    return Math.max(minZoomPercent, Math.min(maxZoomPercent, nextZoom));
 }
 
-function getFallbackContentWidth(): number {
-    return Math.round((document.documentElement.clientWidth * currentZoomPercent) / 100);
-}
-
-async function getContentWidth(): Promise<number> {
-    const width = await window.liveGallery.getContentWidth();
-    return width > 0 ? width : getFallbackContentWidth();
-}
-
-function getHorizontalBoxCapacity(
-    zoomPercent: number,
-    contentWidth = getFallbackContentWidth(),
-): number {
-    const boxWidth = getBoxOuterWidth();
-    const viewportWidth = (contentWidth * 100) / zoomPercent;
-    return Math.max(1, Math.floor((viewportWidth - zoomFitMarginPx) / boxWidth));
-}
-
-function getZoomForHorizontalBoxCapacity(capacity: number, contentWidth: number): number {
-    const requiredWidth = capacity * getBoxOuterWidth() + zoomFitMarginPx;
-    let zoom = Math.max(
-        minZoomPercent,
-        Math.min(maxZoomPercent, Math.floor((contentWidth * 100) / requiredWidth)),
-    );
-
-    while (zoom > minZoomPercent && getHorizontalBoxCapacity(zoom, contentWidth) < capacity) {
-        zoom -= 1;
-    }
-
-    while (zoom < maxZoomPercent && getHorizontalBoxCapacity(zoom + 1, contentWidth) >= capacity) {
-        zoom += 1;
-    }
-
-    return zoom;
-}
-
-async function setZoomForHorizontalBoxDelta(deltaBoxes: -1 | 1): Promise<void> {
-    const contentWidth = await getContentWidth();
-    const currentCapacity = getHorizontalBoxCapacity(currentZoomPercent, contentWidth);
-    const targetCapacity = currentCapacity + deltaBoxes;
-    if (targetCapacity < 1) {
+async function changeZoomStep(direction: -1 | 1): Promise<void> {
+    const nextZoom = getNextZoomStep(direction);
+    if (nextZoom === currentZoomPercent) {
         return;
     }
 
-    const targetZoom = getZoomForHorizontalBoxCapacity(targetCapacity, contentWidth);
-
-    if (targetZoom === currentZoomPercent) {
-        return;
-    }
-
-    const appliedZoom = await window.liveGallery.setZoom(targetZoom);
+    const appliedZoom = await window.liveGallery.setZoom(nextZoom);
     setZoomStatus(appliedZoom);
 }
 
