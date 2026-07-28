@@ -77,6 +77,21 @@
         return sources.find((source) => source.id === saved.sourceId) || null;
       }
 
+      function serializeScreenShareValue(value) {
+        return JSON.stringify({
+          micDeviceId: value.micDeviceId,
+          sourceId: value.sourceId,
+          sourceName: value.sourceName,
+          displayId: value.displayId,
+        });
+      }
+
+      function syncScreenShareUrl() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('value', serializeScreenShareValue(savedScreenShareValue));
+        window.history.replaceState(null, '', url.toString());
+      }
+
       function stopActiveStream() {
         activeStream?.getTracks().forEach((track) => track.stop());
         activeStream = null;
@@ -92,45 +107,23 @@
         };
       }
 
-      async function getDisplayStream(sourceId, includeAudio) {
+      async function getDisplayStream(sourceId) {
         const desktopVideo = {
           mandatory: {
             chromeMediaSource: 'desktop',
             chromeMediaSourceId: sourceId,
           },
         };
-        const desktopAudio = {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: sourceId,
-          },
-        };
-
-        if (!includeAudio) {
-          return navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: desktopVideo,
-          });
-        }
-
-        try {
-          return await navigator.mediaDevices.getUserMedia({
-            audio: desktopAudio,
-            video: desktopVideo,
-          });
-        } catch {
-          return navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: desktopVideo,
-          });
-        }
+        return navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: desktopVideo,
+        });
       }
 
       async function startShare(source) {
         try {
-          const deviceId = savedScreenShareValue.micDeviceId;
-          const displayStream = await getDisplayStream(source.id, !deviceId);
-          const stream = new MediaStream([...displayStream.getVideoTracks(), ...(!deviceId ? displayStream.getAudioTracks() : [])]);
+          const displayStream = await getDisplayStream(source.id);
+          const stream = new MediaStream(displayStream.getVideoTracks());
           stopActiveStream();
           activeStream = stream;
           video.srcObject = stream;
@@ -143,6 +136,8 @@
             sourceName: '',
             displayId: '',
           };
+          restoredSourceId = source.id;
+          syncScreenShareUrl();
           window.liveGalleryGuest.rememberScreenShareSource(source);
           window.liveGalleryGuest.connectScreenShareAudio();
           window.dispatchEvent(new CustomEvent('live-gallery-media-ready'));
@@ -196,6 +191,7 @@
           displayId: '',
         };
         restoredSourceId = '';
+        syncScreenShareUrl();
         stopActiveStream();
         video.srcObject = null;
         document.body.classList.remove('active');
