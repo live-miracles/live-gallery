@@ -77,6 +77,7 @@ const BUFFERING_ALERT_MS = 4000;
 const REPEATED_BUFFERING_WINDOW_MS = 60000;
 const REPEATED_BUFFERING_COUNT = 5;
 const FROZEN_ALERT_MS = 8000;
+const FROZEN_ALERT_MAX_MS = 60 * 1000;
 const VIDEO_HEALTH_INTERVAL_MS = 500;
 
 function parseScreenShareValue(value: string): { micDeviceId: string } {
@@ -411,8 +412,12 @@ function startMediaHealthLoop(media: HTMLMediaElement): void {
             sendVideoHealth('video-buffering', bufferingActive);
         }
 
+        const frozenForMs = now - lastTimeChangedAt;
         const nextFrozenActive =
-            expectedPlaying && !nextBufferingActive && now - lastTimeChangedAt >= FROZEN_ALERT_MS;
+            expectedPlaying &&
+            !nextBufferingActive &&
+            frozenForMs >= FROZEN_ALERT_MS &&
+            frozenForMs <= FROZEN_ALERT_MAX_MS;
         if (nextFrozenActive !== frozenActive) {
             frozenActive = nextFrozenActive;
             sendVideoHealth('video-frozen', frozenActive);

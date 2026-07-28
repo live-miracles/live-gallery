@@ -37,6 +37,7 @@ type AlertRecord = {
 type AudioHealthState = {
     hasSignal: boolean;
     silentSince: number;
+    lastNotSilentAt: number;
     channelMissingSince: number;
     imbalanceSince: number;
     clippingEvents: number[];
@@ -71,6 +72,7 @@ const alertBeepBaseGain = 0.27;
 const audioSignalDb = -50;
 const audioSilentDb = -85;
 const audioSilentAlertMs = 15000;
+const audioSilentRecentSignalMs = 60 * 1000;
 const audioChannelMissingAlertMs = 15000;
 const audioImbalanceDb = 20;
 const audioImbalanceAlertMs = 20000;
@@ -106,6 +108,7 @@ export function createAlertController({
         const state = audioHealth.get(payload.boxId) ?? {
             hasSignal: false,
             silentSince: 0,
+            lastNotSilentAt: 0,
             channelMissingSince: 0,
             imbalanceSince: 0,
             clippingEvents: [],
@@ -127,12 +130,19 @@ export function createAlertController({
 
         if (isSignal) {
             state.hasSignal = true;
+            state.lastNotSilentAt = now;
             state.silentSince = 0;
             setAlert(payload.boxId, 'audio-silent', false);
         } else if (state.hasSignal && isSilent) {
             state.silentSince ||= now;
-            setAlert(payload.boxId, 'audio-silent', now - state.silentSince >= audioSilentAlertMs);
+            setAlert(
+                payload.boxId,
+                'audio-silent',
+                now - state.silentSince >= audioSilentAlertMs &&
+                    now - state.lastNotSilentAt <= audioSilentRecentSignalMs,
+            );
         } else {
+            state.lastNotSilentAt = now;
             state.silentSince = 0;
             setAlert(payload.boxId, 'audio-silent', false);
         }

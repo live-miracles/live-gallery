@@ -341,7 +341,7 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
                   <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
                     <span class="font-medium">Video frozen</span>
                     <span class="text-base-content/60 text-xs"
-                      >Detects a stuck picture; alerts when playback time has not changed for 8s while not buffering.</span
+                      >Detects a stuck picture; alerts when playback time has not changed for 8s, then clears after 1 min.</span
                     >
                     <input id="alert-video-frozen" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
@@ -351,7 +351,7 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
                   <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
                     <span class="font-medium">Audio silent</span>
                     <span class="text-base-content/60 text-xs"
-                      >Detects silence after audio was present; alerts after levels stay below -85 dB for 15s.</span
+                      >Detects recent silence after audio was present; alerts for up to 1 min after levels drop below -85 dB.</span
                     >
                     <input id="alert-audio-silent" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
