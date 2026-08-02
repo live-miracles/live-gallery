@@ -25,6 +25,7 @@ export type GallerySettings = {
     alertAudioClipping: boolean;
     alertAudioChannelMissing: boolean;
     alertAudioImbalance: boolean;
+    alertAudioPhaseMismatch: boolean;
 };
 
 const separator = '|';
@@ -132,6 +133,7 @@ export function deserializeBoxes(value: string | null): GalleryBox[] {
 export function settingsToParams(settings: GallerySettings): URLSearchParams {
     const params = new URLSearchParams();
     params.set('audioLevels', settings.audioLevels ? '1' : '0');
+    params.set('audioPhaseMetrics', settings.alertAudioPhaseMismatch ? '1' : '0');
     params.set('muteRotation', settings.muteRotation ? '1' : '0');
     params.set('rotationBoxes', settings.rotationBoxes);
     params.set('rotationTime', String(settings.rotationTime));

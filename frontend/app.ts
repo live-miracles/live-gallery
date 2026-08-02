@@ -36,6 +36,12 @@ type BoxElements = {
     pendingCommands: Record<string, unknown>[];
 };
 
+type DebugWindow = Window & {
+    liveGalleryDebug?: {
+        audioLevels?: Record<string, LevelPayload & { receivedAt: number }>;
+    };
+};
+
 const boxes: GalleryBox[] = [];
 const elements = new Map<string, BoxElements>();
 let mics: MediaDeviceInfo[] = [];
@@ -64,6 +70,7 @@ const alertAudioDropoutsInput = mustGet<HTMLInputElement>('alert-audio-dropouts'
 const alertAudioClippingInput = mustGet<HTMLInputElement>('alert-audio-clipping');
 const alertAudioChannelMissingInput = mustGet<HTMLInputElement>('alert-audio-channel-missing');
 const alertAudioImbalanceInput = mustGet<HTMLInputElement>('alert-audio-imbalance');
+const alertAudioPhaseMismatchInput = mustGet<HTMLInputElement>('alert-audio-phase-mismatch');
 const presetMenu = mustGet<HTMLDetailsElement>('preset-menu');
 const savedPresetList = mustGet<HTMLElement>('saved-preset-list');
 const newPresetButton = mustGet<HTMLButtonElement>('new-preset');
@@ -114,6 +121,7 @@ const settings: GallerySettings = {
     alertAudioClipping: true,
     alertAudioChannelMissing: true,
     alertAudioImbalance: true,
+    alertAudioPhaseMismatch: true,
 };
 
 const minZoomPercent = 20;
@@ -288,6 +296,7 @@ function syncSettingsFromControls(): void {
     settings.alertAudioClipping = alertAudioClippingInput.checked;
     settings.alertAudioChannelMissing = alertAudioChannelMissingInput.checked;
     settings.alertAudioImbalance = alertAudioImbalanceInput.checked;
+    settings.alertAudioPhaseMismatch = alertAudioPhaseMismatchInput.checked;
 }
 
 function syncControlsFromSettings(): void {
@@ -307,6 +316,7 @@ function syncControlsFromSettings(): void {
     alertAudioClippingInput.checked = settings.alertAudioClipping;
     alertAudioChannelMissingInput.checked = settings.alertAudioChannelMissing;
     alertAudioImbalanceInput.checked = settings.alertAudioImbalance;
+    alertAudioPhaseMismatchInput.checked = settings.alertAudioPhaseMismatch;
     syncRotationControlsVisibility();
     updateRotationBoxesValidity();
 }
@@ -380,6 +390,7 @@ function loadState(): void {
     settings.alertAudioClipping = storedSettings.alertAudioClipping ?? true;
     settings.alertAudioChannelMissing = storedSettings.alertAudioChannelMissing ?? true;
     settings.alertAudioImbalance = storedSettings.alertAudioImbalance ?? true;
+    settings.alertAudioPhaseMismatch = storedSettings.alertAudioPhaseMismatch ?? true;
     syncControlsFromSettings();
     boxes.splice(0, boxes.length, ...(sharedBoxes.length > 0 ? sharedBoxes : storedBoxes));
 
@@ -506,6 +517,13 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     webview.addEventListener('ipc-message', (event) => {
         if (event.channel === 'gallery-level') {
             const payload = event.args[0] as LevelPayload;
+            const debugWindow = window as DebugWindow;
+            debugWindow.liveGalleryDebug ??= {};
+            debugWindow.liveGalleryDebug.audioLevels ??= {};
+            debugWindow.liveGalleryDebug.audioLevels[payload.boxId] = {
+                ...payload,
+                receivedAt: Date.now(),
+            };
             drawMeter(canvas, payload);
             alertController.updateAudioHealth(payload);
         } else if (event.channel === 'gallery-health') {
@@ -1148,6 +1166,14 @@ function sendCommand(boxId: string, command: Record<string, unknown>): void {
     }
 }
 
+function syncAudioCommands(box: GalleryBox): void {
+    sendCommand(box.id, {
+        type: 'audio-levels',
+        enabled: settings.audioLevels,
+        phaseMetricsEnabled: settings.alertAudioPhaseMismatch,
+    });
+}
+
 function toggleMute(boxId: string, forceMuted?: boolean): void {
     const box = boxes.find((item) => item.id === boxId);
     const entry = elements.get(boxId);
@@ -1375,6 +1401,7 @@ function updateAllSettings(): void {
     alertController.clearDisabled();
     boxes.forEach((box) => {
         sendCommand(box.id, { type: 'auto-live', enabled: settings.autoLive });
+        syncAudioCommands(box);
     });
     saveState();
     restartRotation();
@@ -1384,6 +1411,7 @@ function saveSettingsFromDialog(): void {
     const previousJwServerHost = settings.jwServerHost;
     syncSettingsFromControls();
     alertController.clearDisabled();
+    boxes.forEach(syncAudioCommands);
     saveState();
 
     if (settings.jwServerHost !== previousJwServerHost) {

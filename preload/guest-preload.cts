@@ -2,26 +2,49 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 type GalleryCommand =
     | { type: 'mute'; muted: boolean }
-    | { type: 'audio-levels'; enabled: boolean }
+    | { type: 'audio-levels'; enabled: boolean; phaseMetricsEnabled?: boolean }
     | { type: 'auto-live'; enabled: boolean }
     | { type: 'lowest-quality' }
     | { type: 'start-screen-share'; source: DesktopSource }
     | { type: 'reset-screen-share' };
 
+type AudioSampleBuffers = {
+    left: Float32Array<ArrayBuffer>;
+    right: Float32Array<ArrayBuffer>;
+    phaseLeft: Float32Array<ArrayBuffer>;
+    phaseRight: Float32Array<ArrayBuffer>;
+};
+
 type AudioTools = {
     context: AudioContext;
+    splitter: ChannelSplitterNode;
     analyserL: AnalyserNode;
     analyserR: AnalyserNode;
+    phaseAnalyserL: AnalyserNode;
+    phaseAnalyserR: AnalyserNode;
     gain: GainNode;
-    source?: MediaElementAudioSourceNode;
+    source: MediaElementAudioSourceNode;
+    meterSource?: MediaStreamAudioSourceNode;
+    sampleBuffers: AudioSampleBuffers;
+    phaseAnalyzersConnected: boolean;
+    usingCapturedMeter: boolean;
 };
 
 type StreamAudioTools = {
     context: AudioContext;
+    splitter: ChannelSplitterNode;
     analyserL: AnalyserNode;
     analyserR: AnalyserNode;
+    phaseAnalyserL: AnalyserNode;
+    phaseAnalyserR: AnalyserNode;
     gain: GainNode;
     source: MediaStreamAudioSourceNode;
+    sampleBuffers: AudioSampleBuffers;
+    phaseAnalyzersConnected: boolean;
+};
+
+type CapturableMediaElement = HTMLMediaElement & {
+    captureStream?: () => MediaStream;
 };
 
 type DesktopSource = {
@@ -70,9 +93,12 @@ let emitLevelsStarted = false;
 let mediaHealthStarted = false;
 let autoLiveTimer = 0;
 const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
+let phaseMetricsEnabled = params.get('audioPhaseMetrics') !== '0';
 const BUFF_SIZE = 64;
+const PHASE_BUFF_SIZE = 4096;
 const SMOOTHING_TIME = 0.8;
 const RMS_GAIN = 2.0;
+const PHASE_MIN_SIGNAL_RMS = 0.0001;
 const BUFFERING_ALERT_MS = 4000;
 const REPEATED_BUFFERING_WINDOW_MS = 60000;
 const REPEATED_BUFFERING_COUNT = 5;
@@ -125,12 +151,18 @@ function createTools(media: HTMLMediaElement): AudioTools | null {
         const splitter = context.createChannelSplitter(2);
         const analyserL = context.createAnalyser();
         const analyserR = context.createAnalyser();
+        const phaseAnalyserL = context.createAnalyser();
+        const phaseAnalyserR = context.createAnalyser();
         const gain = context.createGain();
 
         analyserL.fftSize = BUFF_SIZE * 2;
         analyserR.fftSize = BUFF_SIZE * 2;
+        phaseAnalyserL.fftSize = PHASE_BUFF_SIZE * 2;
+        phaseAnalyserR.fftSize = PHASE_BUFF_SIZE * 2;
         analyserL.smoothingTimeConstant = SMOOTHING_TIME;
         analyserR.smoothingTimeConstant = SMOOTHING_TIME;
+        phaseAnalyserL.smoothingTimeConstant = 0;
+        phaseAnalyserR.smoothingTimeConstant = 0;
 
         source.connect(splitter);
         splitter.connect(analyserL, 0);
@@ -138,7 +170,22 @@ function createTools(media: HTMLMediaElement): AudioTools | null {
         source.connect(gain);
         gain.connect(context.destination);
 
-        return { context, source, analyserL, analyserR, gain };
+        const tools = {
+            context,
+            source,
+            splitter,
+            analyserL,
+            analyserR,
+            phaseAnalyserL,
+            phaseAnalyserR,
+            gain,
+            sampleBuffers: createSampleBuffers(),
+            phaseAnalyzersConnected: false,
+            usingCapturedMeter: false,
+        };
+        syncPhaseAnalyserConnections(tools);
+        attachCapturedMeterSource(tools, media);
+        return tools;
     } catch (error) {
         ipcRenderer.sendToHost('gallery-error', {
             boxId,
@@ -148,13 +195,124 @@ function createTools(media: HTMLMediaElement): AudioTools | null {
     }
 }
 
-function calculateDb(analyser: AnalyserNode): number {
-    const data = new Float32Array(analyser.fftSize);
-    analyser.getFloatTimeDomainData(data);
+function attachCapturedMeterSource(tools: AudioTools, media: HTMLMediaElement): void {
+    if (tools.usingCapturedMeter || !media.currentSrc.startsWith('file:')) {
+        return;
+    }
 
-    const sum = data.reduce((total, sample) => total + sample * sample, 0);
+    const stream = (media as CapturableMediaElement).captureStream?.();
+    if (!stream) {
+        return;
+    }
+
+    if (stream.getAudioTracks().length === 0) {
+        return;
+    }
+
+    const meterSource = tools.context.createMediaStreamSource(stream);
+    try {
+        tools.source.disconnect(tools.splitter);
+    } catch {}
+    meterSource.connect(tools.splitter);
+    tools.meterSource = meterSource;
+    tools.usingCapturedMeter = true;
+}
+
+function syncPhaseAnalyserConnections(tools = streamAudioTools ?? audioTools): void {
+    if (!tools) {
+        return;
+    }
+
+    if (phaseMetricsEnabled && !tools.phaseAnalyzersConnected) {
+        tools.splitter.connect(tools.phaseAnalyserL, 0);
+        tools.splitter.connect(tools.phaseAnalyserR, 1);
+        tools.phaseAnalyzersConnected = true;
+    } else if (!phaseMetricsEnabled && tools.phaseAnalyzersConnected) {
+        try {
+            tools.splitter.disconnect(tools.phaseAnalyserL);
+            tools.splitter.disconnect(tools.phaseAnalyserR);
+        } catch {}
+        tools.phaseAnalyzersConnected = false;
+    }
+}
+
+function createSampleBuffers(): AudioSampleBuffers {
+    return {
+        left: new Float32Array(BUFF_SIZE * 2),
+        right: new Float32Array(BUFF_SIZE * 2),
+        phaseLeft: new Float32Array(PHASE_BUFF_SIZE * 2),
+        phaseRight: new Float32Array(PHASE_BUFF_SIZE * 2),
+    };
+}
+
+function readTimeDomain(
+    analyser: AnalyserNode,
+    data: Float32Array<ArrayBuffer>,
+): Float32Array<ArrayBuffer> {
+    analyser.getFloatTimeDomainData(data);
+    return data;
+}
+
+function calculateDbFromSamples(data: Float32Array<ArrayBuffer>): number {
+    let sum = 0;
+    data.forEach((sample) => {
+        sum += sample * sample;
+    });
+
     const rms = Math.sqrt(sum / data.length) * RMS_GAIN;
     return 20 * Math.log10(rms + 1e-10);
+}
+
+function calculatePhaseMetrics(
+    left: Float32Array<ArrayBuffer>,
+    right: Float32Array<ArrayBuffer>,
+): { correlation: number; monoLossDb: number } | null {
+    const length = Math.min(left.length, right.length);
+    if (length === 0) {
+        return null;
+    }
+
+    let sumLeft = 0;
+    let sumRight = 0;
+    let sumLeftSquared = 0;
+    let sumRightSquared = 0;
+    let sumLeftRight = 0;
+    let sumMidSquared = 0;
+
+    for (let index = 0; index < length; index += 1) {
+        const leftSample = left[index] ?? 0;
+        const rightSample = right[index] ?? 0;
+        sumLeft += leftSample;
+        sumRight += rightSample;
+        sumLeftSquared += leftSample * leftSample;
+        sumRightSquared += rightSample * rightSample;
+        sumLeftRight += leftSample * rightSample;
+        sumMidSquared += ((leftSample + rightSample) / 2) ** 2;
+    }
+
+    const meanLeft = sumLeft / length;
+    const meanRight = sumRight / length;
+    const leftVariance = sumLeftSquared / length - meanLeft * meanLeft;
+    const rightVariance = sumRightSquared / length - meanRight * meanRight;
+    const covariance = sumLeftRight / length - meanLeft * meanRight;
+    const leftRms = Math.sqrt(sumLeftSquared / length);
+    const rightRms = Math.sqrt(sumRightSquared / length);
+
+    if (
+        leftVariance <= Number.EPSILON ||
+        rightVariance <= Number.EPSILON ||
+        leftRms < PHASE_MIN_SIGNAL_RMS ||
+        rightRms < PHASE_MIN_SIGNAL_RMS
+    ) {
+        return null;
+    }
+
+    const db = (value: number): number => 20 * Math.log10(value + 1e-10);
+    const correlation = covariance / Math.sqrt(leftVariance * rightVariance);
+    const monoRms = Math.sqrt(sumMidSquared / length);
+    const monoLossDb = db(monoRms) - (db(leftRms) + db(rightRms)) / 2;
+
+    return { correlation, monoLossDb };
 }
 
 function resumeContext(context: AudioContext): void {
@@ -181,10 +339,20 @@ function applyMute(): void {
 function emitLevels(): void {
     const tools = streamAudioTools ?? audioTools;
     if (tools && levelsEnabled) {
+        const leftSamples = readTimeDomain(tools.analyserL, tools.sampleBuffers.left);
+        const rightSamples = readTimeDomain(tools.analyserR, tools.sampleBuffers.right);
+        const phaseMetrics = phaseMetricsEnabled
+            ? calculatePhaseMetrics(
+                  readTimeDomain(tools.phaseAnalyserL, tools.sampleBuffers.phaseLeft),
+                  readTimeDomain(tools.phaseAnalyserR, tools.sampleBuffers.phaseRight),
+              )
+            : null;
         ipcRenderer.sendToHost('gallery-level', {
             boxId,
-            left: calculateDb(tools.analyserL),
-            right: calculateDb(tools.analyserR),
+            left: calculateDbFromSamples(leftSamples),
+            right: calculateDbFromSamples(rightSamples),
+            correlation: phaseMetrics?.correlation ?? null,
+            monoLossDb: phaseMetrics?.monoLossDb ?? null,
         });
     }
 
@@ -248,12 +416,18 @@ function connectScreenShareAudio(stream: MediaStream): void {
         const splitter = context.createChannelSplitter(2);
         const analyserL = context.createAnalyser();
         const analyserR = context.createAnalyser();
+        const phaseAnalyserL = context.createAnalyser();
+        const phaseAnalyserR = context.createAnalyser();
         const gain = context.createGain();
 
         analyserL.fftSize = BUFF_SIZE * 2;
         analyserR.fftSize = BUFF_SIZE * 2;
+        phaseAnalyserL.fftSize = PHASE_BUFF_SIZE * 2;
+        phaseAnalyserR.fftSize = PHASE_BUFF_SIZE * 2;
         analyserL.smoothingTimeConstant = SMOOTHING_TIME;
         analyserR.smoothingTimeConstant = SMOOTHING_TIME;
+        phaseAnalyserL.smoothingTimeConstant = 0;
+        phaseAnalyserR.smoothingTimeConstant = 0;
 
         source.connect(splitter);
         splitter.connect(analyserL, 0);
@@ -261,7 +435,19 @@ function connectScreenShareAudio(stream: MediaStream): void {
         source.connect(gain);
         gain.connect(context.destination);
 
-        streamAudioTools = { context, source, analyserL, analyserR, gain };
+        streamAudioTools = {
+            context,
+            source,
+            splitter,
+            analyserL,
+            analyserR,
+            phaseAnalyserL,
+            phaseAnalyserR,
+            gain,
+            sampleBuffers: createSampleBuffers(),
+            phaseAnalyzersConnected: false,
+        };
+        syncPhaseAnalyserConnections(streamAudioTools);
         applyMute();
         startLevelLoop();
     } catch (error) {
@@ -311,6 +497,7 @@ function connectMedia(media: HTMLMediaElement): void {
     if (connectedElement === media && audioTools) {
         connectedStream = stream;
         keepMediaAudibleForMeter(media);
+        attachCapturedMeterSource(audioTools, media);
         applyMute();
         return;
     }
@@ -491,6 +678,8 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
         applyMute();
     } else if (command.type === 'audio-levels') {
         levelsEnabled = command.enabled;
+        phaseMetricsEnabled = command.phaseMetricsEnabled ?? phaseMetricsEnabled;
+        syncPhaseAnalyserConnections();
     } else if (command.type === 'auto-live') {
         autoLive = command.enabled;
         startAutoLiveLoop();

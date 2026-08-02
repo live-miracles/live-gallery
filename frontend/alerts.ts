@@ -5,6 +5,8 @@ export type LevelPayload = {
     boxId: string;
     left: number;
     right: number;
+    correlation?: number | null;
+    monoLossDb?: number | null;
 };
 
 export type AlertKind =
@@ -15,7 +17,8 @@ export type AlertKind =
     | 'audio-dropouts'
     | 'audio-clipping'
     | 'audio-channel-missing'
-    | 'audio-imbalance';
+    | 'audio-imbalance'
+    | 'audio-phase-mismatch';
 
 export type HealthPayload = {
     boxId: string;
@@ -40,6 +43,10 @@ type AudioHealthState = {
     lastNotSilentAt: number;
     channelMissingSince: number;
     imbalanceSince: number;
+    phaseSamples: { bad: boolean; correlation: number; monoLossDb: number }[];
+    phaseBadCount: number;
+    phaseCorrelationSum: number;
+    phaseMonoLossSum: number;
     clippingEvents: number[];
     lastClippingNoticeAt: number;
     dropoutSamples: boolean[];
@@ -70,12 +77,19 @@ const alertBeepIntervalMs = 1000;
 const alertBeepMaxActiveMs = 30 * 1000;
 const alertBeepBaseGain = 0.27;
 const audioSignalDb = -50;
+const audioPhaseSignalDb = -75;
 const audioSilentDb = -85;
 const audioSilentAlertMs = 15000;
 const audioSilentRecentSignalMs = 60 * 1000;
 const audioChannelMissingAlertMs = 15000;
 const audioImbalanceDb = 20;
 const audioImbalanceAlertMs = 20000;
+const audioPhaseMismatchCorrelation = -0.4;
+const audioPhaseMismatchMonoLossDb = -5;
+const audioPhaseMismatchAverageCorrelation = -0.35;
+const audioPhaseMismatchBadRatio = 0.6;
+const audioPhaseMismatchWindowRounds = 150;
+const audioPhaseMismatchMinimumRounds = 150;
 const audioDropoutWindowRounds = 10;
 const audioDropoutCount = 3;
 const audioClippingDb = -1;
@@ -111,6 +125,10 @@ export function createAlertController({
             lastNotSilentAt: 0,
             channelMissingSince: 0,
             imbalanceSince: 0,
+            phaseSamples: [],
+            phaseBadCount: 0,
+            phaseCorrelationSum: 0,
+            phaseMonoLossSum: 0,
             clippingEvents: [],
             lastClippingNoticeAt: 0,
             dropoutSamples: [],
@@ -121,12 +139,24 @@ export function createAlertController({
         const isSilent = db < audioSilentDb;
         const leftSignal = payload.left > audioSignalDb;
         const rightSignal = payload.right > audioSignalDb;
+        const leftPhaseSignal = payload.left > audioPhaseSignalDb;
+        const rightPhaseSignal = payload.right > audioPhaseSignalDb;
         const leftSilent = payload.left < audioSilentDb;
         const rightSilent = payload.right < audioSilentDb;
         const oneChannelMissing = (leftSignal && rightSilent) || (rightSignal && leftSilent);
         const channelDifference = Math.abs(payload.left - payload.right);
         const isImbalanced =
             state.hasSignal && leftSignal && rightSignal && channelDifference >= audioImbalanceDb;
+        const isPhaseMismatch =
+            state.hasSignal &&
+            leftPhaseSignal &&
+            rightPhaseSignal &&
+            payload.correlation !== null &&
+            payload.correlation !== undefined &&
+            payload.monoLossDb !== null &&
+            payload.monoLossDb !== undefined &&
+            payload.correlation <= audioPhaseMismatchCorrelation &&
+            payload.monoLossDb <= audioPhaseMismatchMonoLossDb;
 
         if (isSignal) {
             state.hasSignal = true;
@@ -171,6 +201,51 @@ export function createAlertController({
             setAlert(payload.boxId, 'audio-imbalance', false);
         }
 
+        if (
+            state.hasSignal &&
+            leftPhaseSignal &&
+            rightPhaseSignal &&
+            payload.correlation !== null &&
+            payload.correlation !== undefined &&
+            payload.monoLossDb !== null &&
+            payload.monoLossDb !== undefined
+        ) {
+            state.phaseSamples.push({
+                bad: isPhaseMismatch,
+                correlation: payload.correlation,
+                monoLossDb: payload.monoLossDb,
+            });
+            state.phaseBadCount += isPhaseMismatch ? 1 : 0;
+            state.phaseCorrelationSum += payload.correlation;
+            state.phaseMonoLossSum += payload.monoLossDb;
+
+            const staleSample =
+                state.phaseSamples.length > audioPhaseMismatchWindowRounds
+                    ? state.phaseSamples.shift()
+                    : undefined;
+            if (staleSample) {
+                state.phaseBadCount -= staleSample.bad ? 1 : 0;
+                state.phaseCorrelationSum -= staleSample.correlation;
+                state.phaseMonoLossSum -= staleSample.monoLossDb;
+            }
+
+            const badRatio = state.phaseBadCount / state.phaseSamples.length;
+            const averageCorrelation = state.phaseCorrelationSum / state.phaseSamples.length;
+            const averageMonoLossDb = state.phaseMonoLossSum / state.phaseSamples.length;
+
+            setAlert(
+                payload.boxId,
+                'audio-phase-mismatch',
+                state.phaseSamples.length >= audioPhaseMismatchMinimumRounds &&
+                    badRatio >= audioPhaseMismatchBadRatio &&
+                    averageCorrelation <= audioPhaseMismatchAverageCorrelation &&
+                    averageMonoLossDb <= audioPhaseMismatchMonoLossDb,
+            );
+        } else {
+            resetPhaseSamples(state);
+            setAlert(payload.boxId, 'audio-phase-mismatch', false);
+        }
+
         const isDropout = state.hasSignal && state.wasSignal && isSilent;
         state.dropoutSamples.push(isDropout);
         state.dropoutSamples = state.dropoutSamples.slice(-audioDropoutWindowRounds);
@@ -196,6 +271,13 @@ export function createAlertController({
 
         state.wasSignal = isSignal;
         audioHealth.set(payload.boxId, state);
+    }
+
+    function resetPhaseSamples(state: AudioHealthState): void {
+        state.phaseSamples = [];
+        state.phaseBadCount = 0;
+        state.phaseCorrelationSum = 0;
+        state.phaseMonoLossSum = 0;
     }
 
     function clearBox(boxId: string): void {
@@ -404,6 +486,7 @@ export function createAlertController({
             'audio-clipping': settings.alertAudioClipping,
             'audio-channel-missing': settings.alertAudioChannelMissing,
             'audio-imbalance': settings.alertAudioImbalance,
+            'audio-phase-mismatch': settings.alertAudioPhaseMismatch,
         };
         return enabled[kind];
     }
@@ -502,6 +585,7 @@ function getAlertMessage(kind: AlertKind): string {
         'audio-clipping': 'Audio clipping',
         'audio-channel-missing': 'Audio one channel missing',
         'audio-imbalance': 'Audio imbalance',
+        'audio-phase-mismatch': 'Audio phase mismatch',
     };
     return messages[kind];
 }
