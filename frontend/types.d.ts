@@ -26,6 +26,7 @@ declare global {
             setZoom: (percent: number) => Promise<number>;
             getContentWidth: () => Promise<number>;
             getDesktopSources: () => Promise<DesktopSource[]>;
+            selectLocalMediaFile: () => Promise<string | null>;
             copyText: (text: string) => Promise<void>;
             toggleFullscreen: () => Promise<void>;
             reload: () => Promise<void>;

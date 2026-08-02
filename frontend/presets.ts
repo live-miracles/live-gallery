@@ -271,6 +271,6 @@ export function createPresetController({
 }
 
 function normalizePresetBoxType(type: string): BoxType {
-    const allowed = new Set<BoxType>(['YT', 'JW', 'VC', 'SS', 'CU']);
+    const allowed = new Set<BoxType>(['YT', 'JW', 'VC', 'SS', 'CU', 'LF']);
     return allowed.has(type as BoxType) ? (type as BoxType) : 'YT';
 }

@@ -1,4 +1,4 @@
-export type BoxType = 'YT' | 'JW' | 'VC' | 'SS' | 'CU';
+export type BoxType = 'YT' | 'JW' | 'VC' | 'SS' | 'CU' | 'LF';
 
 export type GalleryBox = {
     id: string;
@@ -162,6 +162,13 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
         return box.value;
     }
 
+    if (box.type === 'LF') {
+        return new URL(
+            `local-file-player.html?${params.toString()}`,
+            window.location.href,
+        ).toString();
+    }
+
     if (box.type === 'YT') {
         params.set('origin', youtubeEmbedOrigin);
         params.set('mute', '1');
@@ -189,6 +196,6 @@ function normalizeJwServerHost(value: string): string {
 }
 
 function normalizeType(value: string): BoxType {
-    const allowed = new Set(['YT', 'JW', 'VC', 'SS', 'CU']);
+    const allowed = new Set(['YT', 'JW', 'VC', 'SS', 'CU', 'LF']);
     return allowed.has(value) ? (value as BoxType) : 'YT';
 }

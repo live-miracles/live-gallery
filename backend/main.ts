@@ -12,7 +12,7 @@ import {
 } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import updater from 'electron-updater';
 const { autoUpdater } = updater;
@@ -145,6 +145,48 @@ ipcMain.handle('gallery:get-desktop-sources', async () => {
         displayId: source.display_id,
         thumbnail: source.thumbnail.toDataURL(),
     }));
+});
+
+ipcMain.handle('gallery:select-local-media-file', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const options: Electron.OpenDialogOptions = {
+        filters: [
+            {
+                name: 'Audio and video',
+                extensions: [
+                    'aac',
+                    'aif',
+                    'aiff',
+                    'avi',
+                    'flac',
+                    'm4a',
+                    'm4v',
+                    'mkv',
+                    'mov',
+                    'mp3',
+                    'mp4',
+                    'mpeg',
+                    'mpg',
+                    'oga',
+                    'ogg',
+                    'opus',
+                    'wav',
+                    'weba',
+                    'webm',
+                    'wmv',
+                ],
+            },
+        ],
+        properties: ['openFile'],
+    };
+    const result = win
+        ? await dialog.showOpenDialog(win, options)
+        : await dialog.showOpenDialog(options);
+    if (result.canceled || result.filePaths.length === 0) {
+        return null;
+    }
+
+    return pathToFileURL(result.filePaths[0]).toString();
 });
 
 function createWindow(): void {

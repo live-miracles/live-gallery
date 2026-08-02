@@ -442,6 +442,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
             <option value="VC">VdoCipher</option>
             <option value="SS">Screen Share</option>
             <option value="CU">Custom URL</option>
+            <option value="LF">Local File</option>
           </select>
           <div class="value-slot"></div>
           <div class="mt-1 flex justify-center gap-2">
@@ -718,10 +719,34 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
                     )
                     .join('')}
               </select>`
-            : `<input name="value" class="input input-xs" type="text" placeholder="URL or ID" value="${escapeAttribute(value)}" />`;
+            : type === 'LF'
+              ? `<div class="join w-full">
+                  <input name="value" class="input input-xs join-item min-w-0 flex-1" type="text" placeholder="Choose audio or video file" value="${escapeAttribute(value)}" readonly />
+                  <button type="button" class="browse-local-file btn btn-accent btn-xs join-item">Browse</button>
+                </div>`
+              : `<input name="value" class="input input-xs" type="text" placeholder="URL or ID" value="${escapeAttribute(value)}" />`;
     const control = form.elements.namedItem('value');
     if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) {
         control.addEventListener('input', () => clearBoxValueError(form));
+    }
+    const browseLocalFileButton = form.querySelector<HTMLButtonElement>('.browse-local-file');
+    if (type === 'LF' && browseLocalFileButton && control instanceof HTMLInputElement) {
+        browseLocalFileButton.addEventListener('click', () => {
+            window.liveGallery
+                .selectLocalMediaFile()
+                .then((fileUrl) => {
+                    if (!fileUrl) {
+                        return;
+                    }
+
+                    control.value = fileUrl;
+                    clearBoxValueError(form);
+                })
+                .catch((error) => {
+                    console.error('Could not choose local file:', error);
+                    showToast('Could not choose file', 'error');
+                });
+        });
     }
     if (type === 'YT' && control instanceof HTMLInputElement) {
         control.addEventListener('paste', (event) => {

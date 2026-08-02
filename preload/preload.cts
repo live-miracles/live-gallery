@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('liveGallery', {
         ipcRenderer.invoke('gallery:get-content-width') as Promise<number>,
     getDesktopSources: (): Promise<DesktopSource[]> =>
         ipcRenderer.invoke('gallery:get-desktop-sources') as Promise<DesktopSource[]>,
+    selectLocalMediaFile: (): Promise<string | null> =>
+        ipcRenderer.invoke('gallery:select-local-media-file') as Promise<string | null>,
     copyText: (text: string): Promise<void> =>
         ipcRenderer.invoke('gallery:copy-text', text) as Promise<void>,
     toggleFullscreen: (): Promise<void> =>
