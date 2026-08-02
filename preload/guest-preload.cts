@@ -94,8 +94,10 @@ let mediaHealthStarted = false;
 let autoLiveTimer = 0;
 const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
 let phaseMetricsEnabled = params.get('audioPhaseMetrics') !== '0';
+let lastPhaseMetricsAt = 0;
 const BUFF_SIZE = 64;
 const PHASE_BUFF_SIZE = 4096;
+const PHASE_METRICS_INTERVAL_MS = 500;
 const SMOOTHING_TIME = 0.8;
 const RMS_GAIN = 2.0;
 const PHASE_MIN_SIGNAL_RMS = 0.0001;
@@ -341,19 +343,38 @@ function emitLevels(): void {
     if (tools && levelsEnabled) {
         const leftSamples = readTimeDomain(tools.analyserL, tools.sampleBuffers.left);
         const rightSamples = readTimeDomain(tools.analyserR, tools.sampleBuffers.right);
-        const phaseMetrics = phaseMetricsEnabled
+        const now = performance.now();
+        const shouldReadPhaseMetrics =
+            phaseMetricsEnabled && now - lastPhaseMetricsAt >= PHASE_METRICS_INTERVAL_MS;
+        const phaseMetrics = shouldReadPhaseMetrics
             ? calculatePhaseMetrics(
                   readTimeDomain(tools.phaseAnalyserL, tools.sampleBuffers.phaseLeft),
                   readTimeDomain(tools.phaseAnalyserR, tools.sampleBuffers.phaseRight),
               )
             : null;
-        ipcRenderer.sendToHost('gallery-level', {
+        if (shouldReadPhaseMetrics) {
+            lastPhaseMetricsAt = now;
+        }
+        const payload = {
             boxId,
             left: calculateDbFromSamples(leftSamples),
             right: calculateDbFromSamples(rightSamples),
-            correlation: phaseMetrics?.correlation ?? null,
-            monoLossDb: phaseMetrics?.monoLossDb ?? null,
-        });
+        };
+        if (!phaseMetricsEnabled) {
+            ipcRenderer.sendToHost('gallery-level', {
+                ...payload,
+                correlation: null,
+                monoLossDb: null,
+            });
+        } else if (shouldReadPhaseMetrics) {
+            ipcRenderer.sendToHost('gallery-level', {
+                ...payload,
+                correlation: phaseMetrics?.correlation ?? null,
+                monoLossDb: phaseMetrics?.monoLossDb ?? null,
+            });
+        } else {
+            ipcRenderer.sendToHost('gallery-level', payload);
+        }
     }
 
     window.setTimeout(emitLevels, 100);

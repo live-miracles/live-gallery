@@ -88,8 +88,8 @@ const audioPhaseMismatchCorrelation = -0.4;
 const audioPhaseMismatchMonoLossDb = -5;
 const audioPhaseMismatchAverageCorrelation = -0.35;
 const audioPhaseMismatchBadRatio = 0.6;
-const audioPhaseMismatchWindowRounds = 150;
-const audioPhaseMismatchMinimumRounds = 150;
+const audioPhaseMismatchWindowRounds = 20;
+const audioPhaseMismatchMinimumRounds = 20;
 const audioDropoutWindowRounds = 10;
 const audioDropoutCount = 3;
 const audioClippingDb = -1;
@@ -157,6 +157,8 @@ export function createAlertController({
             payload.monoLossDb !== undefined &&
             payload.correlation <= audioPhaseMismatchCorrelation &&
             payload.monoLossDb <= audioPhaseMismatchMonoLossDb;
+        const hasPhaseMetricsPayload =
+            payload.correlation !== undefined || payload.monoLossDb !== undefined;
 
         if (isSignal) {
             state.hasSignal = true;
@@ -201,49 +203,51 @@ export function createAlertController({
             setAlert(payload.boxId, 'audio-imbalance', false);
         }
 
-        if (
-            state.hasSignal &&
-            leftPhaseSignal &&
-            rightPhaseSignal &&
-            payload.correlation !== null &&
-            payload.correlation !== undefined &&
-            payload.monoLossDb !== null &&
-            payload.monoLossDb !== undefined
-        ) {
-            state.phaseSamples.push({
-                bad: isPhaseMismatch,
-                correlation: payload.correlation,
-                monoLossDb: payload.monoLossDb,
-            });
-            state.phaseBadCount += isPhaseMismatch ? 1 : 0;
-            state.phaseCorrelationSum += payload.correlation;
-            state.phaseMonoLossSum += payload.monoLossDb;
+        if (hasPhaseMetricsPayload) {
+            if (
+                state.hasSignal &&
+                leftPhaseSignal &&
+                rightPhaseSignal &&
+                payload.correlation !== null &&
+                payload.correlation !== undefined &&
+                payload.monoLossDb !== null &&
+                payload.monoLossDb !== undefined
+            ) {
+                state.phaseSamples.push({
+                    bad: isPhaseMismatch,
+                    correlation: payload.correlation,
+                    monoLossDb: payload.monoLossDb,
+                });
+                state.phaseBadCount += isPhaseMismatch ? 1 : 0;
+                state.phaseCorrelationSum += payload.correlation;
+                state.phaseMonoLossSum += payload.monoLossDb;
 
-            const staleSample =
-                state.phaseSamples.length > audioPhaseMismatchWindowRounds
-                    ? state.phaseSamples.shift()
-                    : undefined;
-            if (staleSample) {
-                state.phaseBadCount -= staleSample.bad ? 1 : 0;
-                state.phaseCorrelationSum -= staleSample.correlation;
-                state.phaseMonoLossSum -= staleSample.monoLossDb;
+                const staleSample =
+                    state.phaseSamples.length > audioPhaseMismatchWindowRounds
+                        ? state.phaseSamples.shift()
+                        : undefined;
+                if (staleSample) {
+                    state.phaseBadCount -= staleSample.bad ? 1 : 0;
+                    state.phaseCorrelationSum -= staleSample.correlation;
+                    state.phaseMonoLossSum -= staleSample.monoLossDb;
+                }
+
+                const badRatio = state.phaseBadCount / state.phaseSamples.length;
+                const averageCorrelation = state.phaseCorrelationSum / state.phaseSamples.length;
+                const averageMonoLossDb = state.phaseMonoLossSum / state.phaseSamples.length;
+
+                setAlert(
+                    payload.boxId,
+                    'audio-phase-mismatch',
+                    state.phaseSamples.length >= audioPhaseMismatchMinimumRounds &&
+                        badRatio >= audioPhaseMismatchBadRatio &&
+                        averageCorrelation <= audioPhaseMismatchAverageCorrelation &&
+                        averageMonoLossDb <= audioPhaseMismatchMonoLossDb,
+                );
+            } else {
+                resetPhaseSamples(state);
+                setAlert(payload.boxId, 'audio-phase-mismatch', false);
             }
-
-            const badRatio = state.phaseBadCount / state.phaseSamples.length;
-            const averageCorrelation = state.phaseCorrelationSum / state.phaseSamples.length;
-            const averageMonoLossDb = state.phaseMonoLossSum / state.phaseSamples.length;
-
-            setAlert(
-                payload.boxId,
-                'audio-phase-mismatch',
-                state.phaseSamples.length >= audioPhaseMismatchMinimumRounds &&
-                    badRatio >= audioPhaseMismatchBadRatio &&
-                    averageCorrelation <= audioPhaseMismatchAverageCorrelation &&
-                    averageMonoLossDb <= audioPhaseMismatchMonoLossDb,
-            );
-        } else {
-            resetPhaseSamples(state);
-            setAlert(payload.boxId, 'audio-phase-mismatch', false);
         }
 
         const isDropout = state.hasSignal && state.wasSignal && isSilent;
