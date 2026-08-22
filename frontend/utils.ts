@@ -173,7 +173,6 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
 
     if (box.type === 'YT') {
         params.set('origin', youtubeEmbedOrigin);
-        params.set('mute', '1');
         params.set('playsinline', '1');
         params.set('widget_referrer', youtubeEmbedOrigin);
         return `https://www.youtube.com/embed/${extractYouTubeId(box.value)}?autoplay=1&enablejsapi=1&iv_load_policy=3&${params.toString()}`;
