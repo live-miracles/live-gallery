@@ -543,10 +543,13 @@ function watchMedia(media: HTMLMediaElement): void {
     window.addEventListener('live-gallery-media-ready', () => {
         connectMedia(media);
     });
-    window.setInterval(() => {
-        keepMediaAudibleForMeter(media);
-        connectMedia(media);
-    }, 500);
+
+    [1000, 2000, 5000].forEach((delay) => {
+        window.setTimeout(() => {
+            keepMediaAudibleForMeter(media);
+            connectMedia(media);
+        }, delay);
+    });
 }
 
 function sendVideoHealth(kind: VideoHealthAlert, active: boolean): void {
