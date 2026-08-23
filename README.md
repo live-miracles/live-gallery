@@ -8,8 +8,17 @@ custom URLs, HLS links, and screen shares.
 
 ## Download
 
-Live Gallery can be downloaded from the project's GitHub Releases page. The app
-is currently available only for Windows.
+Live Gallery is currently available for Windows. You do not need to install
+Node.js or download the source code to use it.
+
+1. Open the [Live Gallery Releases page](https://github.com/live-miracles/live-gallery/releases).
+2. Open the newest release at the top of the page.
+3. Under **Assets**, download the Windows installer (`.exe`).
+4. Open the downloaded file and follow the installation steps.
+
+After installation, start Live Gallery from the Start menu or its desktop
+shortcut. If GitHub shows the release notes collapsed, click **Assets** to see
+the installer download.
 
 ## Features
 
