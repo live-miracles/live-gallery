@@ -25,6 +25,8 @@ After installation, start Live Gallery from the Start menu or its desktop
 shortcut. If GitHub shows the release notes collapsed, click **Assets** to see
 the installer download.
 
+For support, please [open a GitHub issue](https://github.com/live-miracles/live-gallery/issues).
+
 ## Features
 
 - Monitor several live players in one desktop window.
