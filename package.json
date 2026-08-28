@@ -18,7 +18,11 @@
         "url": "git@github-2:live-miracles/live-gallery.git"
     },
     "keywords": [],
-    "author": "Live Stream Miracles",
+    "homepage": "https://github.com/live-miracles/live-gallery",
+    "author": {
+        "name": "Live Stream Miracles",
+        "email": "live-miracles@users.noreply.github.com"
+    },
     "license": "MIT",
     "type": "module",
     "build": {
@@ -74,6 +78,7 @@
             ],
             "icon": "frontend/logo.png",
             "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
+            "maintainer": "Live Stream Miracles <live-miracles@users.noreply.github.com>",
             "category": "Video"
         },
         "publish": {
