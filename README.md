@@ -18,7 +18,7 @@ install Node.js or download the source code to use it.
     - macOS Intel: `macos-x64.dmg` (or `macos-x64.zip`)
     - macOS Apple Silicon: `macos-arm64.dmg` (or `macos-arm64.zip`)
     - Linux: `linux-x64.AppImage`
-    - Debian-based Linux: `linux-debian-x64.deb`
+    - Debian-based Linux: `linux-x64.deb`
 4. Open the downloaded file and follow the installation steps.
 
 After installation, start Live Gallery from the Start menu or its desktop
