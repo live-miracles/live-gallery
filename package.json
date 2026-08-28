@@ -33,7 +33,49 @@
         ],
         "win": {
             "target": "nsis",
-            "icon": "frontend/logo-256.ico"
+            "icon": "frontend/logo-256.ico",
+            "artifactName": "${productName}-${version}-windows-${arch}.${ext}"
+        },
+        "mac": {
+            "target": [
+                {
+                    "target": "dmg",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                },
+                {
+                    "target": "zip",
+                    "arch": [
+                        "x64",
+                        "arm64"
+                    ]
+                }
+            ],
+            "icon": "frontend/logo.png",
+            "artifactName": "${productName}-${version}-macos-${arch}.${ext}",
+            "category": "public.app-category.video"
+        },
+        "linux": {
+            "target": [
+                {
+                    "target": "AppImage",
+                    "arch": [
+                        "x64"
+                    ],
+                    "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
+                },
+                {
+                    "target": "deb",
+                    "arch": [
+                        "x64"
+                    ],
+                    "artifactName": "${productName}-${version}-linux-debian-${arch}.${ext}"
+                }
+            ],
+            "icon": "frontend/logo.png",
+            "category": "Video"
         },
         "publish": {
             "provider": "github",
