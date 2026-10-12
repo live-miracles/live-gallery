@@ -12,6 +12,7 @@ export type GallerySettings = {
     audioLevels: boolean;
     monoOutput: boolean;
     boxZoom: number;
+    uiZoom: number;
     muteRotation: boolean;
     rotationBoxes: string;
     rotationTime: number;

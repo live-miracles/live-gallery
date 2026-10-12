@@ -67,17 +67,23 @@
           class="btn btn-accent btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
           title="Audio output: stereo"
           aria-label="Audio output: stereo"></button>
-        <div class="group flex h-6 items-center">
+        <div id="alert-sound-control" class="flex h-6 items-center">
           <button id="alert-sound" class="btn btn-accent btn-xs h-6 min-h-0 w-6 items-center px-0" aria-label="Mute alert beeps"></button>
-          <input
-            id="alert-volume"
-            class="range range-accent range-xs w-0 opacity-0 transition-all duration-150 group-focus-within:ml-1.5 group-focus-within:w-20 group-focus-within:opacity-100 group-hover:ml-1.5 group-hover:w-20 group-hover:opacity-100"
-            type="range"
-            min="0"
-            max="500"
-            step="10"
-            value="100"
-            aria-label="Alert volume" />
+          <div
+            id="alert-volume-popover"
+            popover="manual"
+            class="alert-volume-popover bg-base-200 border-base-content/25 text-base-content items-center gap-2 rounded-md border px-2.5 py-2 shadow-lg shadow-black/50">
+            <input
+              id="alert-volume"
+              class="range range-accent range-xs w-28"
+              type="range"
+              min="0"
+              max="500"
+              step="10"
+              value="100"
+              aria-label="Alert volume" />
+            <span id="alert-volume-value" class="w-10 text-right font-mono text-xs">100%</span>
+          </div>
         </div>
         <button
           id="settings-button"
@@ -302,6 +308,25 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
               </span>
               <input id="jw-server-host" class="input input-bordered w-full" type="url" placeholder="https://my-server.com/Player/" />
             </label>
+            <section class="grid gap-3">
+              <h3 class="font-semibold">Accessibility</h3>
+              <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
+                <span class="font-medium">Interface size</span>
+                <span class="text-base-content/60 text-xs"
+                  >Scales the whole window: toolbar, buttons, dialogs and boxes. Box size (Ctrl + / Ctrl -) still adjusts boxes on top of this.</span
+                >
+                <select id="ui-zoom" class="select select-bordered select-sm w-24">
+                  <option value="75">75%</option>
+                  <option value="90">90%</option>
+                  <option value="100">100%</option>
+                  <option value="110">110%</option>
+                  <option value="125">125%</option>
+                  <option value="150">150%</option>
+                  <option value="175">175%</option>
+                  <option value="200">200%</option>
+                </select>
+              </label>
+            </section>
             <section class="grid gap-3">
               <h3 class="font-semibold">Alerts</h3>
               <div class="grid gap-4">

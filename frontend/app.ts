@@ -55,6 +55,8 @@ let rotationTimer = 0;
 let clipboardToastTimer = 0;
 let draggedId = '';
 let micsPromise: Promise<void> | null = null;
+let alertVolumeCloseTimer = 0;
+let alertVolumeReturningFocus = false;
 const meterClipHoldUntil = new Map<string, { left: number; right: number }>();
 type MeterState = {
     canvas: HTMLCanvasElement;
@@ -78,6 +80,9 @@ const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
 const alertSoundButton = mustGet<HTMLButtonElement>('alert-sound');
 const alertVolumeInput = mustGet<HTMLInputElement>('alert-volume');
+const alertVolumeValue = mustGet<HTMLElement>('alert-volume-value');
+const alertVolumePopover = mustGet<HTMLElement>('alert-volume-popover');
+const alertSoundControl = mustGet<HTMLElement>('alert-sound-control');
 const audioOutputButton = mustGet<HTMLButtonElement>('audio-output');
 const alertVideoBufferingInput = mustGet<HTMLInputElement>('alert-video-buffering');
 const alertVideoRepeatedBufferingInput = mustGet<HTMLInputElement>(
@@ -122,11 +127,13 @@ const alertsList = mustGet<HTMLElement>('alerts-list');
 const settingsDialog = mustGet<HTMLDialogElement>('settings-dialog');
 const settingsForm = mustGet<HTMLFormElement>('settings-form');
 const jwServerHostInput = mustGet<HTMLInputElement>('jw-server-host');
+const uiZoomInput = mustGet<HTMLSelectElement>('ui-zoom');
 
 const settings: GallerySettings = {
     audioLevels: true,
     monoOutput: false,
     boxZoom: 100,
+    uiZoom: 100,
     muteRotation: false,
     rotationBoxes: '',
     rotationTime: 5,
@@ -146,7 +153,23 @@ const settings: GallerySettings = {
 };
 
 const minBoxZoomPercent = 50;
-const maxBoxZoomPercent = 300;
+const uiZoomOptions = [75, 90, 100, 110, 125, 150, 175, 200];
+const maxBoxZoomPercent = 1000;
+// Zoom steps: 5% below 100%, then a tenth of each hundred (10% from 100%, 20% from
+// 200%, 30% from 300%, ...), always landing exactly on every hundred.
+const boxZoomStops = (() => {
+    const stops: number[] = [];
+    for (let value = minBoxZoomPercent; value < 100; value += 5) {
+        stops.push(value);
+    }
+    for (let band = 100; band < maxBoxZoomPercent; band += 100) {
+        for (let value = band; value < band + 100; value += band / 10) {
+            stops.push(value);
+        }
+    }
+    stops.push(maxBoxZoomPercent);
+    return stops;
+})();
 
 const alertController = createAlertController({
     settings,
@@ -196,6 +219,12 @@ function applyBoxZoom(): void {
     zoomInButton.disabled = settings.boxZoom >= maxBoxZoomPercent;
 }
 
+function applyUiZoom(): void {
+    window.liveGallery.setUiZoom(settings.uiZoom).catch((error: unknown) => {
+        console.error('Could not set interface size:', error);
+    });
+}
+
 function setBoxZoom(percent: number): void {
     const nextZoom = clampBoxZoom(percent);
     if (nextZoom === settings.boxZoom) {
@@ -227,12 +256,13 @@ function initZoomControls(): void {
 
 function changeBoxZoomStep(direction: -1 | 1): void {
     const current = settings.boxZoom;
-    const step = direction > 0 ? (current >= 100 ? 10 : 5) : current > 100 ? 10 : 5;
     const nextZoom =
         direction > 0
-            ? Math.floor(current / step) * step + step
-            : Math.ceil(current / step) * step - step;
-    setBoxZoom(nextZoom);
+            ? boxZoomStops.find((stop) => stop > current)
+            : boxZoomStops.filter((stop) => stop < current).pop();
+    if (nextZoom !== undefined) {
+        setBoxZoom(nextZoom);
+    }
 }
 
 function initWindowControls(): void {
@@ -314,6 +344,7 @@ function syncSettingsFromControls(): void {
     settings.rotationTime = Math.max(1, Number(rotationTimeInput.value) || 1);
     settings.autoLive = autoLiveInput.checked;
     settings.jwServerHost = jwServerHostInput.value.trim();
+    settings.uiZoom = Number(uiZoomInput.value) || 100;
     settings.alertVideoBuffering = alertVideoBufferingInput.checked;
     settings.alertVideoRepeatedBuffering = alertVideoRepeatedBufferingInput.checked;
     settings.alertVideoFrozen = alertVideoFrozenInput.checked;
@@ -331,6 +362,7 @@ function syncControlsFromSettings(): void {
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
     jwServerHostInput.value = settings.jwServerHost;
+    uiZoomInput.value = String(settings.uiZoom);
     syncAlertSoundControl();
     syncAudioOutputButton();
     alertVideoBufferingInput.checked = settings.alertVideoBuffering;
@@ -407,6 +439,9 @@ function loadState(): void {
     settings.jwServerHost = String(settings.jwServerHost ?? '');
     settings.monoOutput = storedSettings.monoOutput ?? false;
     settings.boxZoom = clampBoxZoom(storedSettings.boxZoom ?? 100);
+    settings.uiZoom = uiZoomOptions.includes(storedSettings.uiZoom ?? 100)
+        ? (storedSettings.uiZoom ?? 100)
+        : 100;
     settings.alertSound = storedSettings.alertSound ?? true;
     settings.alertVolume = clampAlertVolume(storedSettings.alertVolume ?? 100);
     settings.alertVideoBuffering = storedSettings.alertVideoBuffering ?? true;
@@ -447,7 +482,31 @@ function syncAlertSoundControl(): void {
     alertSoundButton.title = label;
     alertSoundButton.setAttribute('aria-label', label);
     alertVolumeInput.value = String(volume);
-    alertVolumeInput.title = `Alert volume: ${volume}%`;
+    alertVolumeValue.textContent = `${volume}%`;
+}
+
+function openAlertVolume(): void {
+    window.clearTimeout(alertVolumeCloseTimer);
+    if (!alertVolumePopover.matches(':popover-open')) {
+        alertVolumePopover.showPopover();
+    }
+}
+
+function closeAlertVolume(): void {
+    window.clearTimeout(alertVolumeCloseTimer);
+    if (alertVolumePopover.matches(':popover-open')) {
+        alertVolumePopover.hidePopover();
+    }
+}
+
+// The short delay lets the pointer cross the gap from the bell to the popover.
+function closeAlertVolumeSoon(): void {
+    window.clearTimeout(alertVolumeCloseTimer);
+    alertVolumeCloseTimer = window.setTimeout(() => {
+        if (!alertSoundControl.querySelector(':focus-visible')) {
+            closeAlertVolume();
+        }
+    }, 250);
 }
 
 function toggleAlertSound(): void {
@@ -1549,6 +1608,7 @@ function saveSettingsFromDialog(): void {
     syncSettingsFromControls();
     alertController.clearDisabled();
     boxes.forEach(syncAudioCommands);
+    applyUiZoom();
     saveState();
 
     if (settings.jwServerHost !== previousJwServerHost) {
@@ -1614,6 +1674,30 @@ document.addEventListener('keydown', (event) => {
 });
 
 alertSoundButton.addEventListener('click', toggleAlertSound);
+alertSoundControl.addEventListener('pointerenter', openAlertVolume);
+alertSoundControl.addEventListener('pointerleave', closeAlertVolumeSoon);
+alertSoundControl.addEventListener('focusin', () => {
+    if (alertVolumeReturningFocus) {
+        alertVolumeReturningFocus = false;
+        return;
+    }
+    if (alertSoundControl.querySelector(':focus-visible')) {
+        openAlertVolume();
+    }
+});
+alertSoundControl.addEventListener('focusout', (event) => {
+    if (!alertSoundControl.contains(event.relatedTarget as Node | null)) {
+        closeAlertVolume();
+    }
+});
+alertSoundControl.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeAlertVolume();
+        // Returning focus to the bell must not reopen the popover.
+        alertVolumeReturningFocus = document.activeElement !== alertSoundButton;
+        alertSoundButton.focus();
+    }
+});
 alertVolumeInput.addEventListener('input', setAlertVolumeFromSlider);
 alertVolumeInput.addEventListener('change', () => {
     saveState();
@@ -1635,5 +1719,6 @@ loadMics().catch((error) => {
 });
 loadState();
 applyBoxZoom();
+applyUiZoom();
 render();
 presetController.refresh();

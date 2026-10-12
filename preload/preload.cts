@@ -4,6 +4,8 @@ import { pathToFileURL } from 'node:url';
 
 contextBridge.exposeInMainWorld('liveGallery', {
     guestPreloadUrl: pathToFileURL(path.join(__dirname, 'guest-preload.cjs')).toString(),
+    setUiZoom: (percent: number): Promise<number> =>
+        ipcRenderer.invoke('gallery:set-ui-zoom', percent) as Promise<number>,
     getContentWidth: (): Promise<number> =>
         ipcRenderer.invoke('gallery:get-content-width') as Promise<number>,
     getDesktopSources: (): Promise<DesktopSource[]> =>

@@ -25,6 +25,25 @@
     zoom: 1;
 }
 
+/* The volume popover sits in the top layer (the toolbar clips overflow) and is
+   anchored under the bell so opening it never shifts the toolbar. */
+#alert-sound {
+    anchor-name: --alert-sound;
+}
+
+.alert-volume-popover {
+    position-anchor: --alert-sound;
+    inset: auto;
+    top: anchor(bottom);
+    left: anchor(center);
+    translate: -50% 0;
+    margin: 6px 0 0;
+}
+
+.alert-volume-popover:popover-open {
+    display: flex;
+}
+
 .box-tool-btn {
     @apply mx-1 h-[22px] min-h-0 w-5 px-0 text-xs leading-none;
 }

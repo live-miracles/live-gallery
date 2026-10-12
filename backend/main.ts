@@ -21,12 +21,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 const youtubeEmbedOrigin = 'https://live-gallery.local';
 const presetsFileName = 'presets.json';
+const minUiZoomPercent = 50;
+const maxUiZoomPercent = 200;
 const youtubeIdPattern = /^[a-zA-Z0-9_-]{11}$/;
 const shortcutWebContents = new WeakSet<Electron.WebContents>();
 let updatesAreConfigured = false;
 
 configureChromiumSwitches();
 
+ipcMain.handle('gallery:set-ui-zoom', (event, percent: number) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const clamped = Math.max(
+        minUiZoomPercent,
+        Math.min(maxUiZoomPercent, Math.round(percent) || 100),
+    );
+    win?.webContents.setZoomFactor(clamped / 100);
+    return clamped;
+});
 ipcMain.handle('gallery:get-content-width', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     return win?.getContentBounds().width ?? 0;
@@ -209,11 +220,9 @@ function createWindow(): void {
     installAppShortcuts(win, win.webContents);
 
     win.loadFile(path.join(rootDir, 'frontend', 'index.html'));
-    // Zoom only resizes the video boxes (handled in the page), so the window itself
-    // always stays at 100% and the toolbar keeps its size.
-    win.webContents.on('did-finish-load', () => {
-        win.webContents.setZoomFactor(1);
-    });
+    // Zoom shortcuts resize the video boxes (handled in the page). The window's own zoom
+    // is the Interface size setting, which the page applies on startup via
+    // gallery:set-ui-zoom.
     setupUpdates(win);
 
     if (isSmokeTest) {
