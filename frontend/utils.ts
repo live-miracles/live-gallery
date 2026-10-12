@@ -194,6 +194,34 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
     return box.value;
 }
 
+// The same URL the box loads, minus the gallery's own parameters. Boxes that play
+// through one of the app's built-in player pages copy their media URL instead, and
+// screen shares have no URL.
+export function getSourceUrl(box: GalleryBox, settings: GallerySettings): string {
+    const playerUrl = getPlayerUrl(box, settings);
+    if (!playerUrl || box.type === 'SS') {
+        return '';
+    }
+
+    if (playerUrl === box.value) {
+        return playerUrl;
+    }
+
+    const appDirectory = new URL('.', window.location.href).href;
+    if (playerUrl.startsWith(appDirectory)) {
+        return box.value.trim();
+    }
+
+    const url = new URL(playerUrl);
+    const internalParams = [...settingsToParams(settings).keys(), 'boxId', 'value'];
+    if (box.type === 'YT') {
+        // These point YouTube at the app's placeholder origin.
+        internalParams.push('origin', 'widget_referrer');
+    }
+    internalParams.forEach((name) => url.searchParams.delete(name));
+    return url.toString();
+}
+
 function normalizeJwServerHost(value: string): string {
     const host = value.trim() || 'https://your.website.com/Player/Index/';
     return host.endsWith('/') ? host : `${host}/`;

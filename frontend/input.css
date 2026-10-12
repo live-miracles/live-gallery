@@ -15,6 +15,16 @@
     --color-neutral: #030303;
 }
 
+/* Below 100% the header shrinks with the box so every button still fits; above 100%
+   it stays at normal size. */
+.box-header {
+    zoom: min(1, var(--box-scale));
+}
+
+.box-expanded > .box-header {
+    zoom: 1;
+}
+
 .box-tool-btn {
     @apply mx-1 h-[22px] min-h-0 w-5 px-0 text-xs leading-none;
 }

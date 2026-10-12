@@ -5,9 +5,15 @@ import {
     deserializeBoxes,
     extractYouTubeId,
     getPlayerUrl,
+    getSourceUrl,
     makeBox,
 } from './utils.js';
-import { createAlertController, type HealthPayload, type LevelPayload } from './alerts.js';
+import {
+    audioClippingDb,
+    createAlertController,
+    type HealthPayload,
+    type LevelPayload,
+} from './alerts.js';
 import { icon } from './icons.js';
 import { createPresetController } from './presets.js';
 
@@ -70,9 +76,9 @@ const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
 const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
-const alertSoundInput = mustGet<HTMLInputElement>('alert-sound');
+const alertSoundButton = mustGet<HTMLButtonElement>('alert-sound');
 const alertVolumeInput = mustGet<HTMLInputElement>('alert-volume');
-const alertVolumeValue = mustGet<HTMLElement>('alert-volume-value');
+const audioOutputButton = mustGet<HTMLButtonElement>('audio-output');
 const alertVideoBufferingInput = mustGet<HTMLInputElement>('alert-video-buffering');
 const alertVideoRepeatedBufferingInput = mustGet<HTMLInputElement>(
     'alert-video-repeated-buffering',
@@ -116,7 +122,6 @@ const alertsList = mustGet<HTMLElement>('alerts-list');
 const settingsDialog = mustGet<HTMLDialogElement>('settings-dialog');
 const settingsForm = mustGet<HTMLFormElement>('settings-form');
 const jwServerHostInput = mustGet<HTMLInputElement>('jw-server-host');
-const monoOutputInput = mustGet<HTMLInputElement>('mono-output');
 
 const settings: GallerySettings = {
     audioLevels: true,
@@ -309,9 +314,6 @@ function syncSettingsFromControls(): void {
     settings.rotationTime = Math.max(1, Number(rotationTimeInput.value) || 1);
     settings.autoLive = autoLiveInput.checked;
     settings.jwServerHost = jwServerHostInput.value.trim();
-    settings.monoOutput = monoOutputInput.checked;
-    settings.alertSound = alertSoundInput.checked;
-    settings.alertVolume = clampAlertVolume(Number(alertVolumeInput.value));
     settings.alertVideoBuffering = alertVideoBufferingInput.checked;
     settings.alertVideoRepeatedBuffering = alertVideoRepeatedBufferingInput.checked;
     settings.alertVideoFrozen = alertVideoFrozenInput.checked;
@@ -329,10 +331,8 @@ function syncControlsFromSettings(): void {
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
     jwServerHostInput.value = settings.jwServerHost;
-    monoOutputInput.checked = settings.monoOutput;
-    alertSoundInput.checked = settings.alertSound;
-    alertVolumeInput.value = String(settings.alertVolume);
-    updateAlertVolumeValue();
+    syncAlertSoundControl();
+    syncAudioOutputButton();
     alertVideoBufferingInput.checked = settings.alertVideoBuffering;
     alertVideoRepeatedBufferingInput.checked = settings.alertVideoRepeatedBuffering;
     alertVideoFrozenInput.checked = settings.alertVideoFrozen;
@@ -434,8 +434,53 @@ function clampAlertVolume(value: number): number {
     return Math.max(0, Math.min(500, Math.round(value)));
 }
 
-function updateAlertVolumeValue(): void {
-    alertVolumeValue.textContent = `${clampAlertVolume(Number(alertVolumeInput.value))}%`;
+// Works like a video player's volume control: the bell mutes and unmutes, the slider
+// sets the level, and sliding to 0 mutes. Muting keeps the last volume.
+function syncAlertSoundControl(): void {
+    const audible = settings.alertSound && settings.alertVolume > 0;
+    const volume = settings.alertSound ? settings.alertVolume : 0;
+    alertSoundButton.innerHTML = icon(audible ? 'bell' : 'bell-off');
+    alertSoundButton.classList.toggle('btn-outline', !audible);
+    const label = audible
+        ? `Alert beeps at ${volume}% (click to mute)`
+        : 'Alert beeps muted (click to unmute)';
+    alertSoundButton.title = label;
+    alertSoundButton.setAttribute('aria-label', label);
+    alertVolumeInput.value = String(volume);
+    alertVolumeInput.title = `Alert volume: ${volume}%`;
+}
+
+function toggleAlertSound(): void {
+    const audible = settings.alertSound && settings.alertVolume > 0;
+    settings.alertSound = !audible;
+    if (settings.alertSound && settings.alertVolume === 0) {
+        settings.alertVolume = 100;
+    }
+    syncAlertSoundControl();
+    saveState();
+    alertController.render();
+}
+
+function setAlertVolumeFromSlider(): void {
+    settings.alertVolume = clampAlertVolume(Number(alertVolumeInput.value));
+    settings.alertSound = settings.alertVolume > 0;
+    syncAlertSoundControl();
+}
+
+function syncAudioOutputButton(): void {
+    const mode = settings.monoOutput ? 'mono' : 'stereo';
+    audioOutputButton.innerHTML = icon(settings.monoOutput ? 'speaker-mono' : 'speaker-stereo');
+    audioOutputButton.classList.toggle('btn-outline', !settings.monoOutput);
+    const label = `Audio output: ${mode} (click for ${settings.monoOutput ? 'stereo' : 'mono'})`;
+    audioOutputButton.title = label;
+    audioOutputButton.setAttribute('aria-label', label);
+}
+
+function toggleMonoOutput(): void {
+    settings.monoOutput = !settings.monoOutput;
+    syncAudioOutputButton();
+    boxes.forEach(syncAudioCommands);
+    saveState();
 }
 
 function render(): void {
@@ -470,6 +515,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
           <button class="solo btn btn-accent btn-xs btn-soft box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
           <button class="reload btn btn-accent btn-xs btn-soft box-tool-btn" title="Reload this box" aria-label="Reload this box">${icon('refresh')}</button>
+          <button class="copy-url btn btn-accent btn-xs btn-soft box-tool-btn" title="Copy this box's URL" aria-label="Copy this box's URL">${icon('copy')}</button>
           <button class="edit btn btn-accent btn-xs btn-soft box-tool-btn" title="Edit this box" aria-label="Edit this box">${icon('pencil')}</button>
           <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
           <button class="expand btn btn-accent btn-xs btn-soft box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
@@ -599,6 +645,9 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     root.querySelector<HTMLButtonElement>('.reload')!.addEventListener('click', () =>
         loadWebview(box, true),
     );
+    root.querySelector<HTMLButtonElement>('.copy-url')!.addEventListener('click', () => {
+        copyBoxUrl(box);
+    });
     root.querySelector<HTMLButtonElement>('.remove')!.addEventListener('click', () =>
         removeBox(box.id),
     );
@@ -1236,6 +1285,22 @@ function disableRotationAudio(): void {
     updateAllSettings();
 }
 
+function copyBoxUrl(box: GalleryBox): void {
+    const url = getSourceUrl(box, settings);
+    if (!url) {
+        showToast(box.type === 'SS' ? 'Screen share has no URL' : 'No URL to copy', 'error');
+        return;
+    }
+
+    window.liveGallery
+        .copyText(url)
+        .then(() => showToast('URL copied'))
+        .catch((error: unknown) => {
+            console.error('Could not copy URL:', error);
+            showToast('Could not copy URL', 'error');
+        });
+}
+
 function removeBox(boxId: string): void {
     const index = boxes.findIndex((box) => box.id === boxId);
     if (index >= 0) {
@@ -1350,10 +1415,10 @@ function updateMeterClipHold(payload: LevelPayload): void {
     const hold = meterClipHoldUntil.get(payload.boxId) ?? { left: 0, right: 0 };
     const holdUntil = now + 2000;
 
-    if (payload.left >= -1) {
+    if (payload.left >= audioClippingDb) {
         hold.left = holdUntil;
     }
-    if (payload.right >= -1) {
+    if (payload.right >= audioClippingDb) {
         hold.right = holdUntil;
     }
 
@@ -1548,13 +1613,13 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-alertSoundInput.addEventListener('change', () => {
-    settings.alertSound = alertSoundInput.checked;
+alertSoundButton.addEventListener('click', toggleAlertSound);
+alertVolumeInput.addEventListener('input', setAlertVolumeFromSlider);
+alertVolumeInput.addEventListener('change', () => {
     saveState();
     alertController.render();
 });
-
-alertVolumeInput.addEventListener('input', updateAlertVolumeValue);
+audioOutputButton.addEventListener('click', toggleMonoOutput);
 
 [muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
     input.addEventListener('change', updateAllSettings);

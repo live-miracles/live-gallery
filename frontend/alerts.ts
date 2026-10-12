@@ -92,7 +92,9 @@ const audioPhaseMismatchWindowRounds = 20;
 const audioPhaseMismatchMinimumRounds = 20;
 const audioDropoutWindowRounds = 10;
 const audioDropoutCount = 3;
-const audioClippingDb = -1;
+// Clipping means reaching digital full scale. Mastered music routinely peaks between
+// -1 and 0 dBFS, so a lower threshold flags normal loud audio as clipping.
+export const audioClippingDb = 0;
 const audioClippingWindowMs = 7000;
 const audioClippingCooldownMs = 1000;
 const audioClippingCount = 5;

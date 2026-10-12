@@ -62,39 +62,23 @@
           <span class="swap-off badge badge-outline h-6 px-2">YouTube Live</span>
         </label>
         <button id="lowest-quality" class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center">Low Quality</button>
-        <label class="swap cursor-pointer" title="Beep on new alerts" aria-label="Beep on new alerts">
-          <input id="alert-sound" type="checkbox" checked />
-          <span class="swap-on btn btn-accent btn-xs min-h-0 h-6 w-6 px-0">
-            <svg
-              aria-hidden="true"
-              class="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.25"
-              stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
-              <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-            </svg>
-          </span>
-          <span class="swap-off btn btn-accent btn-xs btn-outline min-h-0 h-6 w-6 px-0">
-            <svg
-              aria-hidden="true"
-              class="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.25"
-              stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
-              <path d="M17 17H3c0-2 3-2 3-9a6 6 0 0 1 .4-2.2" />
-              <path d="M11 3.1A6 6 0 0 1 18 8c0 1.7.2 3 .5 4" />
-              <path d="M2 2l20 20" />
-            </svg>
-          </span>
-        </label>
+        <button
+          id="audio-output"
+          class="btn btn-accent btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
+          title="Audio output: stereo"
+          aria-label="Audio output: stereo"></button>
+        <div class="group flex h-6 items-center">
+          <button id="alert-sound" class="btn btn-accent btn-xs h-6 min-h-0 w-6 items-center px-0" aria-label="Mute alert beeps"></button>
+          <input
+            id="alert-volume"
+            class="range range-accent range-xs w-0 opacity-0 transition-all duration-150 group-focus-within:ml-1.5 group-focus-within:w-20 group-focus-within:opacity-100 group-hover:ml-1.5 group-hover:w-20 group-hover:opacity-100"
+            type="range"
+            min="0"
+            max="500"
+            step="10"
+            value="100"
+            aria-label="Alert volume" />
+        </div>
         <button
           id="settings-button"
           class="btn btn-accent btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
@@ -319,22 +303,7 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
               <input id="jw-server-host" class="input input-bordered w-full" type="url" placeholder="https://my-server.com/Player/" />
             </label>
             <section class="grid gap-3">
-              <h3 class="font-semibold">Audio output</h3>
-              <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                <span class="font-medium">Mono output</span>
-                <span class="text-base-content/60 text-xs"
-                  >Mixes left and right channels together so both speakers play the full mix. Use with a single or mono speaker.</span
-                >
-                <input id="mono-output" class="toggle toggle-accent" type="checkbox" />
-              </label>
-            </section>
-            <section class="grid gap-3">
               <h3 class="font-semibold">Alerts</h3>
-              <label class="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                <span>Alert volume</span>
-                <input id="alert-volume" class="range range-accent range-sm w-full" type="range" min="0" max="500" step="10" value="100" />
-                <span id="alert-volume-value" class="badge badge-neutral badge-sm w-14 justify-center">100%</span>
-              </label>
               <div class="grid gap-4">
                 <div class="border-base-content/15 grid content-start gap-2 border-t pt-3">
                   <h4 class="text-base-content/70 text-xs font-semibold uppercase">Video</h4>
@@ -377,7 +346,7 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
                   <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
                     <span class="font-medium">Audio clipping</span>
                     <span class="text-base-content/60 text-xs"
-                      >Detects audio peaks that are too hot; alerts after 5 peaks at -1 dB or above within 7s.</span
+                      >Detects audio hitting full scale; alerts after 5 peaks at 0 dBFS or above within 7s.</span
                     >
                     <input id="alert-audio-clipping" class="toggle toggle-accent" type="checkbox" checked />
                   </label>
