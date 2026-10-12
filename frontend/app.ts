@@ -50,6 +50,20 @@ let clipboardToastTimer = 0;
 let draggedId = '';
 let micsPromise: Promise<void> | null = null;
 const meterClipHoldUntil = new Map<string, { left: number; right: number }>();
+type MeterState = {
+    canvas: HTMLCanvasElement;
+    latest: { left: number; right: number };
+    shown: { left: number; right: number };
+    dirty: boolean;
+};
+const meterStates = new Map<string, MeterState>();
+let meterFrame = 0;
+let lastMeterFrameAt = 0;
+const meterFloorDb = -91;
+// Meters jump up instantly and fall back at this rate, like a broadcast peak meter.
+const meterReleaseDbPerSecond = 20;
+// One shared redraw loop for all boxes, capped at ~30 fps.
+const meterFrameMs = 33;
 
 const gallery = mustGet<HTMLElement>('gallery');
 const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
@@ -427,6 +441,8 @@ function updateAlertVolumeValue(): void {
 function render(): void {
     gallery.replaceChildren();
     elements.clear();
+    meterStates.clear();
+    meterClipHoldUntil.clear();
     boxes.forEach((box, index) => renderBox(box, index));
     alertController.resetAll();
     saveState();
@@ -537,7 +553,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
                 ...payload,
                 receivedAt: Date.now(),
             };
-            drawMeter(canvas, payload);
+            updateMeter(canvas, payload);
             alertController.updateAudioHealth(payload);
         } else if (event.channel === 'gallery-health') {
             alertController.updateFromHealth(event.args[0] as HealthPayload);
@@ -1227,6 +1243,7 @@ function removeBox(boxId: string): void {
         elements.get(removed.id)?.root.remove();
         elements.delete(removed.id);
         meterClipHoldUntil.delete(removed.id);
+        meterStates.delete(removed.id);
         alertController.clearBox(removed.id);
 
         if (boxes.length === 0) {
@@ -1260,23 +1277,72 @@ function moveBox(sourceId: string, targetId: string): void {
     restartRotation();
 }
 
-function drawMeter(canvas: HTMLCanvasElement, payload: LevelPayload): void {
+function updateMeter(canvas: HTMLCanvasElement, payload: LevelPayload): void {
     if (!settings.audioLevels) {
         canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
         meterClipHoldUntil.delete(payload.boxId);
+        meterStates.delete(payload.boxId);
         return;
     }
 
-    const context = canvas.getContext('2d');
+    updateMeterClipHold(payload);
+    const state = meterStates.get(payload.boxId) ?? {
+        canvas,
+        latest: { left: meterFloorDb, right: meterFloorDb },
+        shown: { left: meterFloorDb, right: meterFloorDb },
+        dirty: true,
+    };
+    state.canvas = canvas;
+    state.latest = { left: payload.left, right: payload.right };
+    state.shown.left = Math.max(state.shown.left, payload.left);
+    state.shown.right = Math.max(state.shown.right, payload.right);
+    state.dirty = true;
+    meterStates.set(payload.boxId, state);
+
+    if (!meterFrame) {
+        lastMeterFrameAt = performance.now();
+        meterFrame = requestAnimationFrame(stepMeters);
+    }
+}
+
+function stepMeters(now: number): void {
+    const elapsed = now - lastMeterFrameAt;
+    if (elapsed < meterFrameMs) {
+        meterFrame = requestAnimationFrame(stepMeters);
+        return;
+    }
+
+    lastMeterFrameAt = now;
+    const fall = (Math.min(elapsed, 250) / 1000) * meterReleaseDbPerSecond;
+    let falling = false;
+
+    meterStates.forEach((state, boxId) => {
+        const left = Math.max(state.latest.left, state.shown.left - fall);
+        const right = Math.max(state.latest.right, state.shown.right - fall);
+        if (left !== state.shown.left || right !== state.shown.right) {
+            state.shown = { left, right };
+            state.dirty = true;
+        }
+        if (state.dirty) {
+            drawMeter(state, boxId);
+            state.dirty = false;
+        }
+        falling ||= left > state.latest.left || right > state.latest.right;
+    });
+
+    meterFrame = falling ? requestAnimationFrame(stepMeters) : 0;
+}
+
+function drawMeter(state: MeterState, boxId: string): void {
+    const context = state.canvas.getContext('2d');
     if (!context) {
         return;
     }
 
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    updateMeterClipHold(payload);
-    drawChannel(context, 0, payload.left);
-    drawChannel(context, canvas.width / 2, payload.right);
-    drawClipHoldTiles(context, payload.boxId);
+    context.clearRect(0, 0, state.canvas.width, state.canvas.height);
+    drawChannel(context, 0, state.shown.left);
+    drawChannel(context, state.canvas.width / 2, state.shown.right);
+    drawClipHoldTiles(context, boxId);
 }
 
 function updateMeterClipHold(payload: LevelPayload): void {
