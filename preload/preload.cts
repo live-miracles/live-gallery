@@ -4,9 +4,6 @@ import { pathToFileURL } from 'node:url';
 
 contextBridge.exposeInMainWorld('liveGallery', {
     guestPreloadUrl: pathToFileURL(path.join(__dirname, 'guest-preload.cjs')).toString(),
-    getZoom: (): Promise<number> => ipcRenderer.invoke('gallery:get-zoom') as Promise<number>,
-    setZoom: (percent: number): Promise<number> =>
-        ipcRenderer.invoke('gallery:set-zoom', percent) as Promise<number>,
     getContentWidth: (): Promise<number> =>
         ipcRenderer.invoke('gallery:get-content-width') as Promise<number>,
     getDesktopSources: (): Promise<DesktopSource[]> =>
@@ -32,12 +29,12 @@ contextBridge.exposeInMainWorld('liveGallery', {
         ipcRenderer.invoke('gallery:rename-preset', oldName, newName) as Promise<SavedPreset[]>,
     deletePreset: (name: string): Promise<SavedPreset[]> =>
         ipcRenderer.invoke('gallery:delete-preset', name) as Promise<SavedPreset[]>,
-    onZoomChanged: (callback: (percent: number) => void): (() => void) => {
-        const listener = (_event: Electron.IpcRendererEvent, percent: number): void => {
-            callback(percent);
+    onBoxZoomStep: (callback: (direction: -1 | 0 | 1) => void): (() => void) => {
+        const listener = (_event: Electron.IpcRendererEvent, direction: -1 | 0 | 1): void => {
+            callback(direction);
         };
-        ipcRenderer.on('gallery:zoom-changed', listener);
-        return () => ipcRenderer.removeListener('gallery:zoom-changed', listener);
+        ipcRenderer.on('gallery:box-zoom-step', listener);
+        return () => ipcRenderer.removeListener('gallery:box-zoom-step', listener);
     },
     onUpdateAvailable: (callback: () => void): (() => void) => {
         const listener = (): void => callback();

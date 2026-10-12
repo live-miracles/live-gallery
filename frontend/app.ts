@@ -49,7 +49,6 @@ let rotationTimer = 0;
 let clipboardToastTimer = 0;
 let draggedId = '';
 let micsPromise: Promise<void> | null = null;
-let currentZoomPercent = 100;
 const meterClipHoldUntil = new Map<string, { left: number; right: number }>();
 
 const gallery = mustGet<HTMLElement>('gallery');
@@ -108,6 +107,7 @@ const monoOutputInput = mustGet<HTMLInputElement>('mono-output');
 const settings: GallerySettings = {
     audioLevels: true,
     monoOutput: false,
+    boxZoom: 100,
     muteRotation: false,
     rotationBoxes: '',
     rotationTime: 5,
@@ -126,8 +126,8 @@ const settings: GallerySettings = {
     alertAudioPhaseMismatch: true,
 };
 
-const minZoomPercent = 20;
-const maxZoomPercent = 300;
+const minBoxZoomPercent = 50;
+const maxBoxZoomPercent = 300;
 
 const alertController = createAlertController({
     settings,
@@ -163,11 +163,29 @@ function mustGet<T extends HTMLElement>(id: string): T {
     return element as T;
 }
 
-function setZoomStatus(percent: number): void {
-    currentZoomPercent = percent;
-    zoomStatusButton.textContent = `${percent}%`;
-    zoomOutButton.disabled = percent <= minZoomPercent;
-    zoomInButton.disabled = percent >= maxZoomPercent;
+function clampBoxZoom(percent: number): number {
+    if (!Number.isFinite(percent)) {
+        return 100;
+    }
+    return Math.max(minBoxZoomPercent, Math.min(maxBoxZoomPercent, Math.round(percent)));
+}
+
+function applyBoxZoom(): void {
+    document.documentElement.style.setProperty('--box-scale', String(settings.boxZoom / 100));
+    zoomStatusButton.textContent = `${settings.boxZoom}%`;
+    zoomOutButton.disabled = settings.boxZoom <= minBoxZoomPercent;
+    zoomInButton.disabled = settings.boxZoom >= maxBoxZoomPercent;
+}
+
+function setBoxZoom(percent: number): void {
+    const nextZoom = clampBoxZoom(percent);
+    if (nextZoom === settings.boxZoom) {
+        return;
+    }
+
+    settings.boxZoom = nextZoom;
+    applyBoxZoom();
+    saveState();
 }
 
 function getBoxTitle(box: GalleryBox): string {
@@ -175,38 +193,27 @@ function getBoxTitle(box: GalleryBox): string {
 }
 
 function initZoomControls(): void {
-    window.liveGallery.getZoom().then(setZoomStatus).catch(console.error);
-    window.liveGallery.onZoomChanged(setZoomStatus);
+    window.liveGallery.onBoxZoomStep((direction) => {
+        if (direction === 0) {
+            setBoxZoom(100);
+        } else {
+            changeBoxZoomStep(direction);
+        }
+    });
 
-    zoomOutButton.addEventListener('click', () => {
-        changeZoomStep(-1).catch(console.error);
-    });
-    zoomInButton.addEventListener('click', () => {
-        changeZoomStep(1).catch(console.error);
-    });
-    zoomStatusButton.addEventListener('click', () => {
-        window.liveGallery.setZoom(100).then(setZoomStatus).catch(console.error);
-    });
+    zoomOutButton.addEventListener('click', () => changeBoxZoomStep(-1));
+    zoomInButton.addEventListener('click', () => changeBoxZoomStep(1));
+    zoomStatusButton.addEventListener('click', () => setBoxZoom(100));
 }
 
-function getNextZoomStep(direction: -1 | 1): number {
-    const step =
-        direction > 0 ? (currentZoomPercent >= 100 ? 10 : 5) : currentZoomPercent > 100 ? 10 : 5;
+function changeBoxZoomStep(direction: -1 | 1): void {
+    const current = settings.boxZoom;
+    const step = direction > 0 ? (current >= 100 ? 10 : 5) : current > 100 ? 10 : 5;
     const nextZoom =
         direction > 0
-            ? Math.floor(currentZoomPercent / step) * step + step
-            : Math.ceil(currentZoomPercent / step) * step - step;
-    return Math.max(minZoomPercent, Math.min(maxZoomPercent, nextZoom));
-}
-
-async function changeZoomStep(direction: -1 | 1): Promise<void> {
-    const nextZoom = getNextZoomStep(direction);
-    if (nextZoom === currentZoomPercent) {
-        return;
-    }
-
-    const appliedZoom = await window.liveGallery.setZoom(nextZoom);
-    setZoomStatus(appliedZoom);
+            ? Math.floor(current / step) * step + step
+            : Math.ceil(current / step) * step - step;
+    setBoxZoom(nextZoom);
 }
 
 function initWindowControls(): void {
@@ -385,6 +392,7 @@ function loadState(): void {
     settings.audioLevels = true;
     settings.jwServerHost = String(settings.jwServerHost ?? '');
     settings.monoOutput = storedSettings.monoOutput ?? false;
+    settings.boxZoom = clampBoxZoom(storedSettings.boxZoom ?? 100);
     settings.alertSound = storedSettings.alertSound ?? true;
     settings.alertVolume = clampAlertVolume(storedSettings.alertVolume ?? 100);
     settings.alertVideoBuffering = storedSettings.alertVideoBuffering ?? true;
@@ -436,7 +444,7 @@ function addBox(): void {
 function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
-        'bg-base-200 border-base-content/25 relative m-1 h-fit w-[279px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
+        'bg-base-200 border-base-content/25 relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
     root.innerHTML = `
         <div class="box-header group bg-base-300 border-base-content/10 relative flex h-[22px] w-full items-center overflow-hidden border-b">
           <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
@@ -466,7 +474,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
             <button type="submit" class="btn btn-accent btn-xs min-w-16">Save</button>
           </div>
         </form>
-        <div class="viewport bg-base-200 relative h-37.5 overflow-hidden">
+        <div class="viewport bg-base-200 relative aspect-[277/150] overflow-hidden">
           <div class="absolute top-0 right-2.5 bottom-0 left-0 overflow-hidden">
             <webview class="player bg-neutral absolute top-0 left-0 h-[160%] w-[160%] origin-top-left scale-[0.625]" style="color-scheme: light" allowpopups></webview>
           </div>
@@ -566,7 +574,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     });
 
     expandButton.addEventListener('click', () => {
-        toggleExpanded(root, viewport);
+        toggleExpanded(root);
         syncExpandButtonTitle(expandButton, root);
     });
     root.querySelector<HTMLButtonElement>('.edit')!.addEventListener('click', () => {
@@ -1082,10 +1090,8 @@ function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
     root.classList.toggle('outline-4', isUnmuted);
 }
 
-function toggleExpanded(root: HTMLElement, viewport: HTMLElement): void {
-    const isExpanded = !root.classList.contains('box-expanded');
-    root.classList.toggle('box-expanded', isExpanded);
-    viewport.classList.toggle('h-37.5', !isExpanded);
+function toggleExpanded(root: HTMLElement): void {
+    root.classList.toggle('box-expanded');
 }
 
 function closeExpandedBox(): boolean {
@@ -1094,13 +1100,7 @@ function closeExpandedBox(): boolean {
         return false;
     }
 
-    const viewport = root.querySelector<HTMLElement>('.viewport');
-    if (!viewport) {
-        return false;
-    }
-
     root.classList.remove('box-expanded');
-    viewport.classList.add('h-37.5');
     const expandButton = root.querySelector<HTMLButtonElement>('.expand');
     if (expandButton) {
         syncExpandButtonTitle(expandButton, root);
@@ -1503,5 +1503,6 @@ loadMics().catch((error) => {
     console.error('Error preloading microphones:', error);
 });
 loadState();
+applyBoxZoom();
 render();
 presetController.refresh();

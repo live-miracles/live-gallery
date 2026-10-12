@@ -20,18 +20,13 @@ const { autoUpdater } = updater;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 const youtubeEmbedOrigin = 'https://live-gallery.local';
-const minZoomPercent = 20;
-const maxZoomPercent = 300;
 const presetsFileName = 'presets.json';
 const youtubeIdPattern = /^[a-zA-Z0-9_-]{11}$/;
-let appZoomPercent = 100;
 const shortcutWebContents = new WeakSet<Electron.WebContents>();
 let updatesAreConfigured = false;
 
 configureChromiumSwitches();
 
-ipcMain.handle('gallery:get-zoom', () => appZoomPercent);
-ipcMain.handle('gallery:set-zoom', (_event, percent: number) => setAppZoom(percent));
 ipcMain.handle('gallery:get-content-width', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     return win?.getContentBounds().width ?? 0;
@@ -214,8 +209,10 @@ function createWindow(): void {
     installAppShortcuts(win, win.webContents);
 
     win.loadFile(path.join(rootDir, 'frontend', 'index.html'));
-    win.webContents.once('did-finish-load', () => {
-        syncAppZoomFromWindow(win);
+    // Zoom only resizes the video boxes (handled in the page), so the window itself
+    // always stays at 100% and the toolbar keeps its size.
+    win.webContents.on('did-finish-load', () => {
+        win.webContents.setZoomFactor(1);
     });
     setupUpdates(win);
 
@@ -277,17 +274,17 @@ function createApplicationMenu(): void {
                 {
                     label: 'Actual Size',
                     accelerator: 'CmdOrCtrl+0',
-                    click: () => setAppZoom(100),
+                    click: () => sendBoxZoomStep(BrowserWindow.getFocusedWindow(), 0),
                 },
                 {
                     label: 'Zoom In',
                     accelerator: 'CmdOrCtrl+=',
-                    click: () => changeAppZoomStep(1),
+                    click: () => sendBoxZoomStep(BrowserWindow.getFocusedWindow(), 1),
                 },
                 {
                     label: 'Zoom Out',
                     accelerator: 'CmdOrCtrl+-',
-                    click: () => changeAppZoomStep(-1),
+                    click: () => sendBoxZoomStep(BrowserWindow.getFocusedWindow(), -1),
                 },
                 { type: 'separator' },
                 { role: 'togglefullscreen' },
@@ -311,6 +308,9 @@ function installAppShortcuts(win: BrowserWindow, contents: Electron.WebContents)
     }
 
     shortcutWebContents.add(contents);
+    contents.on('zoom-changed', (_event, zoomDirection) => {
+        sendBoxZoomStep(win, zoomDirection === 'in' ? 1 : -1);
+    });
     contents.on('before-input-event', (event, input) => {
         if (input.type !== 'keyDown') {
             return;
@@ -337,11 +337,7 @@ function installAppShortcuts(win: BrowserWindow, contents: Electron.WebContents)
         const zoomDirection = getZoomDirection(input);
         if (zoomDirection !== null) {
             event.preventDefault();
-            if (zoomDirection === 0) {
-                setAppZoom(100);
-            } else {
-                changeAppZoomStep(zoomDirection);
-            }
+            sendBoxZoomStep(win, zoomDirection);
         }
     });
 }
@@ -381,27 +377,8 @@ function getZoomDirection(input: Electron.Input): -1 | 0 | 1 | null {
     return null;
 }
 
-function changeAppZoomStep(direction: -1 | 1): number {
-    const step = direction > 0 ? (appZoomPercent >= 100 ? 10 : 5) : appZoomPercent > 100 ? 10 : 5;
-    const nextZoom =
-        direction > 0
-            ? Math.floor(appZoomPercent / step) * step + step
-            : Math.ceil(appZoomPercent / step) * step - step;
-    return setAppZoom(nextZoom);
-}
-
-function syncAppZoomFromWindow(win: BrowserWindow): void {
-    appZoomPercent = Math.round(win.webContents.getZoomFactor() * 100);
-    win.webContents.send('gallery:zoom-changed', appZoomPercent);
-}
-
-function setAppZoom(percent: number): number {
-    appZoomPercent = Math.max(minZoomPercent, Math.min(maxZoomPercent, Math.round(percent)));
-    BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.setZoomFactor(appZoomPercent / 100);
-        win.webContents.send('gallery:zoom-changed', appZoomPercent);
-    });
-    return appZoomPercent;
+function sendBoxZoomStep(win: BrowserWindow | null, direction: -1 | 0 | 1): void {
+    win?.webContents.send('gallery:box-zoom-step', direction);
 }
 
 type PresetBox = {

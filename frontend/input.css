@@ -3,6 +3,10 @@
     themes: dim;
 }
 
+:root {
+    --box-scale: 1;
+}
+
 :root:has([data-theme='dim']),
 [data-theme='dim'] {
     --color-base-100: #000;

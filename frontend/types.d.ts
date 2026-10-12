@@ -22,8 +22,6 @@ declare global {
     interface Window {
         liveGallery: {
             guestPreloadUrl: string;
-            getZoom: () => Promise<number>;
-            setZoom: (percent: number) => Promise<number>;
             getContentWidth: () => Promise<number>;
             getDesktopSources: () => Promise<DesktopSource[]>;
             selectLocalMediaFile: () => Promise<string | null>;
@@ -37,7 +35,7 @@ declare global {
             savePreset: (name: string, boxes: PresetBox[]) => Promise<SavedPreset[]>;
             renamePreset: (oldName: string, newName: string) => Promise<SavedPreset[]>;
             deletePreset: (name: string) => Promise<SavedPreset[]>;
-            onZoomChanged: (callback: (percent: number) => void) => () => void;
+            onBoxZoomStep: (callback: (direction: -1 | 0 | 1) => void) => () => void;
             onUpdateAvailable: (callback: () => void) => () => void;
             onUpdateProgress: (callback: (progress: number) => void) => () => void;
             onUpdateReady: (callback: () => void) => () => void;
