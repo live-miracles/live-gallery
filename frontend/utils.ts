@@ -194,13 +194,19 @@ export function getPlayerUrl(box: GalleryBox, settings: GallerySettings): string
     return box.value;
 }
 
-// The same URL the box loads, minus the gallery's own parameters. Boxes that play
-// through one of the app's built-in player pages copy their media URL instead, and
-// screen shares have no URL.
+// The same URL the box loads, minus the gallery's own parameters. YouTube boxes copy
+// the watch link instead: embed URLs only play when the request carries a referrer
+// (the app adds one), so opened directly in a browser they fail with Error 153.
+// Boxes that play through one of the app's built-in player pages copy their media URL,
+// and screen shares have no URL.
 export function getSourceUrl(box: GalleryBox, settings: GallerySettings): string {
     const playerUrl = getPlayerUrl(box, settings);
     if (!playerUrl || box.type === 'SS') {
         return '';
+    }
+
+    if (box.type === 'YT') {
+        return `https://www.youtube.com/watch?v=${extractYouTubeId(box.value)}`;
     }
 
     if (playerUrl === box.value) {
@@ -214,10 +220,6 @@ export function getSourceUrl(box: GalleryBox, settings: GallerySettings): string
 
     const url = new URL(playerUrl);
     const internalParams = [...settingsToParams(settings).keys(), 'boxId', 'value'];
-    if (box.type === 'YT') {
-        // These point YouTube at the app's placeholder origin.
-        internalParams.push('origin', 'widget_referrer');
-    }
     internalParams.forEach((name) => url.searchParams.delete(name));
     return url.toString();
 }
