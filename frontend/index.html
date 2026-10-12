@@ -317,6 +317,16 @@ https://www.youtube.com/live/dQw4w9WgXcQ</code></pre>
               <input id="jw-server-host" class="input input-bordered w-full" type="url" placeholder="https://my-server.com/Player/" />
             </label>
             <section class="grid gap-3">
+              <h3 class="font-semibold">Audio output</h3>
+              <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
+                <span class="font-medium">Mono output</span>
+                <span class="text-base-content/60 text-xs"
+                  >Mixes left and right channels together so both speakers play the full mix. Use with a single or mono speaker.</span
+                >
+                <input id="mono-output" class="toggle toggle-accent" type="checkbox" />
+              </label>
+            </section>
+            <section class="grid gap-3">
               <h3 class="font-semibold">Alerts</h3>
               <label class="grid grid-cols-[auto_1fr_auto] items-center gap-3">
                 <span>Alert volume</span>

@@ -103,9 +103,11 @@ const alertsList = mustGet<HTMLElement>('alerts-list');
 const settingsDialog = mustGet<HTMLDialogElement>('settings-dialog');
 const settingsForm = mustGet<HTMLFormElement>('settings-form');
 const jwServerHostInput = mustGet<HTMLInputElement>('jw-server-host');
+const monoOutputInput = mustGet<HTMLInputElement>('mono-output');
 
 const settings: GallerySettings = {
     audioLevels: true,
+    monoOutput: false,
     muteRotation: false,
     rotationBoxes: '',
     rotationTime: 5,
@@ -286,6 +288,7 @@ function syncSettingsFromControls(): void {
     settings.rotationTime = Math.max(1, Number(rotationTimeInput.value) || 1);
     settings.autoLive = autoLiveInput.checked;
     settings.jwServerHost = jwServerHostInput.value.trim();
+    settings.monoOutput = monoOutputInput.checked;
     settings.alertSound = alertSoundInput.checked;
     settings.alertVolume = clampAlertVolume(Number(alertVolumeInput.value));
     settings.alertVideoBuffering = alertVideoBufferingInput.checked;
@@ -305,6 +308,7 @@ function syncControlsFromSettings(): void {
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
     jwServerHostInput.value = settings.jwServerHost;
+    monoOutputInput.checked = settings.monoOutput;
     alertSoundInput.checked = settings.alertSound;
     alertVolumeInput.value = String(settings.alertVolume);
     updateAlertVolumeValue();
@@ -380,6 +384,7 @@ function loadState(): void {
     Object.assign(settings, storedSettings);
     settings.audioLevels = true;
     settings.jwServerHost = String(settings.jwServerHost ?? '');
+    settings.monoOutput = storedSettings.monoOutput ?? false;
     settings.alertSound = storedSettings.alertSound ?? true;
     settings.alertVolume = clampAlertVolume(storedSettings.alertVolume ?? 100);
     settings.alertVideoBuffering = storedSettings.alertVideoBuffering ?? true;
@@ -1172,6 +1177,7 @@ function syncAudioCommands(box: GalleryBox): void {
         enabled: settings.audioLevels,
         phaseMetricsEnabled: settings.alertAudioPhaseMismatch,
     });
+    sendCommand(box.id, { type: 'mono-output', enabled: settings.monoOutput });
 }
 
 function toggleMute(boxId: string, forceMuted?: boolean): void {

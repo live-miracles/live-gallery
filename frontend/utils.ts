@@ -10,6 +10,7 @@ export type GalleryBox = {
 
 export type GallerySettings = {
     audioLevels: boolean;
+    monoOutput: boolean;
     muteRotation: boolean;
     rotationBoxes: string;
     rotationTime: number;
@@ -134,6 +135,7 @@ export function settingsToParams(settings: GallerySettings): URLSearchParams {
     const params = new URLSearchParams();
     params.set('audioLevels', settings.audioLevels ? '1' : '0');
     params.set('audioPhaseMetrics', settings.alertAudioPhaseMismatch ? '1' : '0');
+    params.set('monoOutput', settings.monoOutput ? '1' : '0');
     params.set('muteRotation', settings.muteRotation ? '1' : '0');
     params.set('rotationBoxes', settings.rotationBoxes);
     params.set('rotationTime', String(settings.rotationTime));

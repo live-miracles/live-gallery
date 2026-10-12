@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 type GalleryCommand =
     | { type: 'mute'; muted: boolean }
     | { type: 'audio-levels'; enabled: boolean; phaseMetricsEnabled?: boolean }
+    | { type: 'mono-output'; enabled: boolean }
     | { type: 'auto-live'; enabled: boolean }
     | { type: 'lowest-quality' }
     | { type: 'start-screen-share'; source: DesktopSource }
@@ -85,6 +86,7 @@ let audioTools: AudioTools | null = null;
 let streamAudioTools: StreamAudioTools | null = null;
 let muted = true;
 let levelsEnabled = params.get('audioLevels') !== '0';
+let monoOutput = params.get('monoOutput') === '1';
 let autoLive = params.get('autoLive') !== '0';
 let connectedElement: HTMLMediaElement | null = null;
 let connectedStream: MediaStream | null = null;
@@ -326,13 +328,22 @@ function resumeContext(context: AudioContext): void {
     });
 }
 
+function applyOutputChannels(gain: GainNode): void {
+    // A 1-channel explicit node downmixes stereo to (L + R) / 2; the destination
+    // then upmixes it back so both speakers carry the same mono signal.
+    gain.channelCountMode = monoOutput ? 'explicit' : 'max';
+    gain.channelCount = monoOutput ? 1 : 2;
+}
+
 function applyMute(): void {
     if (audioTools) {
+        applyOutputChannels(audioTools.gain);
         audioTools.gain.gain.value = muted ? 0 : 1;
         resumeContext(audioTools.context);
     }
 
     if (streamAudioTools) {
+        applyOutputChannels(streamAudioTools.gain);
         streamAudioTools.gain.gain.value = muted ? 0 : 1;
         resumeContext(streamAudioTools.context);
     }
@@ -697,6 +708,9 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
         levelsEnabled = command.enabled;
         phaseMetricsEnabled = command.phaseMetricsEnabled ?? phaseMetricsEnabled;
         syncPhaseAnalyserConnections();
+    } else if (command.type === 'mono-output') {
+        monoOutput = command.enabled;
+        applyMute();
     } else if (command.type === 'auto-live') {
         autoLive = command.enabled;
         startAutoLiveLoop();
