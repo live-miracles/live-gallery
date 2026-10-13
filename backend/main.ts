@@ -7,12 +7,21 @@ import {
     ipcMain,
     Menu,
     MenuItemConstructorOptions,
+    screen,
     session,
     shell,
+    type Rectangle,
 } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+    findSavedDisplay,
+    placeWindow,
+    readWindowState,
+    toSavedDisplay,
+    writeWindowState,
+} from './window-state.js';
 
 import updater from 'electron-updater';
 const { autoUpdater } = updater;
@@ -197,9 +206,12 @@ ipcMain.handle('gallery:select-local-media-file', async (event) => {
 
 function createWindow(): void {
     const isSmokeTest = process.argv.includes('--smoke-test');
+    const restored = getRestoredWindowState();
     const win = new BrowserWindow({
         width: 1400,
         height: 900,
+        ...restored.bounds,
+        show: false,
         minWidth: 960,
         minHeight: 640,
         title: `Live Gallery ${app.getVersion()}`,
@@ -218,6 +230,16 @@ function createWindow(): void {
     win.setMenuBarVisibility(false);
 
     installAppShortcuts(win, win.webContents);
+    trackWindowState(win);
+    // Created hidden at the restored position so it appears there directly, then shown
+    // before going full screen so full screen happens on that display.
+    if (restored.isMaximized) {
+        win.maximize();
+    }
+    win.show();
+    if (restored.isFullScreen) {
+        win.setFullScreen(true);
+    }
 
     win.loadFile(path.join(rootDir, 'frontend', 'index.html'));
     // Zoom shortcuts resize the video boxes (handled in the page). The window's own zoom
@@ -231,6 +253,85 @@ function createWindow(): void {
         });
         setTimeout(() => app.exit(0), 5000).unref();
     }
+}
+
+function getWindowStatePath(): string {
+    return path.join(app.getPath('userData'), 'window-state.json');
+}
+
+// Reopens the window on the display it was last on (or the main display if that one is
+// gone), in the same spot, and maximized / full screen if it was.
+function getRestoredWindowState(): {
+    bounds?: Rectangle;
+    isMaximized: boolean;
+    isFullScreen: boolean;
+} {
+    const saved = readWindowState(getWindowStatePath());
+    if (!saved) {
+        return { isMaximized: false, isFullScreen: false };
+    }
+
+    const display =
+        findSavedDisplay(saved.display, screen.getAllDisplays()) ?? screen.getPrimaryDisplay();
+    return {
+        bounds: placeWindow(saved, display),
+        isMaximized: saved.isMaximized,
+        isFullScreen: saved.isFullScreen,
+    };
+}
+
+function trackWindowState(win: BrowserWindow): void {
+    let saveTimer: ReturnType<typeof setTimeout> | undefined;
+    // Only full screen chosen by the user (F11 or the toolbar button) is remembered, not a
+    // video's own full screen button.
+    let htmlFullScreen = false;
+    let userFullScreen = false;
+    // Tracked from events because a minimized window no longer reports itself maximized.
+    let maximized = win.isMaximized();
+
+    const save = (): void => {
+        clearTimeout(saveTimer);
+        const bounds = win.getNormalBounds();
+        writeWindowState(getWindowStatePath(), {
+            bounds,
+            display: toSavedDisplay(screen.getDisplayMatching(bounds)),
+            isMaximized: maximized,
+            isFullScreen: userFullScreen,
+        });
+    };
+    const saveSoon = (): void => {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(save, 500);
+    };
+    // Checked on the next tick, after any html full screen event for the same change.
+    const syncFullScreen = (): void => {
+        setTimeout(() => {
+            if (!htmlFullScreen && !win.isDestroyed()) {
+                userFullScreen = win.isFullScreen();
+                saveSoon();
+            }
+        }, 0);
+    };
+
+    win.on('enter-html-full-screen', () => {
+        htmlFullScreen = true;
+    });
+    win.on('leave-html-full-screen', () => {
+        htmlFullScreen = false;
+    });
+    win.on('enter-full-screen', syncFullScreen);
+    win.on('leave-full-screen', syncFullScreen);
+    win.on('move', saveSoon);
+    win.on('resize', saveSoon);
+    win.on('maximize', () => {
+        maximized = true;
+        saveSoon();
+    });
+    win.on('unmaximize', () => {
+        maximized = false;
+        saveSoon();
+    });
+    win.on('close', save);
 }
 
 function setupUpdates(win: BrowserWindow): void {

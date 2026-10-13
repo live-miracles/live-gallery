@@ -11,7 +11,7 @@
         "watch:css": "tailwindcss -i ./frontend/input.css -o ./frontend/dist/output.css --watch",
         "format": "npx prettier --write .",
         "format:check": "npx prettier --check .",
-        "test": "npm run build && node --test"
+        "test": "npm run build && node --test \"dist/**/*.test.js\""
     },
     "repository": {
         "type": "git",
@@ -33,6 +33,7 @@
         },
         "files": [
             "dist/**/*",
+            "!dist/**/*.test.js",
             "frontend/**/*"
         ],
         "win": {
