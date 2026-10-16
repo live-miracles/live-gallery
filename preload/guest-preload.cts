@@ -86,6 +86,10 @@ let selectedMicStream: MediaStream | null = null;
 let emitLevelsStarted = false;
 let mediaHealthStarted = false;
 let autoLiveTimer = 0;
+let lastUserInputAt = -Infinity;
+let userInputTrackingStarted = false;
+const boostedMedia = new WeakSet<HTMLMediaElement>();
+const USER_VOLUME_INPUT_WINDOW_MS = 1500;
 const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
 let phaseMetricsEnabled = params.get('audioPhaseMetrics') !== '0';
 let lastPhaseMetricsAt = 0;
@@ -463,10 +467,56 @@ function connectScreenShareAudioFromPage(): void {
     connectScreenShareAudio(stream);
 }
 
+function noteUserInput(): void {
+    lastUserInputAt = performance.now();
+}
+
+function startUserInputTracking(): void {
+    if (userInputTrackingStarted) {
+        return;
+    }
+
+    userInputTrackingStarted = true;
+    const note = (event: Event): void => {
+        if (event.isTrusted) {
+            noteUserInput();
+        }
+    };
+    const notePointerMove = (event: PointerEvent): void => {
+        // Dragging the player's volume slider keeps changing the volume while the button is held.
+        if (event.isTrusted && event.buttons !== 0) {
+            noteUserInput();
+        }
+    };
+    for (const type of ['pointerdown', 'pointerup', 'keydown', 'wheel', 'touchstart']) {
+        window.addEventListener(type, note, { capture: true, passive: true });
+    }
+    window.addEventListener('pointermove', notePointerMove, { capture: true, passive: true });
+}
+
+// The embedded player often starts quiet (it restores its own saved level, or autoplays
+// muted). Lift it to full once, and keep lifting any change the page makes on its own, but
+// leave a change alone when the user just made it through the player's own controls.
 function keepMediaAudibleForMeter(media: HTMLMediaElement): void {
     media.autoplay = true;
     media.muted = false;
     media.volume = 1;
+
+    if (boostedMedia.has(media)) {
+        return;
+    }
+
+    boostedMedia.add(media);
+    startUserInputTracking();
+    media.addEventListener('volumechange', () => {
+        const changedByUser = performance.now() - lastUserInputAt < USER_VOLUME_INPUT_WINDOW_MS;
+        if (changedByUser || (!media.muted && media.volume === 1)) {
+            return;
+        }
+
+        media.muted = false;
+        media.volume = 1;
+    });
 }
 
 function connectMedia(media: HTMLMediaElement): void {
