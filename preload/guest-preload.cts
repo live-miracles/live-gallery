@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webFrame } from 'electron';
 
 type GalleryCommand =
     | { type: 'mute'; muted: boolean }
@@ -6,6 +6,7 @@ type GalleryCommand =
     | { type: 'mono-output'; enabled: boolean }
     | { type: 'auto-live'; enabled: boolean }
     | { type: 'lowest-quality' }
+    | { type: 'max-volume'; enabled: boolean }
     | { type: 'start-screen-share'; source: DesktopSource }
     | { type: 'reset-screen-share' };
 
@@ -80,6 +81,7 @@ let muted = true;
 let levelsEnabled = params.get('audioLevels') !== '0';
 let monoOutput = params.get('monoOutput') === '1';
 let autoLive = params.get('autoLive') !== '0';
+let maxVolume = params.get('maxVolume') !== '0';
 let connectedElement: HTMLMediaElement | null = null;
 let connectedStream: MediaStream | null = null;
 let selectedMicStream: MediaStream | null = null;
@@ -494,13 +496,41 @@ function startUserInputTracking(): void {
     window.addEventListener('pointermove', notePointerMove, { capture: true, passive: true });
 }
 
+// The YouTube player keeps its own volume (restored from its saved level) and reapplies it to
+// the media element, so the element alone is not enough: raise the player's level as well.
+// The player object lives in the page's world, which this isolated preload cannot call.
+function raiseYouTubePlayerVolume(): void {
+    if (!maxVolume) {
+        return;
+    }
+
+    webFrame
+        .executeJavaScript(
+            `(() => {
+                const player = document.getElementById('movie_player');
+                if (player?.getVolume && (player.getVolume() < 100 || player.isMuted())) {
+                    player.unMute();
+                    player.setVolume(100);
+                }
+            })()`,
+        )
+        .catch(() => {});
+}
+
+function raiseMediaVolume(media: HTMLMediaElement): void {
+    media.muted = false;
+    if (maxVolume) {
+        media.volume = 1;
+    }
+    raiseYouTubePlayerVolume();
+}
+
 // The embedded player often starts quiet (it restores its own saved level, or autoplays
-// muted). Lift it to full once, and keep lifting any change the page makes on its own, but
-// leave a change alone when the user just made it through the player's own controls.
+// muted). Lift it to full and keep lifting any change the page makes on its own, until the
+// user changes the volume through the player's own controls; after that it is theirs.
 function keepMediaAudibleForMeter(media: HTMLMediaElement): void {
     media.autoplay = true;
-    media.muted = false;
-    media.volume = 1;
+    raiseMediaVolume(media);
 
     if (boostedMedia.has(media)) {
         return;
@@ -508,15 +538,22 @@ function keepMediaAudibleForMeter(media: HTMLMediaElement): void {
 
     boostedMedia.add(media);
     startUserInputTracking();
+    let userAdjusted = false;
     media.addEventListener('volumechange', () => {
-        const changedByUser = performance.now() - lastUserInputAt < USER_VOLUME_INPUT_WINDOW_MS;
-        if (changedByUser || (!media.muted && media.volume === 1)) {
-            return;
+        if (performance.now() - lastUserInputAt < USER_VOLUME_INPUT_WINDOW_MS) {
+            userAdjusted = true;
+        } else if (!userAdjusted && maxVolume && (media.muted || media.volume !== 1)) {
+            raiseMediaVolume(media);
         }
-
-        media.muted = false;
-        media.volume = 1;
     });
+    // The player can reapply its saved level without touching the element's volume.
+    const timer = window.setInterval(() => {
+        if (userAdjusted) {
+            window.clearInterval(timer);
+        } else {
+            raiseYouTubePlayerVolume();
+        }
+    }, 1000);
 }
 
 function connectMedia(media: HTMLMediaElement): void {
@@ -712,6 +749,11 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
     } else if (command.type === 'auto-live') {
         autoLive = command.enabled;
         startAutoLiveLoop();
+    } else if (command.type === 'max-volume') {
+        maxVolume = command.enabled;
+        if (connectedElement) {
+            raiseMediaVolume(connectedElement);
+        }
     } else if (command.type === 'lowest-quality') {
         setLowestYouTubeQuality().catch((error: unknown) => {
             ipcRenderer.sendToHost('gallery-error', {

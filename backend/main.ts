@@ -374,6 +374,8 @@ function broadcastToWindows(channel: string, ...args: unknown[]): void {
 
 function createApplicationMenu(): void {
     const template: MenuItemConstructorOptions[] = [
+        // Without an Edit menu, macOS has no Cmd+C / Cmd+V / Cmd+X / Cmd+A in text fields.
+        { role: 'editMenu' },
         {
             label: 'View',
             submenu: [

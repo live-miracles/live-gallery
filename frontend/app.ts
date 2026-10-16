@@ -78,6 +78,7 @@ const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
 const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
+const maxVolumeInput = mustGet<HTMLInputElement>('max-volume');
 const alertSoundButton = mustGet<HTMLButtonElement>('alert-sound');
 const alertVolumeInput = mustGet<HTMLInputElement>('alert-volume');
 const alertVolumeValue = mustGet<HTMLElement>('alert-volume-value');
@@ -138,6 +139,7 @@ const settings: GallerySettings = {
     rotationBoxes: '',
     rotationTime: 5,
     autoLive: true,
+    maxVolume: true,
     jwServerHost: 'https://your.website.com/Player/Index/',
     alertSound: true,
     alertVolume: 100,
@@ -343,6 +345,7 @@ function syncSettingsFromControls(): void {
     settings.rotationBoxes = rotationBoxesInput.value;
     settings.rotationTime = Math.max(1, Number(rotationTimeInput.value) || 1);
     settings.autoLive = autoLiveInput.checked;
+    settings.maxVolume = maxVolumeInput.checked;
     settings.jwServerHost = jwServerHostInput.value.trim();
     settings.uiZoom = Number(uiZoomInput.value) || 100;
     settings.alertVideoBuffering = alertVideoBufferingInput.checked;
@@ -361,6 +364,7 @@ function syncControlsFromSettings(): void {
     rotationBoxesInput.value = settings.rotationBoxes;
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
+    maxVolumeInput.checked = settings.maxVolume;
     jwServerHostInput.value = settings.jwServerHost;
     uiZoomInput.value = String(settings.uiZoom);
     syncAlertSoundControl();
@@ -1597,6 +1601,7 @@ function updateAllSettings(): void {
     alertController.clearDisabled();
     boxes.forEach((box) => {
         sendCommand(box.id, { type: 'auto-live', enabled: settings.autoLive });
+        sendCommand(box.id, { type: 'max-volume', enabled: settings.maxVolume });
         syncAudioCommands(box);
     });
     saveState();
@@ -1705,9 +1710,11 @@ alertVolumeInput.addEventListener('change', () => {
 });
 audioOutputButton.addEventListener('click', toggleMonoOutput);
 
-[muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
-    input.addEventListener('change', updateAllSettings);
-});
+[muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput, maxVolumeInput].forEach(
+    (input) => {
+        input.addEventListener('change', updateAllSettings);
+    },
+);
 rotationBoxesInput.addEventListener('input', sanitizeRotationBoxesInput);
 
 initWindowControls();
