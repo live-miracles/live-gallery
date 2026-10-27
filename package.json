@@ -1,7 +1,7 @@
 {
     "name": "live-gallery",
     "version": "1.6.3",
-    "description": "Monitor multiple live streams from YouTube, JW, Facebook, and other sources.",
+    "description": "Open-source multiviewer for monitoring many live streams at once, with audio meters, mute/solo and alerts for frozen video, silence, clipping and phase problems.",
     "main": "dist/main.js",
     "scripts": {
         "build": "npm run css && tsc -p backend && tsc -p preload && tsc -p frontend",
@@ -17,11 +17,25 @@
         "type": "git",
         "url": "git@github-2:live-miracles/live-gallery.git"
     },
-    "keywords": [],
-    "homepage": "https://github.com/live-miracles/live-gallery",
+    "keywords": [
+        "multiviewer",
+        "live-streaming",
+        "stream-monitoring",
+        "audio-meter",
+        "broadcast",
+        "hls",
+        "youtube-live",
+        "electron",
+        "livestream",
+        "monitoring"
+    ],
+    "homepage": "https://live-miracles.github.io/projects/live-gallery/",
+    "bugs": {
+        "url": "https://github.com/live-miracles/live-gallery/issues"
+    },
     "author": {
         "name": "Live Stream Miracles",
-        "email": "noreply@live-gallery.invalid"
+        "url": "https://live-miracles.github.io/"
     },
     "license": "MIT",
     "type": "module",

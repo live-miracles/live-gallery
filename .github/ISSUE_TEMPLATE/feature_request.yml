@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a new source type, alert or improvement
+labels: [enhancement]
+body:
+    - type: textarea
+      id: problem
+      attributes:
+          label: What are you trying to do?
+          description: Describe the situation, such as the kind of event and how many streams you watch.
+      validations:
+          required: true
+    - type: textarea
+      id: idea
+      attributes:
+          label: What would help?
+          description: Your idea, and anything you do today instead.
+    - type: checkboxes
+      id: help
+      attributes:
+          label: Contributing
+          options:
+              - label: I would be willing to test a build or help implement this

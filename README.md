@@ -1,42 +1,87 @@
+<img src="frontend/logo.png" alt="Live Gallery logo" width="96" align="right" />
+
 # Live Gallery
 
-Live Gallery is an Electron app for monitoring multiple live sources at once:
-YouTube, privacy-enhanced YouTube embeds, JW Player, VdoCipher, Facebook embeds,
-custom URLs, HLS links, and screen shares.
+_Open-source multiviewer for live streams: watch many at once, hear the one that matters, and get alerted when one breaks._
 
-<img width="1372" height="380" alt="image" src="https://github.com/user-attachments/assets/61a912f2-2a03-4cb1-afeb-b618fc6ad01b" />
+[![CI](https://github.com/live-miracles/live-gallery/actions/workflows/ci.yml/badge.svg)](https://github.com/live-miracles/live-gallery/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/live-miracles/live-gallery)](https://github.com/live-miracles/live-gallery/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Website](https://img.shields.io/badge/website-live--miracles.github.io-blue.svg)](https://live-miracles.github.io/projects/live-gallery/)
+
+**Live Gallery is a desktop app for monitoring many live streams in one window.** Put YouTube, JW Player, HLS and other players side by side, see a live audio meter on every box, solo or rotate the audio between them, and let the app warn you about frozen video, silence, clipping and broken stereo before your viewers do.
+
+It was built by a team that streams large live events to viewers around the world, where one bad feed among twenty is easy to miss. Windows, macOS and Linux installers are free, and nothing needs to be installed besides the app.
+
+| [Download](#download) | [Get help](https://github.com/live-miracles/live-gallery/discussions) | [Report a bug](https://github.com/live-miracles/live-gallery/issues/new/choose) |
+| --------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+
+<img width="1372" height="380" alt="Live Gallery showing several live streams with audio meters" src="https://github.com/user-attachments/assets/61a912f2-2a03-4cb1-afeb-b618fc6ad01b" />
+
+**Who it's for:** stream operators, AV and church-tech teams, newsrooms and anyone who has to keep an eye on several live feeds at once, such as the main stream, its backups and each language channel. **Who it isn't for:** recording or restreaming (it only watches), or a hosted service (it runs on your computer).
+
+## Features
+
+- **Many sources, one window.** Add YouTube (including privacy-enhanced `youtube-nocookie`), JW Player, VdoCipher, HLS (`.m3u8`) and other embeddable pages as custom URLs, local files, and screen shares with a chosen audio input, which also covers Zoom and any other desktop app. Drag boxes to reorder them.
+- **Audio meters on every box.** Separate left and right levels, so you can see a one-sided or silent feed at a glance.
+- **Mute, solo and rotate.** Hear one stream at a time, or turn on rotation to move the audio across boxes you pick (for example `1 3 5-8`) every few seconds.
+- **Alerts that catch real problems.** Every alert is switchable, has a documented threshold, and keeps a five-minute history:
+    - Video: buffering, repeated buffering, frozen picture.
+    - Audio: silence, dropouts, clipping, one channel missing, left/right level imbalance, and phase mismatch (left and right cancelling out when played in mono).
+    - An optional alert beep with its own volume control.
+- **Player commands.** Jump YouTube players to LIVE or to the lowest fixed quality in one click.
+- **Presets.** Save and load layouts, export them as JSON, or paste a list of YouTube links to build a wall in seconds.
+- **Built for long shifts.** Box zoom up to 1000%, an interface size setting for accessibility, a stereo/mono output switch, and the app reopens on the same display, position and full-screen state.
+
+## Why the audio checks matter
+
+During one live event, a suspected faulty audio embedder made the left and right channels cancel each other. Both meters were moving and the left channel sounded fine, yet more than 20 streams had broken audio for viewers. The phase mismatch and channel alerts exist because of that incident. Read the story: [One faulty audio embedder disrupted 20 live streams](https://live-miracles.github.io/blog/one-faulty-embedder-20-streams/).
+
+## Monitor Zoom or any desktop app
+
+Anything you can see on your screen can be a box, so Live Gallery also works with Zoom meetings, webinars and other apps that have no embeddable player. You need a virtual audio cable (for example [VB-Cable](https://vb-audio.com/Cable/) on Windows or [BlackHole](https://existential.audio/blackhole/) on macOS) so Live Gallery can listen to the meeting audio:
+
+1. In Zoom, open **Settings → Audio** and set the **Speaker** to the virtual audio cable.
+2. In Live Gallery, add a box, choose **Screen Share** and select the Zoom window.
+3. In the same box, choose the virtual cable as the audio input.
+
+The box then shows the Zoom video with live audio meters and alerts, like any other source. Because Zoom plays its sound only into the cable, you won't hear it on your own speakers unless you route the cable's audio to them.
 
 ## Download
 
-Live Gallery is available for Windows, macOS, and Linux. You do not need to
-install Node.js or download the source code to use it.
+You do not need to install Node.js or download the source code to use it.
 
-1. Open the [Live Gallery Releases page](https://github.com/live-miracles/live-gallery/releases).
-2. Open the newest release at the top of the page.
-3. Under **Assets**, download the installer for your platform:
+1. Open the [Live Gallery Releases page](https://github.com/live-miracles/live-gallery/releases/latest).
+2. Under **Assets**, download the installer for your platform:
     - Windows: `windows-x64.exe`
     - macOS Intel: `macos-x64.dmg` (or `macos-x64.zip`)
     - macOS Apple Silicon: `macos-arm64.dmg` (or `macos-arm64.zip`)
     - Linux: `linux-x64.AppImage`
     - Debian-based Linux: `linux-x64.deb`
-4. Open the downloaded file and follow the installation steps.
+3. Open the downloaded file and follow the installation steps.
 
-After installation, start Live Gallery from the Start menu or its desktop
-shortcut. If GitHub shows the release notes collapsed, click **Assets** to see
-the installer download.
+The installers are not code-signed yet, so Windows SmartScreen or macOS Gatekeeper may warn you the first time. On Windows choose **More info → Run anyway**. On macOS, right-click the app and choose **Open**.
 
-For support, please [open a GitHub issue](https://github.com/live-miracles/live-gallery/issues).
+## Quick start
 
-## Features
+1. Click **+** to add a box, pick the source type, paste a URL or ID and save.
+2. Repeat for each stream, or use **Preset → Import Preset (Clipboard)** with one YouTube link per line.
+3. Use the speaker button on a box to solo it, or enable **Rotate audio** to cycle through boxes.
+4. Open **Settings** to choose which alerts are on. The Alerts button shows active alerts and the last five minutes of history.
 
-- Monitor several live players in one desktop window.
-- Add YouTube, YouTube no-cookie, JW Player, VdoCipher, HLS, custom URL,
-  and screen-share boxes.
-- Mute, solo, and rotate audio between boxes.
-- Show audio levels for active streams.
-- Send supported player commands, including YouTube LIVE and lowest fixed quality.
-- Package and publish Windows, macOS, and Linux installers with Electron
-  Builder.
+The in-app **Docs** button explains boxes, presets and rotation.
+
+## Get help and give feedback
+
+- **Questions and ideas:** [GitHub Discussions](https://github.com/live-miracles/live-gallery/discussions).
+- **Bugs:** [open an issue](https://github.com/live-miracles/live-gallery/issues/new/choose) with your operating system, the Live Gallery version and the source type involved.
+- **More projects from the team:** [live-miracles.github.io](https://live-miracles.github.io/) lists the rest of the open-source streaming tools we use, such as [Bunryu](https://live-miracles.github.io/projects/bunryu/) for restreaming.
+
+If Live Gallery is useful to you, a star on GitHub helps other stream operators find it.
+
+## Contributing
+
+Contributions are welcome, from typo fixes to new source types. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run the app from source and what a good pull request looks like.
 
 ## Development
 
@@ -79,3 +124,7 @@ git push origin master --tags
 
 The tag push starts the release workflow, builds installers on Windows, macOS,
 and Linux, and publishes them to a GitHub release for that tag.
+
+## License
+
+[MIT](LICENSE) © Live Stream Miracles

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+    - name: Ask a question or share an idea
+      url: https://github.com/live-miracles/live-gallery/discussions
+      about: Setup help, how-to questions and feature ideas belong in Discussions.
+    - name: More Live Miracles projects
+      url: https://live-miracles.github.io/
+      about: Other open-source tools for live streaming.
