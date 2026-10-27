@@ -120,6 +120,7 @@ const updateDownloadButton = mustGet<HTMLButtonElement>('update-download-btn');
 const updateRestartButton = mustGet<HTMLButtonElement>('update-restart-btn');
 const clipboardToast = mustGet<HTMLElement>('clipboard-toast');
 const clipboardToastAlert = mustGet<HTMLElement>('clipboard-toast-alert');
+const clipboardToastIcon = mustGet<HTMLElement>('clipboard-toast-icon');
 const clipboardToastText = mustGet<HTMLElement>('clipboard-toast-text');
 const presetNameDialog = mustGet<HTMLDialogElement>('preset-name-dialog');
 const presetNameTitle = mustGet<HTMLElement>('preset-name-title');
@@ -1622,6 +1623,7 @@ function saveSettingsFromDialog(): void {
 
 function showToast(message: string, variant: 'success' | 'primary' | 'error' = 'success'): void {
     window.clearTimeout(clipboardToastTimer);
+    clipboardToastIcon.innerHTML = icon(variant === 'error' ? 'circle-alert' : 'check', 'h-4 w-4');
     clipboardToastText.textContent = message;
     clipboardToastAlert.classList.toggle('alert-success', variant === 'success');
     clipboardToastAlert.classList.toggle('alert-primary', variant === 'primary');

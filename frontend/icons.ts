@@ -1,6 +1,8 @@
 type IconName =
     | 'bell'
     | 'bell-off'
+    | 'check'
+    | 'circle-alert'
     | 'copy'
     | 'eye'
     | 'eye-off'
@@ -21,6 +23,8 @@ const paths: Record<IconName, string> = {
     bell: '<path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />',
     'bell-off':
         '<path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /><path d="M17 17H3c0-2 3-2 3-9a6 6 0 0 1 .4-2.2" /><path d="M11 3.1A6 6 0 0 1 18 8c0 1.7.2 3 .5 4" /><path d="M2 2l20 20" />',
+    check: '<path d="M20 6 9 17l-5-5" />',
+    'circle-alert': '<circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />',
     copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />',
     'eye-off':
