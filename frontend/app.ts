@@ -78,7 +78,7 @@ const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
 const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
-const maxVolumeInput = mustGet<HTMLInputElement>('max-volume');
+const maxVolumeButton = mustGet<HTMLButtonElement>('max-volume');
 const alertSoundButton = mustGet<HTMLButtonElement>('alert-sound');
 const alertVolumeInput = mustGet<HTMLInputElement>('alert-volume');
 const alertVolumeValue = mustGet<HTMLElement>('alert-volume-value');
@@ -139,7 +139,6 @@ const settings: GallerySettings = {
     rotationBoxes: '',
     rotationTime: 5,
     autoLive: true,
-    maxVolume: true,
     jwServerHost: 'https://your.website.com/Player/Index/',
     alertSound: true,
     alertVolume: 100,
@@ -345,7 +344,6 @@ function syncSettingsFromControls(): void {
     settings.rotationBoxes = rotationBoxesInput.value;
     settings.rotationTime = Math.max(1, Number(rotationTimeInput.value) || 1);
     settings.autoLive = autoLiveInput.checked;
-    settings.maxVolume = maxVolumeInput.checked;
     settings.jwServerHost = jwServerHostInput.value.trim();
     settings.uiZoom = Number(uiZoomInput.value) || 100;
     settings.alertVideoBuffering = alertVideoBufferingInput.checked;
@@ -364,7 +362,6 @@ function syncControlsFromSettings(): void {
     rotationBoxesInput.value = settings.rotationBoxes;
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
-    maxVolumeInput.checked = settings.maxVolume;
     jwServerHostInput.value = settings.jwServerHost;
     uiZoomInput.value = String(settings.uiZoom);
     syncAlertSoundControl();
@@ -1601,7 +1598,6 @@ function updateAllSettings(): void {
     alertController.clearDisabled();
     boxes.forEach((box) => {
         sendCommand(box.id, { type: 'auto-live', enabled: settings.autoLive });
-        sendCommand(box.id, { type: 'max-volume', enabled: settings.maxVolume });
         syncAudioCommands(box);
     });
     saveState();
@@ -1623,10 +1619,11 @@ function saveSettingsFromDialog(): void {
     showToast('Settings saved');
 }
 
-function showToast(message: string, variant: 'success' | 'error' = 'success'): void {
+function showToast(message: string, variant: 'success' | 'primary' | 'error' = 'success'): void {
     window.clearTimeout(clipboardToastTimer);
     clipboardToastText.textContent = message;
     clipboardToastAlert.classList.toggle('alert-success', variant === 'success');
+    clipboardToastAlert.classList.toggle('alert-primary', variant === 'primary');
     clipboardToastAlert.classList.toggle('alert-error', variant === 'error');
     clipboardToast.classList.remove('hidden');
     clipboardToastTimer = window.setTimeout(() => {
@@ -1667,8 +1664,14 @@ settingsForm.addEventListener('submit', (event) => {
     }
 });
 
+maxVolumeButton.addEventListener('click', () => {
+    boxes.forEach((box) => sendCommand(box.id, { type: 'max-volume' }));
+    showToast('YouTube volume set to max', 'primary');
+});
+
 document.getElementById('lowest-quality')!.addEventListener('click', () => {
     boxes.forEach((box) => sendCommand(box.id, { type: 'lowest-quality' }));
+    showToast('YouTube quality set to lowest', 'primary');
 });
 
 document.addEventListener('keydown', (event) => {
@@ -1710,11 +1713,9 @@ alertVolumeInput.addEventListener('change', () => {
 });
 audioOutputButton.addEventListener('click', toggleMonoOutput);
 
-[muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput, maxVolumeInput].forEach(
-    (input) => {
-        input.addEventListener('change', updateAllSettings);
-    },
-);
+[muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
+    input.addEventListener('change', updateAllSettings);
+});
 rotationBoxesInput.addEventListener('input', sanitizeRotationBoxesInput);
 
 initWindowControls();

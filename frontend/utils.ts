@@ -17,7 +17,6 @@ export type GallerySettings = {
     rotationBoxes: string;
     rotationTime: number;
     autoLive: boolean;
-    maxVolume: boolean;
     jwServerHost: string;
     alertSound: boolean;
     alertVolume: number;
@@ -143,7 +142,6 @@ export function settingsToParams(settings: GallerySettings): URLSearchParams {
     params.set('rotationBoxes', settings.rotationBoxes);
     params.set('rotationTime', String(settings.rotationTime));
     params.set('autoLive', settings.autoLive ? '1' : '0');
-    params.set('maxVolume', settings.maxVolume ? '1' : '0');
     return params;
 }
 

@@ -6,7 +6,7 @@ type GalleryCommand =
     | { type: 'mono-output'; enabled: boolean }
     | { type: 'auto-live'; enabled: boolean }
     | { type: 'lowest-quality' }
-    | { type: 'max-volume'; enabled: boolean }
+    | { type: 'max-volume' }
     | { type: 'start-screen-share'; source: DesktopSource }
     | { type: 'reset-screen-share' };
 
@@ -81,7 +81,6 @@ let muted = true;
 let levelsEnabled = params.get('audioLevels') !== '0';
 let monoOutput = params.get('monoOutput') === '1';
 let autoLive = params.get('autoLive') !== '0';
-let maxVolume = params.get('maxVolume') !== '0';
 let connectedElement: HTMLMediaElement | null = null;
 let connectedStream: MediaStream | null = null;
 let selectedMicStream: MediaStream | null = null;
@@ -500,10 +499,6 @@ function startUserInputTracking(): void {
 // the media element, so the element alone is not enough: raise the player's level as well.
 // The player object lives in the page's world, which this isolated preload cannot call.
 function raiseYouTubePlayerVolume(): void {
-    if (!maxVolume) {
-        return;
-    }
-
     webFrame
         .executeJavaScript(
             `(() => {
@@ -519,9 +514,7 @@ function raiseYouTubePlayerVolume(): void {
 
 function raiseMediaVolume(media: HTMLMediaElement): void {
     media.muted = false;
-    if (maxVolume) {
-        media.volume = 1;
-    }
+    media.volume = 1;
     raiseYouTubePlayerVolume();
 }
 
@@ -542,7 +535,7 @@ function keepMediaAudibleForMeter(media: HTMLMediaElement): void {
     media.addEventListener('volumechange', () => {
         if (performance.now() - lastUserInputAt < USER_VOLUME_INPUT_WINDOW_MS) {
             userAdjusted = true;
-        } else if (!userAdjusted && maxVolume && (media.muted || media.volume !== 1)) {
+        } else if (!userAdjusted && (media.muted || media.volume !== 1)) {
             raiseMediaVolume(media);
         }
     });
@@ -750,7 +743,6 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
         autoLive = command.enabled;
         startAutoLiveLoop();
     } else if (command.type === 'max-volume') {
-        maxVolume = command.enabled;
         if (connectedElement) {
             raiseMediaVolume(connectedElement);
         }

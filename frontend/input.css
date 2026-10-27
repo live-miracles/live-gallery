@@ -15,6 +15,13 @@
     --color-neutral: #030303;
 }
 
+/* daisyUI ships no alert-primary; this mirrors alert-success with the primary (green) color. */
+.alert-primary {
+    color: var(--color-primary-content);
+    --alert-border-color: var(--color-primary);
+    --alert-color: var(--color-primary);
+}
+
 /* Below 100% the header shrinks with the box so every button still fits; above 100%
    it stays at normal size. */
 .box-header {
@@ -42,6 +49,19 @@
 
 .alert-volume-popover:popover-open {
     display: flex;
+}
+
+/* Same for the YouTube menu: anchored under its button, outside the clipped toolbar. */
+#youtube-menu-button {
+    anchor-name: --youtube-menu;
+}
+
+.youtube-menu {
+    position-anchor: --youtube-menu;
+    inset: auto;
+    top: anchor(bottom);
+    left: anchor(left);
+    margin: 6px 0 0;
 }
 
 .box-tool-btn {

@@ -56,19 +56,36 @@
           <span class="swap-on badge badge-accent h-6 px-2">Rotate audio</span>
           <span class="swap-off badge badge-outline h-6 px-2">Rotate audio</span>
         </label>
-        <label class="swap cursor-pointer">
-          <input id="auto-live" type="checkbox" checked />
-          <span class="swap-on badge badge-accent h-6 px-2">YouTube Live</span>
-          <span class="swap-off badge badge-outline h-6 px-2">YouTube Live</span>
-        </label>
-        <button id="lowest-quality" class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center">Low Quality</button>
-        <label
-          class="swap cursor-pointer"
-          title="Keep each YouTube player's own volume at 100%. Gallery mute and rotation still decide what you hear.">
-          <input id="max-volume" type="checkbox" checked />
-          <span class="swap-on badge badge-accent h-6 px-2">Max Volume</span>
-          <span class="swap-off badge badge-outline h-6 px-2">Max Volume</span>
-        </label>
+        <button
+          id="youtube-menu-button"
+          class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none"
+          popovertarget="youtube-menu"
+          aria-haspopup="menu">
+          YouTube
+        </button>
+        <div
+          id="youtube-menu"
+          popover
+          class="youtube-menu bg-base-200/60 border-base-content/20 text-base-content w-max rounded-md border p-1 shadow-2xl backdrop-blur-md">
+          <label
+            class="hover:bg-accent hover:text-accent-content flex h-6 cursor-pointer items-center gap-2 rounded-md px-3 text-xs"
+            title="Keep clicking the LIVE button on every YouTube player.">
+            <input id="auto-live" class="checkbox checkbox-xs" type="checkbox" checked />
+            Auto live
+          </label>
+          <button
+            id="max-volume"
+            class="btn btn-ghost btn-xs flex w-full justify-start font-normal hover:bg-accent hover:text-accent-content"
+            title="Set every YouTube player's volume to 100%. Gallery mute and rotation still decide what you hear.">
+            Max Volume
+          </button>
+          <button
+            id="lowest-quality"
+            class="btn btn-ghost btn-xs flex w-full justify-start font-normal hover:bg-accent hover:text-accent-content"
+            title="Switch every YouTube player to its lowest fixed quality.">
+            Low Quality
+          </button>
+        </div>
         <button
           id="audio-output"
           class="btn btn-accent btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
