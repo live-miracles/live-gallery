@@ -77,6 +77,7 @@ const meterFrameMs = 33;
 
 const gallery = mustGet<HTMLElement>('gallery');
 const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
+const rotateMenuButton = mustGet<HTMLButtonElement>('rotate-menu-button');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
 const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
@@ -385,6 +386,7 @@ function syncRotationControlsVisibility(): void {
     const isRotating = muteRotationInput.checked;
     rotationBoxesInput.disabled = !isRotating;
     rotationTimeInput.disabled = !isRotating;
+    rotateMenuButton.classList.toggle('btn-active', isRotating);
 }
 
 function sanitizeRotationBoxesInput(): void {

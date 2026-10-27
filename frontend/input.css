@@ -51,13 +51,25 @@
     display: flex;
 }
 
-/* Same for the YouTube menu: anchored under its button, outside the clipped toolbar. */
+/* The toolbar menus (YouTube, Rotate) work the same way: anchored under their button,
+   outside the clipped toolbar. */
 #youtube-menu-button {
     anchor-name: --youtube-menu;
 }
 
-.youtube-menu {
+#rotate-menu-button {
+    anchor-name: --rotate-menu;
+}
+
+#youtube-menu {
     position-anchor: --youtube-menu;
+}
+
+#rotate-menu {
+    position-anchor: --rotate-menu;
+}
+
+.toolbar-menu {
     inset: auto;
     top: anchor(bottom);
     left: anchor(left);

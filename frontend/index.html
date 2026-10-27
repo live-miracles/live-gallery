@@ -91,20 +91,34 @@
       <section
         class="absolute left-1/2 flex max-w-full min-w-max -translate-x-1/2 flex-nowrap items-center justify-center gap-1.5 overflow-x-auto overflow-y-hidden whitespace-nowrap max-[980px]:static max-[980px]:order-3 max-[980px]:w-full max-[980px]:min-w-0 max-[980px]:translate-x-0"
         aria-label="Gallery controls">
-        <label class="label p-0">
-          <span class="sr-only">Rotation boxes</span>
-          <input id="rotation-boxes" class="input input-xs w-28" type="text" placeholder="e.g. 1 3 5-9" />
-        </label>
-        <label class="input input-xs w-20 gap-1 px-2">
-          <span class="sr-only">Rotation seconds</span>
-          <input id="rotation-time" class="grow min-w-0" type="number" min="1" value="5" />
-          <span class="badge badge-neutral badge-xs">sec</span>
-        </label>
-        <input id="mute-rotation" class="btn btn-accent btn-xs btn-outline h-6 min-h-0 px-2 leading-none" type="checkbox" aria-label="Rotate audio" />
+        <button
+          id="rotate-menu-button"
+          class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none"
+          popovertarget="rotate-menu"
+          aria-haspopup="dialog">
+          Rotate
+        </button>
+        <div
+          id="rotate-menu"
+          popover
+          class="toolbar-menu bg-base-200/60 border-base-content/20 text-base-content w-max gap-2 rounded-md border p-2 text-xs [&:popover-open]:grid shadow-2xl backdrop-blur-md">
+          <label class="flex cursor-pointer items-center justify-between gap-6" title="Move the audio across the boxes below, one at a time.">
+            <span class="font-medium">Rotate audio</span>
+            <input id="mute-rotation" class="toggle toggle-accent toggle-sm" type="checkbox" />
+          </label>
+          <label class="grid grid-cols-[4rem_auto] items-center gap-2">
+            <span>Boxes</span>
+            <input id="rotation-boxes" class="input input-xs w-32" type="text" placeholder="e.g. 1 3 5-9" />
+          </label>
+          <label class="grid grid-cols-[4rem_auto] items-center gap-2">
+            <span>Seconds</span>
+            <input id="rotation-time" class="input input-xs w-32" type="number" min="1" value="5" />
+          </label>
+        </div>
         <span class="toolbar-divider" aria-hidden="true"></span>
         <button
           id="youtube-menu-button"
-          class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none"
+          class="btn btn-accent btn-xs h-6 min-h-0 items-center px-2 leading-none"
           popovertarget="youtube-menu"
           aria-haspopup="menu">
           YouTube
@@ -112,7 +126,7 @@
         <div
           id="youtube-menu"
           popover
-          class="youtube-menu bg-base-200/60 border-base-content/20 text-base-content w-max rounded-md border p-1 shadow-2xl backdrop-blur-md">
+          class="toolbar-menu bg-base-200/60 border-base-content/20 text-base-content w-max rounded-md border p-1 shadow-2xl backdrop-blur-md">
           <label
             class="hover:bg-accent hover:text-accent-content flex h-6 cursor-pointer items-center gap-2 rounded-md px-3 text-xs"
             title="Keep clicking the LIVE button on every YouTube player.">
