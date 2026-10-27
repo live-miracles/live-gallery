@@ -1,6 +1,6 @@
 {
     "name": "live-gallery",
-    "version": "1.6.3",
+    "version": "1.6.4",
     "description": "Open-source multiviewer for monitoring many live streams at once, with audio meters, mute/solo and alerts for frozen video, silence, clipping and phase problems.",
     "main": "dist/main.js",
     "scripts": {
