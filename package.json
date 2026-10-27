@@ -60,14 +60,6 @@
                 {
                     "target": "dmg",
                     "arch": [
-                        "x64",
-                        "arm64"
-                    ]
-                },
-                {
-                    "target": "zip",
-                    "arch": [
-                        "x64",
                         "arm64"
                     ]
                 }
@@ -83,17 +75,10 @@
                     "arch": [
                         "x64"
                     ]
-                },
-                {
-                    "target": "deb",
-                    "arch": [
-                        "x64"
-                    ]
                 }
             ],
             "icon": "frontend/logo.png",
             "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
-            "maintainer": "Live Stream Miracles <noreply@live-gallery.invalid>",
             "category": "Video"
         },
         "publish": {

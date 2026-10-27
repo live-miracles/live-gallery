@@ -11,7 +11,7 @@ _Open-source multiviewer for live streams: watch many at once, hear the one that
 
 **Live Gallery is a desktop app for monitoring many live streams in one window.** Put YouTube, JW Player, HLS and other players side by side, see a live audio meter on every box, solo or rotate the audio between them, and let the app warn you about frozen video, silence, clipping and broken stereo before your viewers do.
 
-It was built by a team that streams large live events to viewers around the world, where one bad feed among twenty is easy to miss. Windows, macOS and Linux installers are free, and nothing needs to be installed besides the app.
+It was built by a team that streams large live events to viewers around the world, where one bad feed among twenty is easy to miss. The installers are free and nothing needs to be installed besides the app. Windows is the primary, tested platform; macOS and Linux builds are in beta.
 
 | [Download](#download) | [Get help](https://github.com/live-miracles/live-gallery/discussions) | [Report a bug](https://github.com/live-miracles/live-gallery/issues/new/choose) |
 | --------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -52,13 +52,19 @@ The box then shows the Zoom video with live audio meters and alerts, like any ot
 You do not need to install Node.js or download the source code to use it.
 
 1. Open the [Live Gallery Releases page](https://github.com/live-miracles/live-gallery/releases/latest).
-2. Under **Assets**, download the installer for your platform:
-    - Windows: `windows-x64.exe`
-    - macOS Intel: `macos-x64.dmg` (or `macos-x64.zip`)
-    - macOS Apple Silicon: `macos-arm64.dmg` (or `macos-arm64.zip`)
-    - Linux: `linux-x64.AppImage`
-    - Debian-based Linux: `linux-x64.deb`
-3. Open the downloaded file and follow the installation steps.
+2. Under **Assets**, download the **one** file for your system and ignore the rest (`latest*.yml` and `.blockmap` files are only used by the app's automatic updater):
+
+    | System                     | Download               | Status              |
+    | -------------------------- | ---------------------- | ------------------- |
+    | Windows 10/11 (64-bit)     | `…-windows-x64.exe`    | Recommended, tested |
+    | macOS (Apple Silicon: M1+) | `…-macos-arm64.dmg`    | Beta                |
+    | Linux (64-bit)             | `…-linux-x64.AppImage` | Beta                |
+
+3. Open the downloaded file and follow the installation steps. On Linux, make the AppImage executable first (`chmod +x`).
+
+### Platform support
+
+Live Gallery is built and tested on **Windows**. The macOS and Linux builds are **beta**: they are published so you can try them, but they have had little testing, so expect rough edges and please [report what you find](https://github.com/live-miracles/live-gallery/issues/new/choose). There is no build for Intel Macs; on those, or on other Linux packages such as `.deb`, you can [run it from source](CONTRIBUTING.md).
 
 The installers are not code-signed yet, so Windows SmartScreen or macOS Gatekeeper may warn you the first time. On Windows choose **More info → Run anyway**. On macOS, right-click the app and choose **Open**.
 
@@ -123,7 +129,9 @@ git push origin master --tags
 ```
 
 The tag push starts the release workflow, builds installers on Windows, macOS,
-and Linux, and publishes them to a GitHub release for that tag.
+and Linux, and publishes them to a GitHub release for that tag. Each release
+carries one installer per platform (Windows `.exe`, macOS Apple Silicon `.dmg`,
+Linux x64 `.AppImage`) plus the metadata files the auto-updater needs.
 
 ## License
 
