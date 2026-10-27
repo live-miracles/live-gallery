@@ -7,7 +7,7 @@ module.exports = {
     trailingComma: 'all',
     arrowParens: 'always',
     bracketSameLine: true,
-    endOfLine: 'auto',
+    endOfLine: 'lf',
     plugins: [],
     overrides: [
         {
