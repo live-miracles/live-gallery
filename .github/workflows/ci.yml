@@ -28,3 +28,23 @@ jobs:
                   cache: npm
             - run: npm ci
             - run: npm test
+
+    docs:
+        name: Docs links
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            # The checker lives in the org site repository, which publishes these docs
+            # and resolves their links the same way.
+            - uses: actions/checkout@v4
+              with:
+                  repository: live-miracles/live-miracles.github.io
+                  path: site
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+            - run: npm ci --ignore-scripts
+              working-directory: site
+            # Broken relative links or anchors in README.md and docs/, and docs pages
+            # missing from docs/README.md.
+            - run: node site/scripts/check-docs.js .

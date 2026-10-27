@@ -13,8 +13,8 @@ _Open-source multiviewer for live streams: watch many at once, hear the one that
 
 It was built by a team that streams large live events to viewers around the world, where one bad feed among twenty is easy to miss. The installers are free and nothing needs to be installed besides the app. Windows is the primary, tested platform; macOS and Linux builds are in beta.
 
-| [Download](#download) | [Get help](https://github.com/live-miracles/live-gallery/discussions) | [Report a bug](https://github.com/live-miracles/live-gallery/issues/new/choose) |
-| --------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [Download](#download) | [Documentation](docs/README.md) | [Get help](https://github.com/live-miracles/live-gallery/discussions) | [Report a bug](https://github.com/live-miracles/live-gallery/issues/new/choose) |
+| --------------------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 
 <img width="1372" height="380" alt="Live Gallery showing several live streams with audio meters" src="https://github.com/user-attachments/assets/61a912f2-2a03-4cb1-afeb-b618fc6ad01b" />
 
@@ -39,13 +39,7 @@ During one live event, a suspected faulty audio embedder made the left and right
 
 ## Monitor Zoom or any desktop app
 
-Anything you can see on your screen can be a box, so Live Gallery also works with Zoom meetings, webinars and other apps that have no embeddable player. You need a virtual audio cable (for example [VB-Cable](https://vb-audio.com/Cable/) on Windows or [BlackHole](https://existential.audio/blackhole/) on macOS) so Live Gallery can listen to the meeting audio:
-
-1. In Zoom, open **Settings → Audio** and set the **Speaker** to the virtual audio cable.
-2. In Live Gallery, add a box, choose **Screen Share** and select the Zoom window.
-3. In the same box, choose the virtual cable as the audio input.
-
-The box then shows the Zoom video with live audio meters and alerts, like any other source. Because Zoom plays its sound only into the cable, you won't hear it on your own speakers unless you route the cable's audio to them.
+Anything you can see on your screen can be a box, so Live Gallery also works with Zoom meetings, webinars and other apps that have no embeddable player. Add a **Screen Share** box, pick the window, and use a virtual audio cable ([VB-Cable](https://vb-audio.com/Cable/) on Windows, [BlackHole](https://existential.audio/blackhole/) on macOS) so Live Gallery can listen to the audio. The step-by-step guide is in [Monitor Zoom or any desktop app](docs/2-usage/5-monitor-zoom.md).
 
 ## Download
 
@@ -75,7 +69,7 @@ The installers are not code-signed yet, so Windows SmartScreen or macOS Gatekeep
 3. Use the speaker button on a box to solo it, or enable **Rotate audio** to cycle through boxes.
 4. Open **Settings** to choose which alerts are on. The Alerts button shows active alerts and the last five minutes of history.
 
-The in-app **Docs** button explains boxes, presets and rotation.
+The full guides are in the [documentation](docs/README.md), also reachable from the **Docs** button in the app.
 
 ## Get help and give feedback
 
