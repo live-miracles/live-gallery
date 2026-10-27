@@ -17,6 +17,8 @@ import {
 import { icon } from './icons.js';
 import { createPresetController } from './presets.js';
 
+const DOCS_URL = 'https://live-miracles.github.io/projects/live-gallery/docs/';
+
 document.getElementById('add-box')!.innerHTML = icon('plus');
 
 type ScreenShareValue = {
@@ -122,7 +124,6 @@ const clipboardToastText = mustGet<HTMLElement>('clipboard-toast-text');
 const presetNameDialog = mustGet<HTMLDialogElement>('preset-name-dialog');
 const presetNameTitle = mustGet<HTMLElement>('preset-name-title');
 const presetNameInput = mustGet<HTMLInputElement>('preset-name-input');
-const docsDialog = mustGet<HTMLDialogElement>('docs-dialog');
 const alertsDialog = mustGet<HTMLDialogElement>('alerts-dialog');
 const alertsList = mustGet<HTMLElement>('alerts-list');
 const settingsDialog = mustGet<HTMLDialogElement>('settings-dialog');
@@ -1637,7 +1638,8 @@ document.getElementById('add-box')!.addEventListener('click', () => {
 
 document.getElementById('docs-button')!.addEventListener('click', () => {
     presetMenu.open = false;
-    docsDialog.showModal();
+    // The main process opens every window.open URL in the default browser.
+    window.open(DOCS_URL, '_blank', 'noopener');
 });
 
 alertsButton.addEventListener('click', () => {

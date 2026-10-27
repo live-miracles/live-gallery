@@ -64,6 +64,11 @@
     margin: 6px 0 0;
 }
 
+/* Thin separator between groups of toolbar controls. */
+.toolbar-divider {
+    @apply bg-base-content/25 mx-1 h-4 w-px shrink-0;
+}
+
 .box-tool-btn {
     @apply mx-1 h-[22px] min-h-0 w-5 px-0 text-xs leading-none;
 }
