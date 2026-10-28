@@ -327,8 +327,8 @@ export function createAlertController({
 
         alertsCount.textContent = String(activeAlerts.length);
         alertsCount.classList.toggle('hidden', activeAlerts.length === 0);
-        alertsButton.classList.toggle('btn-error', activeAlerts.length > 0);
-        alertsButton.classList.toggle('btn-accent', activeAlerts.length === 0);
+        alertsButton.classList.toggle('is-alert', activeAlerts.length > 0);
+        alertsButton.classList.toggle('btn-muted', activeAlerts.length === 0);
         syncAlertBeepLoop(activeAlerts);
 
         elements.forEach((entry, boxId) => {
@@ -356,7 +356,7 @@ export function createAlertController({
             boxAlerts.forEach((alert) => {
                 const badge = document.createElement('div');
                 badge.className =
-                    'alert alert-error min-h-0 justify-center rounded-md border-error-content/20 px-3 py-1.5 text-center text-xs font-semibold shadow-lg shadow-black/50';
+                    'bg-danger/90 rounded-full px-3 py-1 text-center text-[11px] font-semibold text-white shadow-lg shadow-black/50 backdrop-blur-sm';
                 badge.textContent = alert.message;
                 stack.appendChild(badge);
             });
@@ -366,7 +366,7 @@ export function createAlertController({
         alertsList.replaceChildren();
         if (visibleAlerts.length === 0) {
             const empty = document.createElement('div');
-            empty.className = 'text-base-content/60 rounded-md border border-base-content/15 p-3';
+            empty.className = 'text-label-2 px-4 py-6 text-center';
             empty.textContent = 'No active alerts';
             alertsList.appendChild(empty);
             return;
@@ -376,20 +376,21 @@ export function createAlertController({
             const box = boxes.find((item) => item.id === alert.boxId);
             const number = box ? boxes.indexOf(box) + 1 : '?';
             const row = document.createElement('div');
-            row.className =
-                'border-base-content/15 bg-base-200 grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md border p-2';
+            row.className = 'grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 px-3.5 py-2.5';
 
             const badge = document.createElement('span');
-            badge.className = alert.active ? 'badge badge-error' : 'badge badge-ghost';
+            badge.className = alert.active
+                ? 'pill pill-danger justify-self-start'
+                : 'pill justify-self-start';
             badge.textContent = alert.active ? 'Active' : 'Resolved';
 
             const text = document.createElement('div');
             text.className = 'min-w-0';
-            text.innerHTML = `<div class="font-semibold">${escapeHtml(alert.message)}</div>
-                <div class="text-base-content/60 truncate">Box ${number} &middot; ${escapeHtml(box ? getBoxTitle(box) : alert.boxId)}</div>`;
+            text.innerHTML = `<div class="font-medium">${escapeHtml(alert.message)}</div>
+                <div class="text-label-2 truncate text-xs">Box ${number} &middot; ${escapeHtml(box ? getBoxTitle(box) : alert.boxId)}</div>`;
 
             const time = document.createElement('time');
-            time.className = 'text-base-content/60 text-xs whitespace-nowrap';
+            time.className = 'text-label-2 text-xs whitespace-nowrap tabular-nums';
             time.dateTime = new Date(alert.lastSeenAt).toISOString();
             time.textContent = new Date(alert.lastSeenAt).toLocaleTimeString([], {
                 hour: '2-digit',

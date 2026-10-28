@@ -12,6 +12,7 @@ type PresetControllerOptions = {
     presetNameInput: HTMLInputElement;
     newPresetButton: HTMLButtonElement;
     exportPresetButton: HTMLButtonElement;
+    copyPresetButton: HTMLButtonElement;
     importPresetButton: HTMLButtonElement;
     importPresetClipboardButton: HTMLButtonElement;
     savePresetButton: HTMLButtonElement;
@@ -28,6 +29,7 @@ export function createPresetController({
     presetNameInput,
     newPresetButton,
     exportPresetButton,
+    copyPresetButton,
     importPresetButton,
     importPresetClipboardButton,
     savePresetButton,
@@ -71,7 +73,7 @@ export function createPresetController({
 
         if (presets.length === 0) {
             const empty = document.createElement('div');
-            empty.className = 'text-base-content/60 px-2 py-1 text-xs';
+            empty.className = 'text-label-3 px-2.5 py-1 text-xs';
             empty.textContent = 'No saved presets';
             savedPresetList.appendChild(empty);
             return;
@@ -79,12 +81,11 @@ export function createPresetController({
 
         presets.forEach((preset) => {
             const row = document.createElement('div');
-            row.className = 'grid grid-cols-[1fr_auto_auto] items-center gap-1';
+            row.className = 'group/preset grid grid-cols-[1fr_auto_auto] items-center gap-0.5';
 
             const loadButton = document.createElement('button');
             loadButton.type = 'button';
-            loadButton.className =
-                'btn btn-ghost btn-xs justify-start truncate hover:bg-accent hover:text-accent-content';
+            loadButton.className = 'menu-item min-w-0 truncate';
             loadButton.textContent = preset.name;
             loadButton.title = preset.name;
             loadButton.addEventListener('click', () => {
@@ -94,7 +95,8 @@ export function createPresetController({
 
             const renameButton = document.createElement('button');
             renameButton.type = 'button';
-            renameButton.className = 'btn btn-accent btn-xs btn-outline box-tool-btn';
+            renameButton.className =
+                'btn btn-sm btn-icon btn-muted opacity-0 group-hover/preset:opacity-100 focus-visible:opacity-100';
             renameButton.innerHTML = icon('pencil');
             renameButton.title = 'Rename preset';
             renameButton.setAttribute('aria-label', 'Rename preset');
@@ -108,7 +110,8 @@ export function createPresetController({
 
             const deleteButton = document.createElement('button');
             deleteButton.type = 'button';
-            deleteButton.className = 'btn btn-error btn-xs btn-outline box-tool-btn';
+            deleteButton.className =
+                'btn btn-sm btn-icon btn-muted btn-danger opacity-0 group-hover/preset:opacity-100 focus-visible:opacity-100';
             deleteButton.innerHTML = icon('trash');
             deleteButton.title = 'Delete preset';
             deleteButton.setAttribute('aria-label', 'Delete preset');
@@ -232,6 +235,20 @@ export function createPresetController({
                 .catch((error) => {
                     console.error('Could not export preset:', error);
                     showToast('Export failed', 'error');
+                });
+        });
+
+        // Same JSON as the exported file, so Import from Clipboard reads it back.
+        copyPresetButton.addEventListener('click', () => {
+            window.liveGallery
+                .copyText(JSON.stringify(boxesToPreset(), null, 2))
+                .then(() => {
+                    showToast('Preset copied');
+                    presetMenu.open = false;
+                })
+                .catch((error) => {
+                    console.error('Could not copy preset:', error);
+                    showToast('Copy failed', 'error');
                 });
         });
 

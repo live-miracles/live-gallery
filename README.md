@@ -65,7 +65,7 @@ The installers are not code-signed yet, so Windows SmartScreen or macOS Gatekeep
 ## Quick start
 
 1. Click **+** to add a box, pick the source type, paste a URL or ID and save.
-2. Repeat for each stream, or use **Preset → Import Preset (Clipboard)** with one YouTube link per line.
+2. Repeat for each stream, or use **Preset → Import from Clipboard** with one YouTube link per line.
 3. Use the speaker button on a box to solo it, or enable **Rotate audio** to cycle through boxes.
 4. Open **Settings** to choose which alerts are on. The Alerts button shows active alerts and the last five minutes of history.
 

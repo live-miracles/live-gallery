@@ -14,7 +14,7 @@ Navigation only; correct an entry when a change makes it stale, and add one only
 - `preload/preload.cts` - bridge that exposes `window.liveGallery` to the app page. `preload/guest-preload.cts` runs inside every box's webview: audio metering (Web Audio), media health, mute and mono output, and the YouTube commands (auto live, max volume, lowest quality).
 - `frontend/app.ts` - the gallery UI: toolbar, boxes, settings, rotation, toasts. `alerts.ts` has every alert threshold, the overlay, the five-minute history and the beep. `presets.ts` is the Preset menu. `utils.ts` has the box and settings types and builds each player URL. `icons.ts` is the SVG icon set.
 - `frontend/*.html` - `index.html` is the app page; `local-file-player.html`, `m3u8-player.html` and `screen-share.html` are the pages loaded into boxes.
-- `frontend/input.css` - Tailwind and daisyUI (theme `dim`) plus the few custom rules.
+- `frontend/input.css` - Tailwind plus the app's own components (buttons, fields, switches, menus, dialogs) and design tokens: Apple-style dark materials with a Hokusai palette and seigaiha wave pattern. `fonts/` bundles Inter (OFL).
 - `docs/` - user documentation (see below). `README.md` is the pitch and install steps.
 
 ## Documentation

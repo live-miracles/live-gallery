@@ -103,6 +103,7 @@ const presetMenu = mustGet<HTMLDetailsElement>('preset-menu');
 const savedPresetList = mustGet<HTMLElement>('saved-preset-list');
 const newPresetButton = mustGet<HTMLButtonElement>('new-preset');
 const exportPresetButton = mustGet<HTMLButtonElement>('export-preset');
+const copyPresetButton = mustGet<HTMLButtonElement>('copy-preset');
 const importPresetButton = mustGet<HTMLButtonElement>('import-preset');
 const importPresetClipboardButton = mustGet<HTMLButtonElement>('import-preset-clipboard');
 const savePresetButton = mustGet<HTMLButtonElement>('save-preset');
@@ -120,7 +121,6 @@ const updateDismissButton = mustGet<HTMLButtonElement>('update-dismiss-btn');
 const updateDownloadButton = mustGet<HTMLButtonElement>('update-download-btn');
 const updateRestartButton = mustGet<HTMLButtonElement>('update-restart-btn');
 const clipboardToast = mustGet<HTMLElement>('clipboard-toast');
-const clipboardToastAlert = mustGet<HTMLElement>('clipboard-toast-alert');
 const clipboardToastIcon = mustGet<HTMLElement>('clipboard-toast-icon');
 const clipboardToastText = mustGet<HTMLElement>('clipboard-toast-text');
 const presetNameDialog = mustGet<HTMLDialogElement>('preset-name-dialog');
@@ -194,6 +194,7 @@ const presetController = createPresetController({
     presetNameInput,
     newPresetButton,
     exportPresetButton,
+    copyPresetButton,
     importPresetButton,
     importPresetClipboardButton,
     savePresetButton,
@@ -386,7 +387,7 @@ function syncRotationControlsVisibility(): void {
     const isRotating = muteRotationInput.checked;
     rotationBoxesInput.disabled = !isRotating;
     rotationTimeInput.disabled = !isRotating;
-    rotateMenuButton.classList.toggle('btn-active', isRotating);
+    rotateMenuButton.classList.toggle('is-on', isRotating);
 }
 
 function sanitizeRotationBoxesInput(): void {
@@ -396,7 +397,7 @@ function sanitizeRotationBoxesInput(): void {
 
 function updateRotationBoxesValidity(): boolean {
     const error = getRotationBoxesSyntaxError(rotationBoxesInput.value);
-    rotationBoxesInput.classList.toggle('input-error', Boolean(error));
+    rotationBoxesInput.setAttribute('aria-invalid', String(Boolean(error)));
     rotationBoxesInput.title = error ?? '';
     return !error;
 }
@@ -480,7 +481,8 @@ function syncAlertSoundControl(): void {
     const audible = settings.alertSound && settings.alertVolume > 0;
     const volume = settings.alertSound ? settings.alertVolume : 0;
     alertSoundButton.innerHTML = icon(audible ? 'bell' : 'bell-off');
-    alertSoundButton.classList.toggle('btn-outline', !audible);
+    alertSoundButton.classList.toggle('btn-muted', audible);
+    alertSoundButton.classList.toggle('is-alert', !audible);
     const label = audible
         ? `Alert beeps at ${volume}% (click to mute)`
         : 'Alert beeps muted (click to unmute)';
@@ -534,7 +536,7 @@ function setAlertVolumeFromSlider(): void {
 function syncAudioOutputButton(): void {
     const mode = settings.monoOutput ? 'mono' : 'stereo';
     audioOutputButton.innerHTML = icon(settings.monoOutput ? 'speaker-mono' : 'speaker-stereo');
-    audioOutputButton.classList.toggle('btn-outline', !settings.monoOutput);
+    audioOutputButton.classList.toggle('is-on', settings.monoOutput);
     const label = `Audio output: ${mode} (click for ${settings.monoOutput ? 'stereo' : 'mono'})`;
     audioOutputButton.title = label;
     audioOutputButton.setAttribute('aria-label', label);
@@ -569,24 +571,24 @@ function addBox(): void {
 function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
-        'bg-base-200 border-base-content/25 relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border shadow-md shadow-black/50';
+        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[10px] border border-white/10 shadow-lg shadow-black/40';
     root.innerHTML = `
-        <div class="box-header group bg-base-300 border-base-content/10 relative flex h-[22px] w-full items-center overflow-hidden border-b">
-          <button class="drag-handle btn btn-ghost btn-xs box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
-          <span class="box-number absolute top-0 left-7 z-20 h-[22px] cursor-grab select-none text-sm leading-[22px] font-semibold" title="Drag to reorder this box"></span>
-          <strong class="box-title bg-base-300 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-sm font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
-          <button class="alert-visibility btn btn-accent btn-xs btn-soft box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
-          <button class="mute btn btn-xs btn-soft box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
-          <button class="solo btn btn-accent btn-xs btn-soft box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
-          <button class="reload btn btn-accent btn-xs btn-soft box-tool-btn" title="Reload this box" aria-label="Reload this box">${icon('refresh')}</button>
-          <button class="copy-url btn btn-accent btn-xs btn-soft box-tool-btn" title="Copy this box's URL" aria-label="Copy this box's URL">${icon('copy')}</button>
-          <button class="edit btn btn-accent btn-xs btn-soft box-tool-btn" title="Edit this box" aria-label="Edit this box">${icon('pencil')}</button>
-          <button class="remove btn btn-error btn-xs btn-soft box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
-          <button class="expand btn btn-accent btn-xs btn-soft box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
+        <div class="box-header group bg-surface border-hairline relative flex h-[22px] w-full items-center overflow-hidden border-b">
+          <button class="drag-handle btn box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
+          <span class="box-number text-label-2 absolute top-0 left-6.5 z-20 h-[22px] cursor-grab text-xs leading-[22px] font-medium tabular-nums select-none" title="Drag to reorder this box"></span>
+          <strong class="box-title bg-surface pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-xs font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
+          <button class="alert-visibility btn box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
+          <button class="mute btn box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
+          <button class="solo btn box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
+          <button class="reload btn box-tool-btn" title="Reload this box" aria-label="Reload this box">${icon('refresh')}</button>
+          <button class="copy-url btn box-tool-btn" title="Copy this box's URL" aria-label="Copy this box's URL">${icon('copy')}</button>
+          <button class="edit btn box-tool-btn" title="Edit this box" aria-label="Edit this box">${icon('pencil')}</button>
+          <button class="remove btn btn-danger box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
+          <button class="expand btn box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
         </div>
-        <form class="box-form bg-base-200/80 border-base-300 absolute top-7 left-1/2 z-30 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1 rounded-lg border p-2 shadow-lg backdrop-blur-sm">
-          <input name="name" class="input input-xs" type="text" placeholder="Name" />
-          <select name="type" class="select select-xs">
+        <form class="box-form material absolute top-7 left-1/2 z-30 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1.5 rounded-[10px] p-2">
+          <input name="name" class="field field-sm" type="text" placeholder="Name" />
+          <select name="type" class="field field-sm">
             <option value="YT">YouTube</option>
             <option value="JW">JW Player</option>
             <option value="VC">VdoCipher</option>
@@ -596,17 +598,17 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           </select>
           <div class="value-slot"></div>
           <div class="mt-1 flex justify-center gap-2">
-            <button type="button" class="cancel btn btn-xs min-w-16">Cancel</button>
-            <button type="submit" class="btn btn-accent btn-xs min-w-16">Save</button>
+            <button type="button" class="cancel btn btn-sm btn-gray min-w-16">Cancel</button>
+            <button type="submit" class="btn btn-sm btn-primary min-w-16">Save</button>
           </div>
         </form>
-        <div class="viewport bg-base-200 relative aspect-[277/150] overflow-hidden">
-          <div class="absolute top-0 right-2.5 bottom-0 left-0 overflow-hidden">
-            <webview class="player bg-neutral absolute top-0 left-0 h-[160%] w-[160%] origin-top-left scale-[0.625]" style="color-scheme: light" allowpopups></webview>
+        <div class="viewport relative bg-black overflow-hidden">
+          <div class="player-frame relative mr-2.5 aspect-video overflow-hidden">
+            <webview class="player absolute bg-black top-0 left-0 h-[160%] w-[160%] origin-top-left scale-[0.625]" style="color-scheme: light" allowpopups></webview>
           </div>
           <canvas class="meter pointer-events-none absolute top-0 right-0 h-full w-2.5 bg-black/30" width="10" height="180"></canvas>
           <div class="alert-overlay pointer-events-none absolute inset-0 z-20 hidden place-items-center p-3"></div>
-          <div class="empty-state text-base-content/60 pointer-events-none absolute inset-0 grid place-items-center p-5 text-center">Configure this box to load a live source.</div>
+          <div class="empty-state text-label-3 pointer-events-none absolute inset-0 grid place-items-center p-5 text-center text-xs">Configure this box to load a live source.</div>
         </div>`;
 
     const title = root.querySelector<HTMLElement>('.box-title')!;
@@ -865,7 +867,7 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
     const screenShareValue = parseScreenShareValue(value);
     form.querySelector<HTMLElement>('.value-slot')!.innerHTML =
         type === 'SS'
-            ? `<select name="value" class="select select-xs">
+            ? `<select name="value" class="field field-sm w-full">
                 <option value="${escapeAttribute(serializeScreenShareValue({ ...screenShareValue, micDeviceId: '' }))}">None</option>
                 ${mics
                     .map(
@@ -880,11 +882,11 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
                     .join('')}
               </select>`
             : type === 'LF'
-              ? `<div class="join w-full">
-                  <input name="value" class="input input-xs join-item min-w-0 flex-1" type="text" placeholder="Choose audio or video file" value="${escapeAttribute(value)}" readonly />
-                  <button type="button" class="browse-local-file btn btn-accent btn-xs join-item">Browse</button>
+              ? `<div class="flex w-full gap-1.5">
+                  <input name="value" class="field field-sm min-w-0 flex-1" type="text" placeholder="Choose audio or video file" value="${escapeAttribute(value)}" readonly />
+                  <button type="button" class="browse-local-file btn btn-sm btn-gray">Browse…</button>
                 </div>`
-              : `<input name="value" class="input input-xs" type="text" placeholder="URL or ID" value="${escapeAttribute(value)}" />`;
+              : `<input name="value" class="field field-sm w-full" type="text" placeholder="URL or ID" value="${escapeAttribute(value)}" />`;
     const control = form.elements.namedItem('value');
     if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) {
         control.addEventListener('input', () => clearBoxValueError(form));
@@ -932,8 +934,6 @@ function showBoxValueError(form: HTMLFormElement): void {
         return;
     }
 
-    control.classList.toggle('input-error', control instanceof HTMLInputElement);
-    control.classList.toggle('select-error', control instanceof HTMLSelectElement);
     control.setAttribute('aria-invalid', 'true');
     control.title = 'URL or ID is required.';
     control.focus();
@@ -945,7 +945,6 @@ function clearBoxValueError(form: HTMLFormElement): void {
         return;
     }
 
-    control.classList.remove('input-error', 'select-error');
     control.removeAttribute('aria-invalid');
     control.title = '';
 }
@@ -1060,15 +1059,15 @@ async function openScreenSharePicker(boxId: string): Promise<void> {
     const sources = await window.liveGallery.getDesktopSources();
     const overlay = document.createElement('section');
     overlay.className =
-        'fixed inset-0 z-300 grid place-items-center bg-black/85 p-4 backdrop-blur-sm';
+        'fixed inset-0 z-300 grid place-items-center bg-black/60 p-4 backdrop-blur-sm';
     overlay.setAttribute('aria-label', 'Select a screen or window');
     overlay.innerHTML = `
-        <div class="grid h-[min(760px,calc(100vh-2rem))] w-[min(1120px,calc(100vw-2rem))] grid-rows-[auto_1fr] gap-3 rounded-lg border border-base-content/25 bg-base-200 p-4 shadow-2xl shadow-black/70">
+        <div class="bg-surface grid h-[min(760px,calc(100vh-2rem))] w-[min(1120px,calc(100vw-2rem))] grid-rows-[auto_1fr] gap-4 rounded-[14px] border border-white/10 p-5 shadow-2xl shadow-black/60">
           <div class="flex min-w-0 items-center justify-between gap-3">
-            <h2 class="truncate text-lg font-semibold">Select a screen or window</h2>
+            <h2 class="truncate text-[15px] font-semibold">Select a screen or window</h2>
             <div class="flex gap-2">
-              <button type="button" class="screen-picker-cancel btn btn-error btn-soft btn-sm">Cancel</button>
-              <button type="button" class="screen-picker-reset btn btn-accent btn-sm btn-soft">Reset</button>
+              <button type="button" class="screen-picker-reset btn btn-gray">Reset</button>
+              <button type="button" class="screen-picker-cancel btn btn-gray">Cancel</button>
             </div>
           </div>
           <div class="screen-picker-sources grid min-h-0 auto-rows-min grid-cols-[repeat(auto-fill,minmax(280px,1fr))] content-start gap-3 overflow-auto pr-1"></div>
@@ -1087,22 +1086,21 @@ async function openScreenSharePicker(boxId: string): Promise<void> {
                 'grid',
                 'grid-rows-[auto_1.25rem]',
                 'gap-2',
-                'rounded-md',
-                'border',
-                'p-1.5',
+                'rounded-[10px]',
+                'p-2',
                 'text-left',
-                'text-sm',
-                'text-base-content',
+                'text-xs',
+                'text-label',
                 'transition',
                 source === selected
-                    ? 'border-accent bg-accent/20'
-                    : 'border-base-content/20 bg-base-300/70 hover:border-accent/80 hover:bg-base-300',
+                    ? 'bg-accent/20 ring-2 ring-accent'
+                    : 'bg-surface-2 hover:bg-surface-3',
             ].join(' ');
 
             const image = document.createElement('img');
             image.alt = '';
             image.src = source.thumbnail;
-            image.className = 'aspect-video w-full rounded bg-black object-contain';
+            image.className = 'aspect-video w-full rounded-md bg-black object-contain';
 
             const label = document.createElement('span');
             label.className = 'truncate';
@@ -1215,8 +1213,7 @@ function syncExpandButtonTitle(button: HTMLButtonElement, root: HTMLElement): vo
 }
 
 function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
-    root.classList.toggle('outline-accent', isUnmuted);
-    root.classList.toggle('outline-4', isUnmuted);
+    root.classList.toggle('box-unmuted', isUnmuted);
 }
 
 function toggleExpanded(root: HTMLElement): void {
@@ -1627,9 +1624,7 @@ function showToast(message: string, variant: 'success' | 'primary' | 'error' = '
     window.clearTimeout(clipboardToastTimer);
     clipboardToastIcon.innerHTML = icon(variant === 'error' ? 'circle-alert' : 'check', 'h-4 w-4');
     clipboardToastText.textContent = message;
-    clipboardToastAlert.classList.toggle('alert-success', variant === 'success');
-    clipboardToastAlert.classList.toggle('alert-primary', variant === 'primary');
-    clipboardToastAlert.classList.toggle('alert-error', variant === 'error');
+    clipboardToast.dataset.variant = variant;
     clipboardToast.classList.remove('hidden');
     clipboardToastTimer = window.setTimeout(() => {
         clipboardToast.classList.add('hidden');

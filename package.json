@@ -93,7 +93,6 @@
         "@types/node": "^25.5.0",
         "@types/semver": "^7.7.1",
         "concurrently": "^9.2.1",
-        "daisyui": "^5.5.19",
         "dotenv-cli": "^11.0.0",
         "electron": "^41.0.2",
         "electron-builder": "^26.8.1",

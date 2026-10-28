@@ -1,42 +1,52 @@
 <!doctype html>
-<html lang="en" data-theme="dim">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preload" href="./fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./dist/output.css" />
     <script type="module" src="./dist/app.js"></script>
   </head>
-  <body class="bg-black text-base-content min-h-screen">
+  <body class="text-label min-h-screen bg-black">
     <header
-      class="app-header bg-base-300/95 border-base-content/25 sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1.5 border-b px-2 py-1 shadow-lg shadow-black/40">
-      <details id="preset-menu" class="dropdown">
-        <summary class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none [&::-webkit-details-marker]:hidden">
+      class="app-header border-hairline sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1 border-b bg-[#141518]/80 px-2 py-1 backdrop-blur-xl backdrop-saturate-150">
+      <details id="preset-menu" class="relative">
+        <summary class="btn list-none [&::-webkit-details-marker]:hidden">
           Preset
+          <svg
+            class="chevron"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </summary>
-        <div class="dropdown-content bg-base-200/60 border-base-content/20 z-100 mt-1 w-72 rounded-md border p-1 shadow-2xl backdrop-blur-md">
-          <button id="new-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">New Preset</button>
-          <button id="export-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">
-            Export Preset
-          </button>
-          <button id="import-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">
-            Import Preset (File)
-          </button>
-          <button id="import-preset-clipboard" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">
-            Import Preset (Clipboard)
-          </button>
-          <button id="save-preset" class="btn btn-ghost btn-xs w-full justify-start hover:bg-accent hover:text-accent-content">Save Preset</button>
-          <div class="divider my-1"></div>
-          <div id="saved-preset-list" class="grid gap-1"></div>
+        <div class="material menu absolute top-full left-0 z-100 mt-1.5 w-64">
+          <button id="new-preset" class="menu-item">New Preset</button>
+          <button id="save-preset" class="menu-item">Save Preset…</button>
+          <div class="menu-separator"></div>
+          <button id="export-preset" class="menu-item">Export to File…</button>
+          <button id="copy-preset" class="menu-item">Copy to Clipboard</button>
+          <button id="import-preset" class="menu-item">Import from File…</button>
+          <button id="import-preset-clipboard" class="menu-item">Import from Clipboard</button>
+          <div class="menu-separator"></div>
+          <div class="menu-heading">Saved</div>
+          <div id="saved-preset-list" class="grid"></div>
         </div>
       </details>
-      <button id="settings-button" class="btn btn-accent btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0" title="Settings" aria-label="Settings">
+      <span class="toolbar-divider" aria-hidden="true"></span>
+      <button id="settings-button" class="btn btn-icon btn-muted" title="Settings" aria-label="Settings">
         <svg
           aria-hidden="true"
-          class="h-3.5 w-3.5"
+          class="h-4 w-4"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.25"
+          stroke-width="1.75"
           stroke-linecap="round"
           stroke-linejoin="round">
           <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z" />
@@ -46,16 +56,16 @@
       </button>
       <button
         id="docs-button"
-        class="btn btn-accent btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
+        class="btn btn-icon btn-muted"
         title="Documentation (opens in your browser)"
         aria-label="Open documentation in your browser">
         <svg
           aria-hidden="true"
-          class="h-3.5 w-3.5"
+          class="h-4 w-4"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.25"
+          stroke-width="1.75"
           stroke-linecap="round"
           stroke-linejoin="round">
           <path d="M12 7v14" />
@@ -63,144 +73,115 @@
             d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
         </svg>
       </button>
-      <button
-        id="alerts-button"
-        class="btn btn-accent btn-xs btn-outline relative h-6 min-h-0 w-6 items-center px-0"
-        title="Alerts"
-        aria-label="Alerts">
+      <button id="alerts-button" class="btn btn-icon btn-muted relative" title="Alerts" aria-label="Alerts">
         <svg
           aria-hidden="true"
-          class="h-3.5 w-3.5"
+          class="h-4 w-4"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.25"
+          stroke-width="1.75"
           stroke-linecap="round"
           stroke-linejoin="round">
           <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
           <path d="M12 9v4" />
           <path d="M12 17h.01" />
         </svg>
-        <span id="alerts-count" class="badge badge-error badge-xs ring-base-300 absolute -top-1.5 -right-1.5 hidden ring-2">0</span>
+        <span id="alerts-count" class="count-badge hidden">0</span>
       </button>
-      <button
-        id="add-box"
-        class="btn btn-accent btn-xs h-6 min-h-0 w-6 items-center px-0 text-lg leading-none"
-        title="Add box"
-        aria-label="Add box"></button>
+      <button id="add-box" class="btn btn-icon btn-primary ml-1 h-6 w-6 rounded-full" title="Add box" aria-label="Add box"></button>
       <section
-        class="absolute left-1/2 flex max-w-full min-w-max -translate-x-1/2 flex-nowrap items-center justify-center gap-1.5 overflow-x-auto overflow-y-hidden whitespace-nowrap max-[980px]:static max-[980px]:order-3 max-[980px]:w-full max-[980px]:min-w-0 max-[980px]:translate-x-0"
+        class="absolute left-1/2 flex max-w-full min-w-max -translate-x-1/2 flex-nowrap items-center justify-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap max-[980px]:static max-[980px]:order-3 max-[980px]:w-full max-[980px]:min-w-0 max-[980px]:translate-x-0"
         aria-label="Gallery controls">
-        <button
-          id="rotate-menu-button"
-          class="btn btn-accent btn-xs btn-outline h-6 min-h-0 items-center px-2 leading-none"
-          popovertarget="rotate-menu"
-          aria-haspopup="dialog">
+        <button id="rotate-menu-button" class="btn" popovertarget="rotate-menu" aria-haspopup="dialog">
           Rotate
+          <svg
+            class="chevron"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
-        <div
-          id="rotate-menu"
-          popover
-          class="toolbar-menu bg-base-200/60 border-base-content/20 text-base-content w-max gap-2 rounded-md border p-2 text-xs [&:popover-open]:grid shadow-2xl backdrop-blur-md">
-          <label class="flex cursor-pointer items-center justify-between gap-6" title="Move the audio across the boxes below, one at a time.">
+        <div id="rotate-menu" popover class="toolbar-menu material menu w-max gap-1 p-2 [&:popover-open]:grid">
+          <label class="flex items-center justify-between gap-8 px-1 pb-1" title="Move the audio across the boxes below, one at a time.">
             <span class="font-medium">Rotate audio</span>
-            <input id="mute-rotation" class="toggle toggle-accent toggle-sm" type="checkbox" />
+            <input id="mute-rotation" class="switch switch-sm" type="checkbox" />
           </label>
-          <label class="grid grid-cols-[4rem_auto] items-center gap-2">
-            <span>Boxes</span>
-            <input id="rotation-boxes" class="input input-xs w-32" type="text" placeholder="e.g. 1 3 5-9" />
+          <label class="grid grid-cols-[4rem_auto] items-center gap-2 px-1">
+            <span class="text-label-2">Boxes</span>
+            <input id="rotation-boxes" class="field field-sm w-32" type="text" placeholder="e.g. 1 3 5-9" />
           </label>
-          <label class="grid grid-cols-[4rem_auto] items-center gap-2">
-            <span>Seconds</span>
-            <input id="rotation-time" class="input input-xs w-32" type="number" min="1" value="5" />
+          <label class="grid grid-cols-[4rem_auto] items-center gap-2 px-1">
+            <span class="text-label-2">Seconds</span>
+            <input id="rotation-time" class="field field-sm w-32" type="number" min="1" value="5" />
           </label>
         </div>
-        <span class="toolbar-divider" aria-hidden="true"></span>
-        <button
-          id="youtube-menu-button"
-          class="btn btn-accent btn-xs h-6 min-h-0 items-center px-2 leading-none"
-          popovertarget="youtube-menu"
-          aria-haspopup="menu">
+        <button id="youtube-menu-button" class="btn" popovertarget="youtube-menu" aria-haspopup="menu">
           YouTube
+          <svg
+            class="chevron"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
-        <div
-          id="youtube-menu"
-          popover
-          class="toolbar-menu bg-base-200/60 border-base-content/20 text-base-content w-max rounded-md border p-1 shadow-2xl backdrop-blur-md">
-          <label
-            class="hover:bg-accent hover:text-accent-content flex h-6 cursor-pointer items-center gap-2 rounded-md px-3 text-xs"
-            title="Keep clicking the LIVE button on every YouTube player.">
-            <input id="auto-live" class="checkbox checkbox-xs" type="checkbox" checked />
+        <div id="youtube-menu" popover class="toolbar-menu material menu">
+          <label class="menu-item justify-between gap-6" title="Keep clicking the LIVE button on every YouTube player.">
             Auto live
+            <input id="auto-live" class="switch switch-sm" type="checkbox" checked />
           </label>
+          <div class="menu-separator"></div>
           <button
             id="max-volume"
-            class="btn btn-ghost btn-xs flex w-full justify-start font-normal hover:bg-accent hover:text-accent-content"
+            class="menu-item"
             title="Set every YouTube player's volume to 100%. Gallery mute and rotation still decide what you hear.">
             Max Volume
           </button>
-          <button
-            id="lowest-quality"
-            class="btn btn-ghost btn-xs flex w-full justify-start font-normal hover:bg-accent hover:text-accent-content"
-            title="Switch every YouTube player to its lowest fixed quality.">
-            Low Quality
-          </button>
+          <button id="lowest-quality" class="menu-item" title="Switch every YouTube player to its lowest fixed quality.">Low Quality</button>
         </div>
         <span class="toolbar-divider" aria-hidden="true"></span>
-        <button
-          id="audio-output"
-          class="btn btn-accent btn-xs btn-outline h-6 min-h-0 w-6 items-center px-0"
-          title="Audio output: stereo"
-          aria-label="Audio output: stereo"></button>
-        <div id="alert-sound-control" class="flex h-6 items-center">
-          <button id="alert-sound" class="btn btn-accent btn-xs h-6 min-h-0 w-6 items-center px-0" aria-label="Mute alert beeps"></button>
-          <div
-            id="alert-volume-popover"
-            popover="manual"
-            class="alert-volume-popover bg-base-200 border-base-content/25 text-base-content items-center gap-2 rounded-md border px-2.5 py-2 shadow-lg shadow-black/50">
-            <input
-              id="alert-volume"
-              class="range range-accent range-xs w-28"
-              type="range"
-              min="0"
-              max="500"
-              step="10"
-              value="100"
-              aria-label="Alert volume" />
-            <span id="alert-volume-value" class="w-10 text-right font-mono text-xs">100%</span>
+        <button id="audio-output" class="btn btn-icon btn-muted" title="Audio output: stereo" aria-label="Audio output: stereo"></button>
+        <div id="alert-sound-control" class="flex items-center">
+          <button id="alert-sound" class="btn btn-icon btn-muted" aria-label="Mute alert beeps"></button>
+          <div id="alert-volume-popover" popover="manual" class="alert-volume-popover material items-center gap-3 rounded-[10px] px-3 py-2">
+            <input id="alert-volume" class="slider w-28" type="range" min="0" max="500" step="10" value="100" aria-label="Alert volume" />
+            <span id="alert-volume-value" class="text-label-2 w-10 text-right text-xs tabular-nums">100%</span>
           </div>
         </div>
       </section>
       <div class="ml-auto flex flex-wrap items-center gap-1">
-        <section class="border-base-content/25 flex h-6 overflow-hidden rounded-md border" aria-label="Box size controls">
-          <button
-            id="zoom-out"
-            class="btn btn-accent btn-xs btn-soft border-base-content/20 h-6 min-h-0 rounded-none border-0 border-r px-2"
-            title="Make boxes smaller (Ctrl+-)">
-            -
+        <section class="flex h-7 items-center rounded-[8px] bg-white/6 p-0.5" aria-label="Box size controls">
+          <button id="zoom-out" class="btn btn-sm btn-icon btn-muted" title="Make boxes smaller (Ctrl+-)" aria-label="Make boxes smaller">
+            <svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M5 12h14" />
+            </svg>
           </button>
-          <button
-            id="zoom-status"
-            class="btn btn-accent btn-xs btn-soft border-base-content/20 h-6 min-h-0 w-14 rounded-none border-0 border-r px-1 font-mono"
-            title="Reset box size (Ctrl+0)">
-            100%
-          </button>
-          <button id="zoom-in" class="btn btn-accent btn-xs btn-soft h-6 min-h-0 rounded-none border-0 px-2" title="Make boxes bigger (Ctrl+=)">
-            +
+          <button id="zoom-status" class="btn btn-sm w-12 px-0 text-xs tabular-nums" title="Reset box size (Ctrl+0)">100%</button>
+          <button id="zoom-in" class="btn btn-sm btn-icon btn-muted" title="Make boxes bigger (Ctrl+=)" aria-label="Make boxes bigger">
+            <svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
           </button>
         </section>
-        <button
-          id="refresh-page"
-          class="btn btn-accent btn-xs btn-outline min-h-0 h-6 w-6 px-0"
-          title="Refresh page (Ctrl+R)"
-          aria-label="Refresh page">
+        <button id="refresh-page" class="btn btn-icon btn-muted" title="Refresh page (Ctrl+R)" aria-label="Refresh page">
           <svg
             aria-hidden="true"
-            class="h-3.5 w-3.5"
+            class="h-4 w-4"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            stroke-width="2.25"
+            stroke-width="1.75"
             stroke-linecap="round"
             stroke-linejoin="round">
             <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
@@ -209,18 +190,14 @@
             <path d="M3 21v-5h5" />
           </svg>
         </button>
-        <button
-          id="toggle-fullscreen"
-          class="btn btn-accent btn-xs btn-outline min-h-0 h-6 w-6 px-0"
-          title="Enter or exit fullscreen (F11)"
-          aria-label="Enter or exit fullscreen">
+        <button id="toggle-fullscreen" class="btn btn-icon btn-muted" title="Enter or exit fullscreen (F11)" aria-label="Enter or exit fullscreen">
           <svg
             aria-hidden="true"
-            class="h-3.5 w-3.5"
+            class="h-4 w-4"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            stroke-width="2.25"
+            stroke-width="1.75"
             stroke-linecap="round"
             stroke-linejoin="round">
             <path d="M8 3H5a2 2 0 0 0-2 2v3" />
@@ -232,102 +209,110 @@
       </div>
     </header>
 
-    <main class="p-1">
+    <main class="p-1.5">
       <section id="gallery" class="flex flex-wrap items-start max-[760px]:justify-center" aria-label="Live boxes"></section>
     </main>
 
     <aside
       id="update-toast"
-      class="alert border-base-300 bg-base-200 fixed bottom-3 left-3 z-50 hidden w-auto max-w-[calc(100vw-1.5rem)] items-center gap-2 py-2 shadow-lg">
-      <div id="update-text" class="min-w-28 whitespace-nowrap text-sm font-semibold">Update available</div>
-      <progress id="update-progress" class="progress progress-accent hidden w-24" value="0" max="100"></progress>
-      <div class="flex justify-end gap-2">
-        <button id="update-dismiss-btn" class="btn btn-xs">Later</button>
-        <button id="update-download-btn" class="btn btn-accent btn-xs">Download</button>
-        <button id="update-restart-btn" class="btn btn-accent btn-xs hidden">Restart</button>
+      class="toast material fixed bottom-4 left-4 z-50 hidden max-w-[calc(100vw-2rem)] items-center gap-3 rounded-xl py-2 pr-2 pl-4">
+      <div id="update-text" class="min-w-28 font-medium whitespace-nowrap">Update available</div>
+      <progress id="update-progress" class="progress hidden w-24" value="0" max="100"></progress>
+      <div class="flex justify-end gap-1.5">
+        <button id="update-dismiss-btn" class="btn btn-sm btn-gray">Later</button>
+        <button id="update-download-btn" class="btn btn-sm btn-primary">Download</button>
+        <button id="update-restart-btn" class="btn btn-sm btn-primary hidden">Restart</button>
       </div>
     </aside>
 
-    <div id="clipboard-toast" class="toast toast-end toast-bottom z-50 hidden">
-      <div id="clipboard-toast-alert" class="alert alert-success py-2">
-        <span id="clipboard-toast-icon" class="shrink-0"></span>
-        <span id="clipboard-toast-text">Copied</span>
-      </div>
+    <div
+      id="clipboard-toast"
+      class="toast material fixed right-0 bottom-5 left-0 z-50 mx-auto hidden w-fit items-center gap-2 rounded-full py-2 pr-4 pl-3 font-medium">
+      <span id="clipboard-toast-icon" class="shrink-0"></span>
+      <span id="clipboard-toast-text">Copied</span>
     </div>
 
-    <dialog id="preset-name-dialog" class="modal">
+    <dialog id="preset-name-dialog" class="dialog w-[26rem]">
       <form method="dialog">
-        <div class="modal-box max-w-2xl">
-          <h2 id="preset-name-title" class="mb-3 text-lg font-semibold">Preset Name</h2>
-          <input id="preset-name-input" class="input input-bordered w-full" type="text" required autofocus />
-          <div class="modal-action">
-            <button value="cancel" formnovalidate class="btn">Cancel</button>
-            <button id="preset-name-save" value="default" class="btn btn-accent">Save</button>
-          </div>
+        <div class="dialog-header">
+          <h2 id="preset-name-title">Preset Name</h2>
+        </div>
+        <div class="dialog-body">
+          <input id="preset-name-input" class="field w-full" type="text" required autofocus />
+        </div>
+        <div class="dialog-footer">
+          <button value="cancel" formnovalidate class="btn btn-gray">Cancel</button>
+          <button id="preset-name-save" value="default" class="btn btn-primary">Save</button>
         </div>
       </form>
     </dialog>
 
-    <dialog id="alerts-dialog" class="modal">
-      <form method="dialog">
-        <div class="modal-box bg-base-200/80 border-base-300 w-175 max-w-[calc(100vw-2rem)] border shadow-lg backdrop-blur-sm">
-          <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="text-xl font-semibold">Alerts</h2>
-            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" aria-label="Close alerts">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round">
-                <path d="M18 6 6 18"></path>
-                <path d="m6 6 12 12"></path>
-              </svg>
-            </button>
-          </div>
-          <div id="alerts-list" class="grid gap-2 text-sm"></div>
+    <dialog id="alerts-dialog" class="dialog w-[40rem]">
+      <form method="dialog" class="flex max-h-[calc(100dvh-2rem)] flex-col">
+        <div class="dialog-header">
+          <h2>Alerts</h2>
+          <button value="cancel" class="btn btn-icon btn-muted rounded-full" aria-label="Close alerts">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M18 6 6 18"></path>
+              <path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="dialog-body">
+          <div id="alerts-list" class="group"></div>
         </div>
       </form>
     </dialog>
 
-    <dialog id="settings-dialog" class="modal">
-      <form id="settings-form" method="dialog">
-        <div class="modal-box bg-base-200/60 border-base-300 w-[56rem] max-w-[calc(100vw-2rem)] border shadow-lg backdrop-blur-md">
-          <div class="mb-4 flex items-center justify-between gap-3">
-            <h2 class="text-xl font-semibold">Settings</h2>
-            <button value="cancel" class="btn btn-ghost btn-sm min-h-0 h-8 w-8 px-0" formnovalidate aria-label="Close settings">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round">
-                <path d="M18 6 6 18"></path>
-                <path d="m6 6 12 12"></path>
-              </svg>
-            </button>
-          </div>
-          <div class="grid gap-4 text-sm">
-            <label class="form-control">
-              <span class="label pb-1">
-                <span class="label-text font-semibold">JW server host</span>
-              </span>
-              <input id="jw-server-host" class="input input-bordered w-full" type="url" placeholder="https://my-server.com/Player/" />
-            </label>
-            <section class="grid gap-3">
-              <h3 class="font-semibold">Accessibility</h3>
-              <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                <span class="font-medium">Interface size</span>
-                <span class="text-base-content/60 text-xs"
-                  >Scales the whole window: toolbar, buttons, dialogs and boxes. Box size (Ctrl + / Ctrl -) still adjusts boxes on top of this.</span
-                >
-                <select id="ui-zoom" class="select select-bordered select-sm w-24">
+    <dialog id="settings-dialog" class="dialog w-[40rem]">
+      <form id="settings-form" method="dialog" class="flex max-h-[calc(100dvh-2rem)] flex-col">
+        <div class="dialog-header">
+          <h2>Settings</h2>
+          <button value="cancel" class="btn btn-icon btn-muted rounded-full" formnovalidate aria-label="Close settings">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M18 6 6 18"></path>
+              <path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="dialog-body grid gap-5">
+          <section>
+            <h3 class="group-title">Players</h3>
+            <div class="group">
+              <label class="group-row">
+                <span class="row-title shrink-0">JW server host</span>
+                <input id="jw-server-host" class="field ml-auto w-72" type="url" placeholder="https://my-server.com/Player/" />
+              </label>
+            </div>
+          </section>
+          <section>
+            <h3 class="group-title">Accessibility</h3>
+            <div class="group">
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Interface size</span>
+                  <span class="row-detail block"
+                    >Scales the whole window: toolbar, buttons, dialogs and boxes. Box size (Ctrl + / Ctrl -) still adjusts boxes on top of
+                    this.</span
+                  >
+                </span>
+                <select id="ui-zoom" class="field w-24">
                   <option value="75">75%</option>
                   <option value="90">90%</option>
                   <option value="100">100%</option>
@@ -338,84 +323,97 @@
                   <option value="200">200%</option>
                 </select>
               </label>
-            </section>
-            <section class="grid gap-3">
-              <h3 class="font-semibold">Alerts</h3>
-              <div class="grid gap-4">
-                <div class="border-base-content/15 grid content-start gap-2 border-t pt-3">
-                  <h4 class="text-base-content/70 text-xs font-semibold uppercase">Video</h4>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Video buffering</span>
-                    <span class="text-base-content/60 text-xs"
-                      >Detects playback stalls; alerts after the player has too little future video data for 4s.</span
-                    >
-                    <input id="alert-video-buffering" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Repeated buffering</span>
-                    <span class="text-base-content/60 text-xs">Detects recurring stalls; alerts after 5 buffering starts within 60s.</span>
-                    <input id="alert-video-repeated-buffering" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Video frozen</span>
-                    <span class="text-base-content/60 text-xs"
-                      >Detects a stuck picture; alerts when playback time has not changed for 8s, then clears after 1 min.</span
-                    >
-                    <input id="alert-video-frozen" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                </div>
-                <div class="border-base-content/15 grid content-start gap-2 border-t pt-3">
-                  <h4 class="text-base-content/70 text-xs font-semibold uppercase">Audio</h4>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Audio silent</span>
-                    <span class="text-base-content/60 text-xs"
-                      >Detects recent silence after audio was present; alerts for up to 1 min after levels drop below -85 dB.</span
-                    >
-                    <input id="alert-audio-silent" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Audio dropouts</span>
-                    <span class="text-base-content/60 text-xs"
-                      >Detects intermittent audio loss; alerts when 3 of the last 10 checks drop from signal to silence.</span
-                    >
-                    <input id="alert-audio-dropouts" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Audio clipping</span>
-                    <span class="text-base-content/60 text-xs"
-                      >Detects audio hitting full scale; alerts after 5 peaks at 0 dBFS or above within 7s.</span
-                    >
-                    <input id="alert-audio-clipping" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Audio one channel missing</span>
-                    <span class="text-base-content/60 text-xs"
-                      >Detects left or right channel loss; alerts after one channel has signal while the other is below -85 dB for 15s.</span
-                    >
-                    <input id="alert-audio-channel-missing" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Audio imbalance</span>
-                    <span class="text-base-content/60 text-xs"
-                      >Detects stereo level mismatch; alerts after both channels have signal but differ by 20 dB or more for 20s.</span
-                    >
-                    <input id="alert-audio-imbalance" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                  <label class="grid grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3">
-                    <span class="font-medium">Audio phase mismatch</span>
-                    <span class="text-base-content/60 text-xs"
-                      >Detects severe left/right cancellation; alerts after stereo phase stays unsafe for mono playback for 10s.</span
-                    >
-                    <input id="alert-audio-phase-mismatch" class="toggle toggle-accent" type="checkbox" checked />
-                  </label>
-                </div>
-              </div>
-            </section>
-          </div>
-          <div class="modal-action">
-            <button value="cancel" formnovalidate class="btn">Cancel</button>
-            <button value="default" class="btn btn-accent">Save</button>
-          </div>
+            </div>
+          </section>
+          <section>
+            <h3 class="group-title">Alerts · Video</h3>
+            <div class="group">
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Video buffering</span>
+                  <span class="row-detail block">Detects playback stalls; alerts after the player has too little future video data for 4s.</span>
+                </span>
+                <input id="alert-video-buffering" class="switch" type="checkbox" checked />
+              </label>
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Repeated buffering</span>
+                  <span class="row-detail block">Detects recurring stalls; alerts after 5 buffering starts within 60s.</span>
+                </span>
+                <input id="alert-video-repeated-buffering" class="switch" type="checkbox" checked />
+              </label>
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Video frozen</span>
+                  <span class="row-detail block"
+                    >Detects a stuck picture; alerts when playback time has not changed for 8s, then clears after 1 min.</span
+                  >
+                </span>
+                <input id="alert-video-frozen" class="switch" type="checkbox" checked />
+              </label>
+            </div>
+          </section>
+          <section>
+            <h3 class="group-title">Alerts · Audio</h3>
+            <div class="group">
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Audio silent</span>
+                  <span class="row-detail block"
+                    >Detects recent silence after audio was present; alerts for up to 1 min after levels drop below -85 dB.</span
+                  >
+                </span>
+                <input id="alert-audio-silent" class="switch" type="checkbox" checked />
+              </label>
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Audio dropouts</span>
+                  <span class="row-detail block"
+                    >Detects intermittent audio loss; alerts when 3 of the last 10 checks drop from signal to silence.</span
+                  >
+                </span>
+                <input id="alert-audio-dropouts" class="switch" type="checkbox" checked />
+              </label>
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Audio clipping</span>
+                  <span class="row-detail block">Detects audio hitting full scale; alerts after 5 peaks at 0 dBFS or above within 7s.</span>
+                </span>
+                <input id="alert-audio-clipping" class="switch" type="checkbox" checked />
+              </label>
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Audio one channel missing</span>
+                  <span class="row-detail block"
+                    >Detects left or right channel loss; alerts after one channel has signal while the other is below -85 dB for 15s.</span
+                  >
+                </span>
+                <input id="alert-audio-channel-missing" class="switch" type="checkbox" checked />
+              </label>
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Audio imbalance</span>
+                  <span class="row-detail block"
+                    >Detects stereo level mismatch; alerts after both channels have signal but differ by 20 dB or more for 20s.</span
+                  >
+                </span>
+                <input id="alert-audio-imbalance" class="switch" type="checkbox" checked />
+              </label>
+              <label class="group-row">
+                <span class="grow">
+                  <span class="row-title block">Audio phase mismatch</span>
+                  <span class="row-detail block"
+                    >Detects severe left/right cancellation; alerts after stereo phase stays unsafe for mono playback for 10s.</span
+                  >
+                </span>
+                <input id="alert-audio-phase-mismatch" class="switch" type="checkbox" checked />
+              </label>
+            </div>
+          </section>
+        </div>
+        <div class="dialog-footer">
+          <button value="cancel" formnovalidate class="btn btn-gray">Cancel</button>
+          <button value="default" class="btn btn-primary">Save</button>
         </div>
       </form>
     </dialog>
