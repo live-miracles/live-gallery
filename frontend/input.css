@@ -676,10 +676,19 @@ main {
     transform: none !important;
 }
 
-/* An unconfigured box shows a still sea instead of a black hole. */
-.empty-state {
-    background-image: var(--seigaiha);
-    background-size: 48px 24px;
+/* An unconfigured box shows Hokusai's Great Wave as a faint strip of line art along the bottom
+   (traced from the Met's public-domain scan), with its top edge faded out. */
+.empty-state::before {
+    position: absolute;
+    inset: 0;
+    background: url('../images/great-wave.webp') center bottom / 100% auto no-repeat;
+    content: '';
+    mask-image: linear-gradient(to top, #000 55%, transparent 95%);
+    opacity: 0.5;
+}
+
+.empty-state > * {
+    position: relative;
 }
 
 /* Toasts fade in from below. */

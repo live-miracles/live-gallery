@@ -608,7 +608,9 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           </div>
           <canvas class="meter pointer-events-none absolute top-0 right-0 h-full w-2.5 bg-black/30" width="10" height="180"></canvas>
           <div class="alert-overlay pointer-events-none absolute inset-0 z-20 hidden place-items-center p-3"></div>
-          <div class="empty-state text-label-3 pointer-events-none absolute inset-0 grid place-items-center p-5 text-center text-xs">Configure this box to load a live source.</div>
+          <div class="empty-state pointer-events-none absolute inset-0 grid place-items-center p-5 text-center text-xs">
+            <span class="text-label-2 rounded-full bg-black/60 px-3 py-1 backdrop-blur-sm">Configure this box to load a live source.</span>
+          </div>
         </div>`;
 
     const title = root.querySelector<HTMLElement>('.box-title')!;
