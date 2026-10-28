@@ -4,7 +4,7 @@
 
 Live Gallery is an Electron desktop app (TypeScript) for monitoring many live streams in one window: a box per source (YouTube, JW Player, VdoCipher, HLS, custom URLs, local files, screen shares), a live audio meter on each, solo/rotate audio, and alerts for frozen video, silence, clipping and phase problems. Windows is the primary, tested platform; the macOS (Apple Silicon `.dmg`) and Linux (`.AppImage`) builds are beta. Keep that wording consistent wherever platforms are mentioned.
 
-It is used during long live events, so a change must not break a running wall: prefer small, reversible changes and keep the app responsive with dozens of boxes.
+It only watches streams and sits outside the production path, so it is not critical infrastructure (unlike Bunryu, which runs live production directly). A bug can be fixed in the next release; favor shipping improvements over heavy caution, but keep the app responsive with dozens of boxes.
 
 ## Code map
 
