@@ -12,6 +12,7 @@ export type GallerySettings = {
     audioLevels: boolean;
     monoOutput: boolean;
     boxZoom: number;
+    fitLayout: boolean;
     uiZoom: number;
     muteRotation: boolean;
     rotationBoxes: string;
@@ -77,6 +78,36 @@ export function extractYouTubeId(input: string): string {
     }
 
     return trimmed;
+}
+
+// What a pasted line is, if it can be a box: a YouTube link, an HLS stream or any other
+// web address, or a local file URL.
+export function detectSource(input: string): { type: BoxType; value: string } | null {
+    const text = input.trim();
+    if (!text) {
+        return null;
+    }
+
+    if (text.startsWith('file://')) {
+        return { type: 'LF', value: text };
+    }
+
+    let url: URL;
+    try {
+        url = new URL(text);
+    } catch {
+        return null;
+    }
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return null;
+    }
+
+    if (youtubeIdPattern.test(extractYouTubeId(text))) {
+        return { type: 'YT', value: extractYouTubeId(text) };
+    }
+
+    return { type: 'CU', value: text };
 }
 
 export function parseSheetRows(input: string): GalleryBox[] {

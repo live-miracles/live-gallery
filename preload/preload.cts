@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('liveGallery', {
         ipcRenderer.invoke('gallery:get-desktop-sources') as Promise<DesktopSource[]>,
     selectLocalMediaFile: (): Promise<string | null> =>
         ipcRenderer.invoke('gallery:select-local-media-file') as Promise<string | null>,
+    fileUrlForFile: (file: File): string => pathToFileURL(webUtils.getPathForFile(file)).toString(),
     copyText: (text: string): Promise<void> =>
         ipcRenderer.invoke('gallery:copy-text', text) as Promise<void>,
     toggleFullscreen: (): Promise<void> =>

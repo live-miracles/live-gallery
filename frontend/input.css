@@ -12,6 +12,7 @@
     --color-accent-text: #a3abf5;
     --color-danger: #f0563d; /* shu, vermilion */
     --color-success: #3fbf7f;
+    --color-warning: #e0a82e;
     --color-canvas: #010102;
     --color-surface: #0f1011;
     --color-surface-2: #141516;
@@ -21,6 +22,13 @@
     --color-label-3: #62666d;
     --color-hairline: #23252a;
     --color-hairline-strong: #34343a;
+    --color-accent-contrast: #fff;
+    --color-switch: var(--color-accent);
+    --radius-control: 6px;
+    --radius-panel: 8px;
+    --radius-dialog: 12px;
+    --shadow-float: 0 8px 24px rgb(0 0 0 / 0.45);
+    --wave-opacity: 1;
 }
 
 /* Inter ships with the app (fonts/OFL.txt) so the UI looks the same on every system and
@@ -70,6 +78,7 @@ body::before {
     background-image: var(--seigaiha);
     background-size: 64px 32px;
     content: '';
+    opacity: var(--wave-opacity);
     mask-image: linear-gradient(to top, #000, rgb(0 0 0 / 0.35) 45%, transparent 85%);
     pointer-events: none;
 }
@@ -81,7 +90,7 @@ main {
 }
 
 ::selection {
-    background: rgb(94 106 210 / 0.45);
+    background: color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
 
 ::-webkit-scrollbar {
@@ -110,7 +119,7 @@ main {
         gap: 0.375rem;
         height: 1.75rem;
         padding: 0 0.625rem;
-        border-radius: 6px;
+        border-radius: var(--radius-control);
         color: var(--color-label);
         font-size: 13px;
         font-weight: 500;
@@ -130,7 +139,7 @@ main {
         }
 
         &:focus-visible {
-            outline: 2px solid rgb(94 105 209 / 0.5);
+            outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
             outline-offset: 1px;
         }
 
@@ -152,7 +161,7 @@ main {
     .btn-sm {
         height: 1.5rem;
         padding: 0 0.5rem;
-        border-radius: 6px;
+        border-radius: var(--radius-control);
         font-size: 12px;
     }
 
@@ -186,14 +195,14 @@ main {
 
     .btn-primary {
         background: var(--color-accent);
-        color: #fff;
+        color: var(--color-accent-contrast);
 
         &:hover {
             background: var(--color-accent-hover);
         }
 
         &:active {
-            background: #5e69d1;
+            background: color-mix(in srgb, var(--color-accent) 88%, #000);
         }
     }
 
@@ -204,7 +213,7 @@ main {
 
     /* A toggle that is on (rotation, mono output, beeps) and a button reporting a problem. */
     .btn.is-on {
-        background: rgb(94 106 210 / 0.18);
+        background: color-mix(in srgb, var(--color-accent) 18%, transparent);
         color: var(--color-accent-text);
     }
 
@@ -225,7 +234,7 @@ main {
         min-width: 0;
         padding: 0 0.625rem;
         border: 1px solid var(--color-hairline);
-        border-radius: 6px;
+        border-radius: var(--radius-control);
         background: var(--color-surface);
         color: var(--color-label);
         font-size: 13px;
@@ -240,7 +249,7 @@ main {
 
         &:focus {
             border-color: var(--color-hairline-strong);
-            box-shadow: 0 0 0 2px rgb(94 105 209 / 0.5);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 55%, transparent);
         }
 
         &[aria-invalid='true'] {
@@ -265,7 +274,7 @@ main {
     .field-sm {
         height: 1.5rem;
         padding: 0 0.5rem;
-        border-radius: 6px;
+        border-radius: var(--radius-control);
         font-size: 12px;
     }
 
@@ -304,7 +313,7 @@ main {
         }
 
         &:checked {
-            background: var(--color-accent);
+            background: var(--color-switch);
         }
 
         &:checked::before {
@@ -312,7 +321,7 @@ main {
         }
 
         &:focus-visible {
-            outline: 2px solid rgb(94 105 209 / 0.5);
+            outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
             outline-offset: 2px;
         }
     }
@@ -357,14 +366,14 @@ main {
     .material {
         border: 1px solid var(--color-hairline-strong);
         background: var(--color-surface-3);
-        box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+        box-shadow: var(--shadow-float);
         color: var(--color-label);
     }
 
     .menu {
         min-width: 11rem;
         padding: 0.25rem;
-        border-radius: 8px;
+        border-radius: var(--radius-panel);
     }
 
     .menu-item {
@@ -407,7 +416,7 @@ main {
         padding: 0;
         overflow: hidden;
         border: 1px solid var(--color-hairline-strong);
-        border-radius: 12px;
+        border-radius: var(--radius-dialog);
         background: var(--color-surface);
         box-shadow: 0 24px 64px rgb(0 0 0 / 0.6);
         color: var(--color-label);
@@ -464,7 +473,7 @@ main {
     .list-group {
         overflow: hidden;
         border: 1px solid var(--color-hairline);
-        border-radius: 8px;
+        border-radius: var(--radius-panel);
         background: var(--color-surface-2);
 
         & > * + * {
@@ -534,14 +543,91 @@ main {
     }
 }
 
-/* Below 100% the header shrinks with the box so every button still fits; above 100%
-   it stays at normal size. */
+/* The header is a toolbar that fades in over the top of the video when the pointer or
+   keyboard focus is in the box, so the picture keeps the whole tile. Below 100% it shrinks
+   with the box so every button still fits; above 100% it stays at normal size. */
 .box-header {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 4px;
+    background: rgb(1 1 2 / 0.78);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
     zoom: min(1, var(--box-scale));
+}
+
+article:hover > .box-header,
+article:focus-within > .box-header,
+.box-dragging > .box-header {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .box-expanded > .box-header {
     zoom: 1;
+}
+
+/* Name and status sit on the picture, bottom left. */
+.box-chip {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - 3rem);
+    padding: 3px 8px;
+    border-radius: var(--radius-control);
+    background: rgb(1 1 2 / 0.66);
+    color: var(--color-label);
+    font-size: 12px;
+    line-height: 1.3;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    zoom: min(1, var(--box-scale));
+}
+
+/* The player draws its own controls along the bottom while the pointer is over it, so the
+   chip steps aside. An alerting box keeps it. */
+article:hover:not(.box-alert):not(.box-expanded) .box-chip {
+    opacity: 0;
+}
+
+.box-chip > .box-number {
+    color: var(--color-label-2);
+    pointer-events: auto;
+}
+
+.box-chip > .box-title {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.box-dot {
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-success);
+}
+
+.box-chip:has(~ .empty-state:not(.hidden)) > .box-dot {
+    background: var(--color-label-3);
+}
+
+.box-alert .box-dot {
+    background: var(--color-danger);
 }
 
 /* The volume popover sits in the top layer (the toolbar clips overflow) and is
@@ -613,6 +699,93 @@ main {
     z-index: 200;
 }
 
+/* Wall status chips in the header. */
+.status-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    height: 1.5rem;
+    padding: 0 0.625rem;
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    color: var(--color-label);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+button.status-chip {
+    cursor: pointer;
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease;
+
+    &:hover {
+        background: var(--color-surface-3);
+    }
+
+    &:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+        outline-offset: 1px;
+    }
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-label-3);
+}
+
+.status-ok .status-dot {
+    background: var(--color-success);
+}
+
+.status-warn {
+    border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-hairline));
+}
+
+.status-warn .status-dot {
+    background: var(--color-warning);
+}
+
+.status-danger {
+    border-color: color-mix(in srgb, var(--color-danger) 50%, var(--color-hairline));
+}
+
+.status-danger .status-dot {
+    background: var(--color-danger);
+}
+
+.status-idle {
+    color: var(--color-label-2);
+}
+
+/* A box the status chips just scrolled to. */
+.box-ping {
+    animation: box-ping 1.4s ease-out;
+}
+
+@keyframes box-ping {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-label) 70%, transparent);
+    }
+    40% {
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-label) 70%, transparent);
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* Fit mode: the boxes are sized to fill the window, so centre them in it. */
+.is-fit {
+    justify-content: center;
+    align-content: center;
+}
+
 .gallery-dragging webview {
     pointer-events: none;
 }
@@ -639,16 +812,15 @@ main {
 
 .box-alert {
     border-color: var(--color-danger);
+    box-shadow: 0 0 0 1px var(--color-danger);
 }
 
-.box-alert .box-header,
-.box-alert .box-title {
-    @apply bg-danger text-white;
+.box-alert .box-chip {
+    background: color-mix(in srgb, var(--color-danger) 80%, #000);
 }
 
-.box-alert .box-number,
-.box-alert .box-tool-btn {
-    @apply text-white/85 hover:bg-white/20 hover:text-white;
+.box-alert .box-number {
+    color: rgb(255 255 255 / 0.8);
 }
 
 .box-expanded {
@@ -679,22 +851,20 @@ main {
 }
 
 .box-expanded > .box-header {
+    position: relative;
     height: var(--expanded-header-height);
     padding: 0 8px;
+    background: var(--color-surface-2);
+    border-bottom: 1px solid var(--color-hairline);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .box-expanded .box-tool-btn {
     @apply h-7 w-7 rounded-md;
 }
 
-.box-expanded .box-number {
-    left: 40px;
-    height: var(--expanded-header-height);
-    font-size: 13px;
-    line-height: var(--expanded-header-height);
-}
-
-.box-expanded .box-title {
+.box-expanded .box-chip {
     font-size: 13px;
 }
 
@@ -739,6 +909,34 @@ main {
     position: relative;
 }
 
+.empty-card {
+    max-width: calc(100% - 1rem);
+    padding: 12px 14px;
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-panel);
+    background: rgb(1 1 2 / 0.74);
+    zoom: min(1, var(--box-scale));
+}
+
+.empty-title {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.empty-hint {
+    margin-top: 2px;
+    color: var(--color-label-2);
+    font-size: 11.5px;
+}
+
+.empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+}
+
 /* Toasts fade in from below. */
 .toast:not(.hidden) {
     display: flex;
@@ -765,4 +963,133 @@ main {
 
 #clipboard-toast[data-variant='error'] #clipboard-toast-icon {
     color: var(--color-danger);
+}
+
+/* Theme candidates for comparison (temporary; see theme-preview.ts). The default :root
+   tokens above are Linear. Each block only overrides what differs. */
+:root[data-theme='raycast'] {
+    --color-accent: #f4f4f6;
+    --color-accent-hover: #fff;
+    --color-accent-text: #fff;
+    --color-accent-contrast: #000;
+    --color-switch: #3fbf7f;
+    --color-canvas: #07080a;
+    --color-surface: #0d0d0d;
+    --color-surface-2: #101111;
+    --color-surface-3: #121212;
+    --color-label: #f4f4f6;
+    --color-label-2: #9c9c9d;
+    --color-label-3: #6a6b6c;
+    --color-hairline: #242728;
+    --color-hairline-strong: rgb(255 255 255 / 0.16);
+    --radius-control: 8px;
+    --radius-panel: 10px;
+    --radius-dialog: 12px;
+}
+
+:root[data-theme='vercel'] {
+    --color-accent: #ededed;
+    --color-accent-hover: #fff;
+    --color-accent-text: #52a8ff;
+    --color-accent-contrast: #000;
+    --color-switch: #0070f3;
+    --color-canvas: #000;
+    --color-surface: #0a0a0a;
+    --color-surface-2: #111;
+    --color-surface-3: #171717;
+    --color-label: #ededed;
+    --color-label-2: #a1a1a1;
+    --color-label-3: #6b6b6b;
+    --color-hairline: #262626;
+    --color-hairline-strong: #3a3a3a;
+    --radius-control: 6px;
+    --radius-panel: 6px;
+    --radius-dialog: 12px;
+    --shadow-float:
+        0 0 0 1px rgb(255 255 255 / 0.06), 0 8px 16px -4px rgb(0 0 0 / 0.4),
+        0 24px 32px -8px rgb(0 0 0 / 0.4);
+}
+
+:root[data-theme='supabase'] {
+    --color-accent: #3ecf8e;
+    --color-accent-hover: #4fdb9c;
+    --color-accent-text: #3ecf8e;
+    --color-accent-contrast: #171717;
+    --color-canvas: #121212;
+    --color-surface: #171717;
+    --color-surface-2: #1c1c1c;
+    --color-surface-3: #202020;
+    --color-label: #fafafa;
+    --color-label-2: #9a9a9a;
+    --color-label-3: #707070;
+    --color-hairline: #2e2e2e;
+    --color-hairline-strong: #3e3e3e;
+    --color-success: #3ecf8e;
+    --radius-control: 6px;
+    --radius-panel: 8px;
+    --radius-dialog: 12px;
+    --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+:root[data-theme='sentry'] {
+    --color-accent: #6a5fc1;
+    --color-accent-hover: #8174e0;
+    --color-accent-text: #b5acf5;
+    --color-canvas: #150f23;
+    --color-surface: #1f1633;
+    --color-surface-2: #261b3d;
+    --color-surface-3: #2d2148;
+    --color-label: #fff;
+    --color-label-2: #bdb8c0;
+    --color-label-3: #7d7690;
+    --color-hairline: #362d59;
+    --color-hairline-strong: #4a3f75;
+    --color-success: #c2ef4e;
+    --color-switch: #c2ef4e;
+    --radius-control: 8px;
+    --radius-panel: 8px;
+    --radius-dialog: 12px;
+    --shadow-float: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+    --wave-opacity: 0.4;
+}
+
+/* Cursor's palette is light; this is its warm ink and orange on a dark ground. */
+:root[data-theme='cursor'] {
+    --color-accent: #f54e00;
+    --color-accent-hover: #ff6a26;
+    --color-accent-text: #ff8a50;
+    --color-canvas: #14130f;
+    --color-surface: #1a1915;
+    --color-surface-2: #201f1a;
+    --color-surface-3: #27261f;
+    --color-label: #f2f1ec;
+    --color-label-2: #a09c92;
+    --color-label-3: #6f6c63;
+    --color-hairline: #2e2d26;
+    --color-hairline-strong: #433f35;
+    --radius-control: 8px;
+    --radius-panel: 8px;
+    --radius-dialog: 12px;
+    --wave-opacity: 0.5;
+}
+
+/* The look before the Linear restyle: Apple-style translucent dark with Prussian blue. */
+:root[data-theme='hokusai'] {
+    --color-accent: #3f86d8;
+    --color-accent-hover: #5596e0;
+    --color-accent-text: #79aeea;
+    --color-canvas: #141518;
+    --color-surface: #18191d;
+    --color-surface-2: #25272c;
+    --color-surface-3: #32353b;
+    --color-label: #f2efe8;
+    --color-label-2: rgb(240 236 226 / 0.6);
+    --color-label-3: rgb(240 236 226 / 0.32);
+    --color-hairline: rgb(255 255 255 / 0.09);
+    --color-hairline-strong: rgb(255 255 255 / 0.16);
+    --color-switch: #3fbf7f;
+    --radius-control: 7px;
+    --radius-panel: 10px;
+    --radius-dialog: 14px;
+    --shadow-float: 0 12px 32px rgb(0 0 0 / 0.5);
 }

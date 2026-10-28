@@ -3,6 +3,7 @@ import {
     GalleryBox,
     GallerySettings,
     deserializeBoxes,
+    detectSource,
     extractYouTubeId,
     getPlayerUrl,
     getSourceUrl,
@@ -11,6 +12,7 @@ import {
 import {
     audioClippingDb,
     createAlertController,
+    type AlertKind,
     type HealthPayload,
     type LevelPayload,
 } from './alerts.js';
@@ -114,6 +116,9 @@ const refreshPageButton = mustGet<HTMLButtonElement>('refresh-page');
 const zoomOutButton = mustGet<HTMLButtonElement>('zoom-out');
 const zoomInButton = mustGet<HTMLButtonElement>('zoom-in');
 const zoomStatusButton = mustGet<HTMLButtonElement>('zoom-status');
+const fitToggleButton = mustGet<HTMLButtonElement>('fit-toggle');
+const statusBar = mustGet<HTMLElement>('status-bar');
+const appHeader = mustGet<HTMLElement>('app-header');
 const updateToast = mustGet<HTMLElement>('update-toast');
 const updateText = mustGet<HTMLElement>('update-text');
 const updateProgress = mustGet<HTMLProgressElement>('update-progress');
@@ -137,6 +142,7 @@ const settings: GallerySettings = {
     audioLevels: true,
     monoOutput: false,
     boxZoom: 100,
+    fitLayout: true,
     uiZoom: 100,
     muteRotation: false,
     rotationBoxes: '',
@@ -175,6 +181,32 @@ const boxZoomStops = (() => {
     return stops;
 })();
 
+// The header summarizes the wall: how many boxes are fine and how many have each kind of
+// problem. Each problem chip jumps to the boxes it counts, one per click.
+type StatusGroup = 'frozen' | 'buffering' | 'silent' | 'audio';
+
+const statusGroupOf: Record<AlertKind, StatusGroup> = {
+    'video-frozen': 'frozen',
+    'video-buffering': 'buffering',
+    'video-repeated-buffering': 'buffering',
+    'audio-silent': 'silent',
+    'audio-dropouts': 'audio',
+    'audio-clipping': 'audio',
+    'audio-channel-missing': 'audio',
+    'audio-imbalance': 'audio',
+    'audio-phase-mismatch': 'audio',
+};
+
+const statusGroupLabels: Record<StatusGroup, string> = {
+    frozen: 'frozen',
+    buffering: 'buffering',
+    silent: 'silent',
+    audio: 'audio issue',
+};
+
+let activeBoxAlerts: { boxId: string; kind: AlertKind }[] = [];
+const statusJumpIndex = new Map<StatusGroup, number>();
+
 const alertController = createAlertController({
     settings,
     boxes,
@@ -183,6 +215,10 @@ const alertController = createAlertController({
     alertsCount,
     alertsList,
     getBoxTitle,
+    onChange: (alerts) => {
+        activeBoxAlerts = alerts;
+        updateStatusBar();
+    },
 });
 
 const presetController = createPresetController({
@@ -217,8 +253,125 @@ function clampBoxZoom(percent: number): number {
     return Math.max(minBoxZoomPercent, Math.min(maxBoxZoomPercent, Math.round(percent)));
 }
 
+// A box is 279px wide at 100%: the 16:9 picture, a 10px meter strip and a 1px border each
+// side. Its outer footprint adds the 4px margin around it.
+const boxBaseWidth = 279;
+const boxChromeWidth = 12;
+const boxMargin = 8;
+const minFitBoxWidth = 200;
+
+// The widest box width at which every box fits in the gallery without scrolling, trying
+// every column count. When even the narrowest box does not fit, the wall scrolls instead.
+function computeFitBoxWidth(
+    count: number,
+    availableWidth: number,
+    availableHeight: number,
+): number {
+    let best = 0;
+    for (let columns = 1; columns <= count; columns += 1) {
+        const rows = Math.ceil(count / columns);
+        const byWidth = availableWidth / columns - boxMargin;
+        const byHeight = ((availableHeight / rows - boxMargin - 2) * 16) / 9 + boxChromeWidth;
+        best = Math.max(best, Math.min(byWidth, byHeight));
+    }
+    if (best >= minFitBoxWidth) {
+        return Math.floor(best);
+    }
+
+    const columns = Math.max(1, Math.floor(availableWidth / (minFitBoxWidth + boxMargin)));
+    return Math.max(minFitBoxWidth, Math.floor(availableWidth / columns - boxMargin));
+}
+
+function updateStatusBar(): void {
+    const groups = new Map<StatusGroup, string[]>();
+    activeBoxAlerts.forEach(({ boxId, kind }) => {
+        const group = statusGroupOf[kind];
+        const ids = groups.get(group) ?? [];
+        if (!ids.includes(boxId)) {
+            ids.push(boxId);
+        }
+        groups.set(group, ids);
+    });
+
+    const alertingIds = new Set(activeBoxAlerts.map((alert) => alert.boxId));
+    const configured = boxes.filter((box) => getPlayerUrl(box, settings));
+    const live = configured.filter((box) => !alertingIds.has(box.id)).length;
+    const empty = boxes.length - configured.length;
+
+    const chips: HTMLElement[] = [];
+    if (live > 0) {
+        chips.push(makeStatusChip(`${live} live`, 'ok'));
+    }
+    (Object.keys(statusGroupLabels) as StatusGroup[]).forEach((group) => {
+        const ids = groups.get(group);
+        if (ids?.length) {
+            chips.push(
+                makeStatusChip(
+                    `${ids.length} ${statusGroupLabels[group]}`,
+                    group === 'frozen' ? 'danger' : 'warn',
+                    () => jumpToStatusGroup(group, ids),
+                ),
+            );
+        }
+    });
+    if (empty > 0) {
+        chips.push(makeStatusChip(`${empty} empty`, 'idle'));
+    }
+    statusBar.replaceChildren(...chips);
+}
+
+function makeStatusChip(
+    label: string,
+    tone: 'ok' | 'warn' | 'danger' | 'idle',
+    onClick?: () => void,
+): HTMLElement {
+    const chip = document.createElement(onClick ? 'button' : 'span');
+    chip.className = `status-chip status-${tone}`;
+    chip.innerHTML = `<span class="status-dot"></span>${escapeHtml(label)}`;
+    if (onClick) {
+        chip.setAttribute('type', 'button');
+        chip.title = 'Show the next box with this problem';
+        chip.addEventListener('click', onClick);
+    }
+    return chip;
+}
+
+function jumpToStatusGroup(group: StatusGroup, ids: string[]): void {
+    const index = (statusJumpIndex.get(group) ?? -1) + 1;
+    const boxId = ids[index % ids.length];
+    statusJumpIndex.set(group, index % ids.length);
+    const root = elements.get(boxId)?.root;
+    if (!root) {
+        return;
+    }
+
+    closeExpandedBox();
+    root.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    root.classList.remove('box-ping');
+    void root.offsetWidth;
+    root.classList.add('box-ping');
+    window.setTimeout(() => root.classList.remove('box-ping'), 1400);
+}
+
 function applyBoxZoom(): void {
-    document.documentElement.style.setProperty('--box-scale', String(settings.boxZoom / 100));
+    let scale = settings.boxZoom / 100;
+    if (settings.fitLayout) {
+        const top = appHeader.getBoundingClientRect().bottom + 6;
+        const availableHeight = window.innerHeight - top - 6;
+        const availableWidth = gallery.clientWidth;
+        if (availableWidth > 0 && availableHeight > 0) {
+            const width = computeFitBoxWidth(boxes.length, availableWidth, availableHeight);
+            scale = width / boxBaseWidth;
+            settings.boxZoom = clampBoxZoom(scale * 100);
+            gallery.style.minHeight = `${availableHeight}px`;
+        }
+    } else {
+        gallery.style.minHeight = '';
+    }
+    gallery.classList.toggle('is-fit', settings.fitLayout);
+    fitToggleButton.classList.toggle('is-on', settings.fitLayout);
+    fitToggleButton.classList.toggle('btn-muted', !settings.fitLayout);
+    document.documentElement.style.setProperty('--box-scale', String(scale));
     zoomStatusButton.textContent = `${settings.boxZoom}%`;
     zoomOutButton.disabled = settings.boxZoom <= minBoxZoomPercent;
     zoomInButton.disabled = settings.boxZoom >= maxBoxZoomPercent;
@@ -230,9 +383,12 @@ function applyUiZoom(): void {
     });
 }
 
+// Choosing a size by hand leaves fit mode, starting from the size fit had chosen.
 function setBoxZoom(percent: number): void {
     const nextZoom = clampBoxZoom(percent);
-    if (nextZoom === settings.boxZoom) {
+    const wasFit = settings.fitLayout;
+    settings.fitLayout = false;
+    if (nextZoom === settings.boxZoom && !wasFit) {
         return;
     }
 
@@ -242,7 +398,105 @@ function setBoxZoom(percent: number): void {
 }
 
 function getBoxTitle(box: GalleryBox): string {
+    if (!box.value.trim() && box.type !== 'SS') {
+        return box.name || 'Empty';
+    }
+
     return box.name ? `${box.type}: ${box.name}` : box.type;
+}
+
+const pasteShortcut = navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V';
+
+function isEmptyBox(box: GalleryBox): boolean {
+    return !getPlayerUrl(box, settings);
+}
+
+function setBoxSource(box: GalleryBox, type: BoxType, value: string): void {
+    const entry = elements.get(box.id);
+    if (!entry) {
+        return;
+    }
+
+    box.type = type;
+    box.value = type === 'YT' ? extractYouTubeId(value) : value;
+    syncBoxControls(entry, box, false);
+    loadWebview(box);
+    saveState();
+    restartRotation();
+}
+
+// Fills empty boxes first, then adds new ones. A source dropped on a particular empty box
+// goes there.
+function addSources(sources: { type: BoxType; value: string }[], preferredBoxId?: string): void {
+    sources.forEach((source, index) => {
+        const preferred = index === 0 ? boxes.find((box) => box.id === preferredBoxId) : undefined;
+        let box =
+            preferred && isEmptyBox(preferred) ? preferred : boxes.find((item) => isEmptyBox(item));
+        if (!box) {
+            box = makeBox();
+            boxes.push(box);
+            renderBox(box, boxes.length - 1);
+        }
+        setBoxSource(box, source.type, source.value);
+    });
+    showToast(sources.length === 1 ? 'Source added' : `${sources.length} sources added`);
+}
+
+function addSourcesFromText(text: string, preferredBoxId?: string): void {
+    const sources = text
+        .split(/\r?\n/)
+        .map(detectSource)
+        .filter((source): source is NonNullable<typeof source> => source !== null);
+    if (sources.length === 0) {
+        showToast('That is not a link a box can play', 'error');
+        return;
+    }
+
+    addSources(sources, preferredBoxId);
+}
+
+function initSourceDropAndPaste(): void {
+    document.addEventListener('paste', (event) => {
+        const target = event.target;
+        if (
+            target instanceof HTMLElement &&
+            (target.closest('input, textarea, select, [contenteditable]') ||
+                target.closest('dialog[open]'))
+        ) {
+            return;
+        }
+
+        const text = event.clipboardData?.getData('text');
+        if (!text) {
+            return;
+        }
+
+        event.preventDefault();
+        addSourcesFromText(text);
+    });
+
+    document.addEventListener('dragover', (event) => {
+        if (event.dataTransfer?.types.includes('Files')) {
+            event.preventDefault();
+        }
+    });
+    document.addEventListener('drop', (event) => {
+        const files = Array.from(event.dataTransfer?.files ?? []);
+        if (files.length === 0) {
+            return;
+        }
+
+        event.preventDefault();
+        const boxId = (event.target as HTMLElement | null)?.closest<HTMLElement>('article')?.dataset
+            .id;
+        addSources(
+            files.map((file) => ({
+                type: 'LF' as const,
+                value: window.liveGallery.fileUrlForFile(file),
+            })),
+            boxId,
+        );
+    });
 }
 
 function initZoomControls(): void {
@@ -257,6 +511,29 @@ function initZoomControls(): void {
     zoomOutButton.addEventListener('click', () => changeBoxZoomStep(-1));
     zoomInButton.addEventListener('click', () => changeBoxZoomStep(1));
     zoomStatusButton.addEventListener('click', () => setBoxZoom(100));
+    fitToggleButton.addEventListener('click', () => {
+        settings.fitLayout = !settings.fitLayout;
+        applyBoxZoom();
+        saveState();
+    });
+
+    let fitFrame = 0;
+    const refit = (): void => {
+        if (!settings.fitLayout || fitFrame) {
+            return;
+        }
+
+        fitFrame = requestAnimationFrame(() => {
+            fitFrame = 0;
+            applyBoxZoom();
+        });
+    };
+    window.addEventListener('resize', refit);
+    new ResizeObserver(refit).observe(appHeader);
+    new MutationObserver(() => {
+        refit();
+        updateStatusBar();
+    }).observe(gallery, { childList: true });
 }
 
 function changeBoxZoomStep(direction: -1 | 1): void {
@@ -445,6 +722,7 @@ function loadState(): void {
     settings.jwServerHost = String(settings.jwServerHost ?? '');
     settings.monoOutput = storedSettings.monoOutput ?? false;
     settings.boxZoom = clampBoxZoom(storedSettings.boxZoom ?? 100);
+    settings.fitLayout = storedSettings.fitLayout ?? true;
     settings.uiZoom = uiZoomOptions.includes(storedSettings.uiZoom ?? 100)
         ? (storedSettings.uiZoom ?? 100)
         : 100;
@@ -571,12 +849,10 @@ function addBox(): void {
 function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
-        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] border-hairline overflow-hidden rounded-t-[10px] border';
+        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] border-hairline overflow-hidden rounded-lg border';
     root.innerHTML = `
-        <div class="box-header group bg-surface-2 border-hairline relative flex h-[26px] w-full items-center overflow-hidden border-b">
-          <button class="drag-handle btn box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
-          <span class="box-number text-label-2 absolute top-0 left-6.5 z-20 h-[26px] cursor-grab text-xs leading-[26px] font-medium tabular-nums select-none" title="Drag to reorder this box"></span>
-          <strong class="box-title bg-surface-2 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-xs font-medium whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
+        <div class="box-header">
+          <button class="drag-handle btn box-tool-btn cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
           <button class="alert-visibility btn box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
           <button class="mute btn box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
           <button class="solo btn box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
@@ -603,13 +879,26 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           </div>
         </form>
         <div class="viewport relative bg-black overflow-hidden">
+          <div class="box-chip">
+            <span class="box-dot"></span>
+            <span class="box-number cursor-grab tabular-nums select-none" title="Drag to reorder this box"></span>
+            <strong class="box-title"></strong>
+          </div>
           <div class="player-frame relative mr-2.5 aspect-video overflow-hidden">
             <webview class="player absolute bg-black top-0 left-0 h-[160%] w-[160%] origin-top-left scale-[0.625]" style="color-scheme: light" allowpopups></webview>
           </div>
           <canvas class="meter pointer-events-none absolute top-0 right-0 h-full w-2.5 bg-black/30" width="10" height="180"></canvas>
-          <div class="alert-overlay pointer-events-none absolute inset-0 z-20 hidden place-items-center p-3"></div>
-          <div class="empty-state pointer-events-none absolute inset-0 grid place-items-center p-5 text-center text-xs">
-            <span class="text-label-2 rounded-full bg-black/60 px-3 py-1 backdrop-blur-sm">Configure this box to load a live source.</span>
+          <div class="alert-overlay pointer-events-none absolute inset-x-0 top-0 z-20 hidden"></div>
+          <div class="empty-state pointer-events-none absolute inset-0 grid place-items-center p-3 text-center">
+            <div class="empty-card pointer-events-auto">
+              <div class="empty-title">Paste a link or drop a file</div>
+              <div class="empty-hint">YouTube, HLS or any web page. ${pasteShortcut} works anywhere.</div>
+              <div class="empty-actions">
+                <button type="button" class="empty-paste btn btn-sm btn-gray">Paste</button>
+                <button type="button" class="empty-file btn btn-sm btn-gray">Choose file…</button>
+                <button type="button" class="empty-screen btn btn-sm btn-gray">Share screen</button>
+              </div>
+            </div>
           </div>
         </div>`;
 
@@ -706,6 +995,25 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     expandButton.addEventListener('click', () => {
         toggleExpanded(root);
         syncExpandButtonTitle(expandButton, root);
+    });
+    root.querySelector<HTMLButtonElement>('.empty-paste')!.addEventListener('click', () => {
+        navigator.clipboard
+            .readText()
+            .then((text) => addSourcesFromText(text, box.id))
+            .catch(() => showToast(`Press ${pasteShortcut} to paste`, 'primary'));
+    });
+    root.querySelector<HTMLButtonElement>('.empty-file')!.addEventListener('click', () => {
+        window.liveGallery
+            .selectLocalMediaFile()
+            .then((fileUrl) => {
+                if (fileUrl) {
+                    setBoxSource(box, 'LF', fileUrl);
+                }
+            })
+            .catch(console.error);
+    });
+    root.querySelector<HTMLButtonElement>('.empty-screen')!.addEventListener('click', () => {
+        setBoxSource(box, 'SS', '');
     });
     root.querySelector<HTMLButtonElement>('.edit')!.addEventListener('click', () => {
         setEditing(form, true);
@@ -1250,6 +1558,7 @@ function loadWebview(box: GalleryBox, forceReload = false): void {
 
     const src = getPlayerUrl(box, settings);
     entry.emptyState.classList.toggle('hidden', Boolean(src));
+    updateStatusBar();
     entry.webview.classList.toggle('hidden', !src);
 
     if (!src) {
@@ -1724,6 +2033,7 @@ rotationBoxesInput.addEventListener('input', sanitizeRotationBoxesInput);
 initWindowControls();
 initPresetMenuControls();
 initZoomControls();
+initSourceDropAndPaste();
 initUpdateControls();
 loadMics().catch((error) => {
     console.error('Error preloading microphones:', error);

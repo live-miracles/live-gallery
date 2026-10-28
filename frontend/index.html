@@ -6,9 +6,12 @@
     <link rel="preload" href="./fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./dist/output.css" />
     <script type="module" src="./dist/app.js"></script>
+    <script type="module" src="./dist/theme-preview.js"></script>
   </head>
-  <body class="text-label min-h-screen bg-black">
-    <header class="app-header border-hairline sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1 border-b bg-canvas px-2 py-1">
+  <body class="text-label bg-canvas min-h-screen">
+    <header
+      id="app-header"
+      class="app-header border-hairline sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1 border-b bg-canvas px-2 py-1">
       <details id="preset-menu" class="relative">
         <summary class="btn list-none [&::-webkit-details-marker]:hidden">
           Preset
@@ -89,8 +92,9 @@
         <span id="alerts-count" class="count-badge hidden">0</span>
       </button>
       <button id="add-box" class="btn btn-icon btn-primary ml-1 h-6 w-6 rounded-md" title="Add box" aria-label="Add box"></button>
+      <div id="status-bar" class="ml-2 flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden" aria-label="Wall status" aria-live="polite"></div>
       <section
-        class="absolute left-1/2 flex max-w-full min-w-max -translate-x-1/2 flex-nowrap items-center justify-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap max-[980px]:static max-[980px]:order-3 max-[980px]:w-full max-[980px]:min-w-0 max-[980px]:translate-x-0"
+        class="flex flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap max-[980px]:order-3 max-[980px]:w-full max-[980px]:min-w-0"
         aria-label="Gallery controls">
         <button id="rotate-menu-button" class="btn" popovertarget="rotate-menu" aria-haspopup="dialog">
           Rotate
@@ -159,6 +163,22 @@
         </div>
       </section>
       <div class="ml-auto flex flex-wrap items-center gap-1">
+        <button id="fit-toggle" class="btn btn-icon btn-muted" title="Fit every box in the window" aria-label="Fit every box in the window">
+          <svg
+            aria-hidden="true"
+            class="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+        </button>
         <section class="border-hairline bg-surface flex h-7 items-center rounded-md border p-px" aria-label="Box size controls">
           <button id="zoom-out" class="btn btn-sm btn-icon btn-muted" title="Make boxes smaller (Ctrl+-)" aria-label="Make boxes smaller">
             <svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
