@@ -48,11 +48,11 @@ You do not need to install Node.js or download the source code to use it.
 1. Open the [Live Gallery Releases page](https://github.com/live-miracles/live-gallery/releases/latest).
 2. Under **Assets**, download the **one** file for your system and ignore the rest (`latest*.yml` and `.blockmap` files are only used by the app's automatic updater):
 
-    | System                     | Download               | Status              |
-    | -------------------------- | ---------------------- | ------------------- |
-    | Windows 10/11 (64-bit)     | `…-windows-x64.exe`    | Recommended, tested |
-    | macOS (Apple Silicon: M1+) | `…-macos-arm64.dmg`    | Beta                |
-    | Linux (64-bit)             | `…-linux-x64.AppImage` | Beta                |
+    | System                     | Download                  | Status              |
+    | -------------------------- | ------------------------- | ------------------- |
+    | Windows 10/11 (64-bit)     | `…-windows-x64.exe`       | Recommended, tested |
+    | macOS (Apple Silicon: M1+) | `…-macos-arm64.dmg`       | Beta                |
+    | Linux (64-bit)             | `…-linux-x86_64.AppImage` | Beta                |
 
 3. Open the downloaded file and follow the installation steps. On Linux, make the AppImage executable first (`chmod +x`).
 
