@@ -1,21 +1,26 @@
 @import 'tailwindcss';
 
-/* Apple-style dark materials in a palette taken from Hokusai prints: sumi-ink surfaces,
-   Prussian blue, vermilion. The gallery itself stays black so video reads true. */
+/* Linear-style dark UI (see awesome-design-md): a near-black canvas, a ladder of
+   surfaces separated by hairlines instead of shadows, and one indigo accent. The Hokusai
+   wave art stays in the empty boxes. The gallery itself stays black so video reads true. */
 @theme {
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
 
-    --color-accent: #3f86d8; /* ai, a lifted Prussian blue */
+    --color-accent: #5e6ad2;
+    --color-accent-hover: #828fff;
+    --color-accent-text: #a3abf5;
     --color-danger: #f0563d; /* shu, vermilion */
     --color-success: #3fbf7f;
-    --color-surface: #18191d;
-    --color-surface-2: #25272c;
-    --color-surface-3: #32353b;
-    --color-label: #f2efe8; /* gofun white */
-    --color-label-2: rgb(240 236 226 / 0.6);
-    --color-label-3: rgb(240 236 226 / 0.32);
-    --color-hairline: rgb(255 255 255 / 0.09);
+    --color-canvas: #010102;
+    --color-surface: #0f1011;
+    --color-surface-2: #141516;
+    --color-surface-3: #18191a;
+    --color-label: #f7f8f8;
+    --color-label-2: #8a8f98;
+    --color-label-3: #62666d;
+    --color-hairline: #23252a;
+    --color-hairline-strong: #34343a;
 }
 
 /* Inter ships with the app (fonts/OFL.txt) so the UI looks the same on every system and
@@ -54,6 +59,7 @@ body {
     -webkit-font-smoothing: antialiased;
     font-size: 13px;
     font-feature-settings: 'cv11', 'ss03';
+    letter-spacing: -0.006em;
 }
 
 /* The waves rise from the bottom of the window, behind the boxes. */
@@ -75,7 +81,7 @@ main {
 }
 
 ::selection {
-    background: rgb(63 134 216 / 0.45);
+    background: rgb(94 106 210 / 0.45);
 }
 
 ::-webkit-scrollbar {
@@ -104,7 +110,7 @@ main {
         gap: 0.375rem;
         height: 1.75rem;
         padding: 0 0.625rem;
-        border-radius: 7px;
+        border-radius: 6px;
         color: var(--color-label);
         font-size: 13px;
         font-weight: 500;
@@ -116,15 +122,15 @@ main {
             opacity 120ms ease;
 
         &:hover {
-            background: rgb(255 255 255 / 0.08);
+            background: rgb(255 255 255 / 0.06);
         }
 
         &:active {
-            background: rgb(255 255 255 / 0.14);
+            background: rgb(255 255 255 / 0.1);
         }
 
         &:focus-visible {
-            outline: 2px solid rgb(63 134 216 / 0.8);
+            outline: 2px solid rgb(94 105 209 / 0.5);
             outline-offset: 1px;
         }
 
@@ -163,15 +169,18 @@ main {
         }
     }
 
+    /* Secondary: a surface with a hairline border. */
     .btn-gray {
-        background: rgb(255 255 255 / 0.12);
+        border: 1px solid var(--color-hairline);
+        background: var(--color-surface);
 
         &:hover {
-            background: rgb(255 255 255 / 0.17);
+            border-color: var(--color-hairline-strong);
+            background: var(--color-surface-2);
         }
 
         &:active {
-            background: rgb(255 255 255 / 0.22);
+            background: var(--color-surface-3);
         }
     }
 
@@ -180,11 +189,11 @@ main {
         color: #fff;
 
         &:hover {
-            background: #5596e0;
+            background: var(--color-accent-hover);
         }
 
         &:active {
-            background: #2f74c4;
+            background: #5e69d1;
         }
     }
 
@@ -195,8 +204,8 @@ main {
 
     /* A toggle that is on (rotation, mono output, beeps) and a button reporting a problem. */
     .btn.is-on {
-        background: rgb(63 134 216 / 0.18);
-        color: #79aeea;
+        background: rgb(94 106 210 / 0.18);
+        color: var(--color-accent-text);
     }
 
     .btn.is-alert {
@@ -215,9 +224,9 @@ main {
         height: 1.75rem;
         min-width: 0;
         padding: 0 0.625rem;
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 7px;
-        background: rgb(255 255 255 / 0.06);
+        border: 1px solid var(--color-hairline);
+        border-radius: 6px;
+        background: var(--color-surface);
         color: var(--color-label);
         font-size: 13px;
         outline: none;
@@ -230,13 +239,13 @@ main {
         }
 
         &:focus {
-            border-color: var(--color-accent);
-            box-shadow: 0 0 0 3px rgb(63 134 216 / 0.3);
+            border-color: var(--color-hairline-strong);
+            box-shadow: 0 0 0 2px rgb(94 105 209 / 0.5);
         }
 
         &[aria-invalid='true'] {
             border-color: var(--color-danger);
-            box-shadow: 0 0 0 3px rgb(240 86 61 / 0.25);
+            box-shadow: 0 0 0 2px rgb(240 86 61 / 0.3);
         }
 
         &:disabled {
@@ -278,7 +287,7 @@ main {
         height: 1.375rem;
         border-radius: 999px;
         appearance: none;
-        background: rgb(120 120 128 / 0.36);
+        background: var(--color-hairline-strong);
         transition: background-color 180ms ease;
 
         &::before {
@@ -295,7 +304,7 @@ main {
         }
 
         &:checked {
-            background: var(--color-success);
+            background: var(--color-accent);
         }
 
         &:checked::before {
@@ -303,7 +312,7 @@ main {
         }
 
         &:focus-visible {
-            outline: 2px solid rgb(63 134 216 / 0.8);
+            outline: 2px solid rgb(94 105 209 / 0.5);
             outline-offset: 2px;
         }
     }
@@ -343,21 +352,19 @@ main {
         }
     }
 
-    /* Translucent panels: menus, popovers, toasts. */
+    /* Floating panels (menus, popovers, toasts): the third surface step with a stronger
+       hairline. Only a faint shadow, to separate them from the video behind. */
     .material {
-        border: 1px solid rgb(255 255 255 / 0.1);
-        background: rgb(36 38 44 / 0.82);
-        box-shadow:
-            0 0 0 0.5px rgb(0 0 0 / 0.6),
-            0 12px 32px rgb(0 0 0 / 0.5);
+        border: 1px solid var(--color-hairline-strong);
+        background: var(--color-surface-3);
+        box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
         color: var(--color-label);
-        backdrop-filter: blur(24px) saturate(180%);
     }
 
     .menu {
         min-width: 11rem;
-        padding: 0.3125rem;
-        border-radius: 10px;
+        padding: 0.25rem;
+        border-radius: 8px;
     }
 
     .menu-item {
@@ -374,16 +381,15 @@ main {
 
         &:hover,
         &:focus-visible {
-            background: var(--color-accent);
-            color: #fff;
+            background: rgb(255 255 255 / 0.07);
             outline: none;
         }
     }
 
     .menu-separator {
         height: 1px;
-        margin: 0.3125rem 0.625rem;
-        background: rgb(255 255 255 / 0.1);
+        margin: 0.25rem 0.375rem;
+        background: var(--color-hairline-strong);
     }
 
     .menu-heading {
@@ -400,8 +406,8 @@ main {
         margin: auto;
         padding: 0;
         overflow: hidden;
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 14px;
+        border: 1px solid var(--color-hairline-strong);
+        border-radius: 12px;
         background: var(--color-surface);
         box-shadow: 0 24px 64px rgb(0 0 0 / 0.6);
         color: var(--color-label);
@@ -410,8 +416,7 @@ main {
             scale 160ms ease;
 
         &::backdrop {
-            background: rgb(0 0 0 / 0.5);
-            backdrop-filter: blur(3px);
+            background: rgb(0 0 0 / 0.64);
         }
 
         &[open] {
@@ -427,17 +432,19 @@ main {
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        padding: 1rem 1rem 0.75rem 1.25rem;
+        padding: 0.75rem 0.75rem 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--color-hairline);
 
         & h2 {
             font-size: 15px;
             font-weight: 600;
+            letter-spacing: -0.012em;
         }
     }
 
     .dialog-body {
         min-height: 0;
-        padding: 0 1.25rem 1.25rem;
+        padding: 1.25rem;
         overflow: auto;
     }
 
@@ -456,7 +463,8 @@ main {
     /* Inset grouped list, like the Settings app. */
     .list-group {
         overflow: hidden;
-        border-radius: 10px;
+        border: 1px solid var(--color-hairline);
+        border-radius: 8px;
         background: var(--color-surface-2);
 
         & > * + * {
@@ -465,12 +473,11 @@ main {
     }
 
     .group-title {
-        padding: 0 0.75rem 0.375rem;
+        padding: 0 0.25rem 0.5rem;
         color: var(--color-label-2);
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
     }
 
     .group-row {
@@ -498,10 +505,10 @@ main {
         height: 1.25rem;
         padding: 0 0.5rem;
         border-radius: 999px;
-        background: rgb(255 255 255 / 0.08);
-        color: var(--color-label-2);
+        background: var(--color-surface-2);
+        color: #d0d6e0;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .pill-danger {
@@ -518,7 +525,7 @@ main {
         padding: 0 0.25rem;
         border-radius: 999px;
         background: var(--color-danger);
-        box-shadow: 0 0 0 2px #141518;
+        box-shadow: 0 0 0 2px var(--color-canvas);
         color: #fff;
         font-size: 10px;
         font-weight: 700;
@@ -587,7 +594,7 @@ main {
 }
 
 .box-tool-btn {
-    @apply text-label-2 hover:text-label mx-px h-[18px] w-5 rounded-[5px] px-0 hover:bg-white/10;
+    @apply text-label-2 hover:text-label mx-px h-5 w-[22px] rounded-[5px] px-0 hover:bg-white/8;
 }
 
 .box-tool-btn.btn-danger:hover {
@@ -677,7 +684,7 @@ main {
 }
 
 .box-expanded .box-tool-btn {
-    @apply h-7 w-7 rounded-[7px];
+    @apply h-7 w-7 rounded-md;
 }
 
 .box-expanded .box-number {

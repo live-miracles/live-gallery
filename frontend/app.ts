@@ -571,12 +571,12 @@ function addBox(): void {
 function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
-        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-t-[10px] border border-white/10 shadow-lg shadow-black/40';
+        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] border-hairline overflow-hidden rounded-t-[10px] border';
     root.innerHTML = `
-        <div class="box-header group bg-surface border-hairline relative flex h-[22px] w-full items-center overflow-hidden border-b">
+        <div class="box-header group bg-surface-2 border-hairline relative flex h-[26px] w-full items-center overflow-hidden border-b">
           <button class="drag-handle btn box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
-          <span class="box-number text-label-2 absolute top-0 left-6.5 z-20 h-[22px] cursor-grab text-xs leading-[22px] font-medium tabular-nums select-none" title="Drag to reorder this box"></span>
-          <strong class="box-title bg-surface pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-xs font-semibold whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
+          <span class="box-number text-label-2 absolute top-0 left-6.5 z-20 h-[26px] cursor-grab text-xs leading-[26px] font-medium tabular-nums select-none" title="Drag to reorder this box"></span>
+          <strong class="box-title bg-surface-2 pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-8 text-center text-xs font-medium whitespace-nowrap group-hover:hidden group-focus-within:hidden"></strong>
           <button class="alert-visibility btn box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
           <button class="mute btn box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
           <button class="solo btn box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
@@ -586,7 +586,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           <button class="remove btn btn-danger box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
           <button class="expand btn box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
         </div>
-        <form class="box-form material absolute top-7 left-1/2 z-30 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1.5 rounded-[10px] p-2">
+        <form class="box-form material absolute top-7 left-1/2 z-30 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1.5 rounded-lg p-2">
           <input name="name" class="field field-sm" type="text" placeholder="Name" />
           <select name="type" class="field field-sm">
             <option value="YT">YouTube</option>
@@ -1060,11 +1060,10 @@ async function openScreenSharePicker(boxId: string): Promise<void> {
 
     const sources = await window.liveGallery.getDesktopSources();
     const overlay = document.createElement('section');
-    overlay.className =
-        'fixed inset-0 z-300 grid place-items-center bg-black/60 p-4 backdrop-blur-sm';
+    overlay.className = 'fixed inset-0 z-300 grid place-items-center bg-black/65 p-4';
     overlay.setAttribute('aria-label', 'Select a screen or window');
     overlay.innerHTML = `
-        <div class="bg-surface grid h-[min(760px,calc(100vh-2rem))] w-[min(1120px,calc(100vw-2rem))] grid-rows-[auto_1fr] gap-4 rounded-[14px] border border-white/10 p-5 shadow-2xl shadow-black/60">
+        <div class="bg-surface grid h-[min(760px,calc(100vh-2rem))] w-[min(1120px,calc(100vw-2rem))] grid-rows-[auto_1fr] gap-4 rounded-xl border border-hairline-strong p-5 shadow-2xl shadow-black/60">
           <div class="flex min-w-0 items-center justify-between gap-3">
             <h2 class="truncate text-[15px] font-semibold">Select a screen or window</h2>
             <div class="flex gap-2">
@@ -1088,15 +1087,16 @@ async function openScreenSharePicker(boxId: string): Promise<void> {
                 'grid',
                 'grid-rows-[auto_1.25rem]',
                 'gap-2',
-                'rounded-[10px]',
+                'rounded-lg',
+                'border',
                 'p-2',
                 'text-left',
                 'text-xs',
                 'text-label',
                 'transition',
                 source === selected
-                    ? 'bg-accent/20 ring-2 ring-accent'
-                    : 'bg-surface-2 hover:bg-surface-3',
+                    ? 'border-accent bg-accent/15'
+                    : 'border-hairline bg-surface-2 hover:border-hairline-strong hover:bg-surface-3',
             ].join(' ');
 
             const image = document.createElement('img');
