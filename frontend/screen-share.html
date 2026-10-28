@@ -41,12 +41,14 @@
         cursor: pointer;
       }
 
+      /* The box shows this page at 62.5% scale, so 19px reads as the 12px label of an empty box. */
       .start span {
-        padding: 4px 12px;
+        max-width: calc(100% - 40px);
+        padding: 6px 19px;
         border-radius: 999px;
         background: rgb(0 0 0 / 0.6);
         color: rgb(240 236 226 / 0.6);
-        font-size: 12px;
+        font-size: 19px;
         backdrop-filter: blur(4px);
       }
 
