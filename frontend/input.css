@@ -263,6 +263,12 @@ main {
         padding-right: 1.5rem;
     }
 
+    /* The pop-up list takes the select's translucent fill over white unless options set their own. */
+    select.field option {
+        background: var(--color-surface-2);
+        color: var(--color-label);
+    }
+
     /* iOS-style switch on a plain checkbox. */
     .switch {
         position: relative;
