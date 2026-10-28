@@ -571,7 +571,7 @@ function addBox(): void {
 function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
-        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[10px] border border-white/10 shadow-lg shadow-black/40';
+        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-t-[10px] border border-white/10 shadow-lg shadow-black/40';
     root.innerHTML = `
         <div class="box-header group bg-surface border-hairline relative flex h-[22px] w-full items-center overflow-hidden border-b">
           <button class="drag-handle btn box-tool-btn relative z-20 cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>

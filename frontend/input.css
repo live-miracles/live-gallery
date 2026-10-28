@@ -453,7 +453,7 @@ main {
     }
 
     /* Inset grouped list, like the Settings app. */
-    .group {
+    .list-group {
         overflow: hidden;
         border-radius: 10px;
         background: var(--color-surface-2);
@@ -682,15 +682,13 @@ main {
     transform: none !important;
 }
 
-/* An unconfigured box shows Hokusai's Great Wave as a faint strip of line art along the bottom
-   (traced from the Met's public-domain scan), with its top edge faded out. */
+/* An unconfigured box shows a dark ukiyo-e wave nightscape, inspired by Hokusai's waves,
+   filling the box. */
 .empty-state::before {
     position: absolute;
     inset: 0;
-    background: url('../images/great-wave.webp') center bottom / 100% auto no-repeat;
+    background: url('../images/great-wave.avif') center / cover no-repeat;
     content: '';
-    mask-image: linear-gradient(to top, #000 55%, transparent 95%);
-    opacity: 0.5;
 }
 
 .empty-state > * {

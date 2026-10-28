@@ -21,14 +21,12 @@
         font: inherit;
       }
 
-      /* Until a window is shared, show Hokusai's Great Wave like the app's empty boxes. */
+      /* Until a window is shared, show the wave nightscape like the app's empty boxes. */
       body:not(.active)::before {
         position: absolute;
         inset: 0;
-        background: url('images/great-wave.webp') center bottom / 100% auto no-repeat;
+        background: url('images/great-wave.avif') center / cover no-repeat;
         content: '';
-        mask-image: linear-gradient(to top, #000 55%, transparent 95%);
-        opacity: 0.5;
       }
 
       .start {
