@@ -592,7 +592,8 @@ article:focus-within > .box-header,
     line-height: 1.3;
     pointer-events: none;
     transition: opacity 120ms ease;
-    zoom: min(1, var(--box-scale));
+    /* Shrinks with the box but never below 9px text. */
+    zoom: max(0.75, min(1, var(--box-scale)));
 }
 
 /* The player draws its own controls along the bottom while the pointer is over it, so the
@@ -887,13 +888,23 @@ button.status-chip {
 }
 
 .box-expanded > .box-form {
-    top: calc(var(--expanded-header-height) + 6px);
-    right: 0 !important;
-    left: 0 !important;
-    margin-right: auto !important;
-    margin-left: auto !important;
-    translate: none !important;
-    transform: none !important;
+    inset: calc(var(--expanded-header-height) + 6px) 0 auto;
+    margin: 0 auto;
+    zoom: 1;
+}
+
+/* The edit form sits centred on the picture and shrinks with the box, like the header, so
+   its buttons are never clipped by a small box. */
+.box-form {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    width: 15rem;
+    height: fit-content;
+    max-height: 100%;
+    margin: auto;
+    overflow-y: auto;
+    zoom: min(1, var(--box-scale));
 }
 
 /* An unconfigured box shows a dark ukiyo-e wave nightscape, inspired by Hokusai's waves,
@@ -927,6 +938,28 @@ button.status-chip {
     margin-top: 2px;
     color: var(--color-label-2);
     font-size: 11.5px;
+}
+
+/* Small boxes drop the extras so the card always fits inside the picture. */
+@container (max-width: 340px) {
+    .empty-hint {
+        display: none;
+    }
+
+    .empty-card {
+        padding: 8px 10px;
+    }
+
+    .empty-actions {
+        margin-top: 8px;
+    }
+}
+
+@container (max-width: 230px) {
+    .empty-edit,
+    .empty-screen {
+        display: none;
+    }
 }
 
 .empty-actions {
@@ -1092,4 +1125,8 @@ button.status-chip {
     --radius-panel: 10px;
     --radius-dialog: 14px;
     --shadow-float: 0 12px 32px rgb(0 0 0 / 0.5);
+}
+
+.viewport {
+    container-type: inline-size;
 }
