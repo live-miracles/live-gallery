@@ -26,6 +26,7 @@ declare global {
             getContentWidth: () => Promise<number>;
             getDesktopSources: () => Promise<DesktopSource[]>;
             selectLocalMediaFile: () => Promise<string | null>;
+            fileUrlForFile: (file: File) => string;
             copyText: (text: string) => Promise<void>;
             toggleFullscreen: () => Promise<void>;
             reload: () => Promise<void>;

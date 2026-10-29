@@ -67,6 +67,7 @@ type AlertControllerOptions = {
     alertsCount: HTMLElement;
     alertsList: HTMLElement;
     getBoxTitle: (box: GalleryBox) => string;
+    onChange?: (alerts: { boxId: string; kind: AlertKind }[]) => void;
 };
 
 export type AlertController = ReturnType<typeof createAlertController>;
@@ -107,6 +108,7 @@ export function createAlertController({
     alertsCount,
     alertsList,
     getBoxTitle,
+    onChange,
 }: AlertControllerOptions) {
     const alerts = new Map<string, AlertRecord>();
     const audioHealth = new Map<string, AudioHealthState>();
@@ -345,23 +347,21 @@ export function createAlertController({
             entry.alertToggleButton.setAttribute('aria-label', alertToggleLabel);
             entry.alertOverlay.replaceChildren();
             entry.alertOverlay.classList.toggle('hidden', !hasActiveBoxAlerts || isHidden);
-            entry.alertOverlay.classList.toggle('grid', hasActiveBoxAlerts && !isHidden);
 
             if (!hasActiveBoxAlerts || isHidden) {
                 return;
             }
 
-            const stack = document.createElement('div');
-            stack.className = 'grid max-w-[calc(100%-1rem)] gap-1.5';
             boxAlerts.forEach((alert) => {
-                const badge = document.createElement('div');
-                badge.className =
-                    'bg-danger/90 rounded-full px-3 py-1 text-center text-[11px] font-semibold text-white shadow-lg shadow-black/50 backdrop-blur-sm';
-                badge.textContent = alert.message;
-                stack.appendChild(badge);
+                const banner = document.createElement('div');
+                banner.className =
+                    'bg-danger truncate px-2.5 py-1 text-[11px] font-medium text-white';
+                banner.textContent = alert.message;
+                entry.alertOverlay.appendChild(banner);
             });
-            entry.alertOverlay.appendChild(stack);
         });
+
+        onChange?.(activeAlerts.map(({ boxId, kind }) => ({ boxId, kind })));
 
         alertsList.replaceChildren();
         if (visibleAlerts.length === 0) {

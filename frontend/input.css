@@ -1,21 +1,34 @@
 @import 'tailwindcss';
 
-/* Apple-style dark materials in a palette taken from Hokusai prints: sumi-ink surfaces,
-   Prussian blue, vermilion. The gallery itself stays black so video reads true. */
+/* Linear-style dark UI (see awesome-design-md): a near-black canvas, a ladder of
+   surfaces separated by hairlines instead of shadows, and one indigo accent. The Hokusai
+   wave art stays in the empty boxes. The gallery itself stays black so video reads true. */
 @theme {
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
 
-    --color-accent: #3f86d8; /* ai, a lifted Prussian blue */
+    --color-accent: #5e6ad2;
+    --color-accent-hover: #828fff;
+    --color-accent-text: #a3abf5;
     --color-danger: #f0563d; /* shu, vermilion */
     --color-success: #3fbf7f;
-    --color-surface: #18191d;
-    --color-surface-2: #25272c;
-    --color-surface-3: #32353b;
-    --color-label: #f2efe8; /* gofun white */
-    --color-label-2: rgb(240 236 226 / 0.6);
-    --color-label-3: rgb(240 236 226 / 0.32);
-    --color-hairline: rgb(255 255 255 / 0.09);
+    --color-warning: #e0a82e;
+    --color-canvas: #010102;
+    --color-surface: #0f1011;
+    --color-surface-2: #141516;
+    --color-surface-3: #18191a;
+    --color-label: #f7f8f8;
+    --color-label-2: #8a8f98;
+    --color-label-3: #62666d;
+    --color-hairline: #23252a;
+    --color-hairline-strong: #34343a;
+    --color-accent-contrast: #fff;
+    --color-switch: var(--color-accent);
+    --radius-control: 6px;
+    --radius-panel: 8px;
+    --radius-dialog: 12px;
+    --shadow-float: 0 8px 24px rgb(0 0 0 / 0.45);
+    --wave-opacity: 1;
 }
 
 /* Inter ships with the app (fonts/OFL.txt) so the UI looks the same on every system and
@@ -54,6 +67,7 @@ body {
     -webkit-font-smoothing: antialiased;
     font-size: 13px;
     font-feature-settings: 'cv11', 'ss03';
+    letter-spacing: -0.006em;
 }
 
 /* The waves rise from the bottom of the window, behind the boxes. */
@@ -64,6 +78,7 @@ body::before {
     background-image: var(--seigaiha);
     background-size: 64px 32px;
     content: '';
+    opacity: var(--wave-opacity);
     mask-image: linear-gradient(to top, #000, rgb(0 0 0 / 0.35) 45%, transparent 85%);
     pointer-events: none;
 }
@@ -75,7 +90,7 @@ main {
 }
 
 ::selection {
-    background: rgb(63 134 216 / 0.45);
+    background: color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
 
 ::-webkit-scrollbar {
@@ -104,7 +119,7 @@ main {
         gap: 0.375rem;
         height: 1.75rem;
         padding: 0 0.625rem;
-        border-radius: 7px;
+        border-radius: var(--radius-control);
         color: var(--color-label);
         font-size: 13px;
         font-weight: 500;
@@ -116,15 +131,15 @@ main {
             opacity 120ms ease;
 
         &:hover {
-            background: rgb(255 255 255 / 0.08);
+            background: rgb(255 255 255 / 0.06);
         }
 
         &:active {
-            background: rgb(255 255 255 / 0.14);
+            background: rgb(255 255 255 / 0.1);
         }
 
         &:focus-visible {
-            outline: 2px solid rgb(63 134 216 / 0.8);
+            outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
             outline-offset: 1px;
         }
 
@@ -146,7 +161,7 @@ main {
     .btn-sm {
         height: 1.5rem;
         padding: 0 0.5rem;
-        border-radius: 6px;
+        border-radius: var(--radius-control);
         font-size: 12px;
     }
 
@@ -163,28 +178,31 @@ main {
         }
     }
 
+    /* Secondary: a surface with a hairline border. */
     .btn-gray {
-        background: rgb(255 255 255 / 0.12);
+        border: 1px solid var(--color-hairline);
+        background: var(--color-surface);
 
         &:hover {
-            background: rgb(255 255 255 / 0.17);
+            border-color: var(--color-hairline-strong);
+            background: var(--color-surface-2);
         }
 
         &:active {
-            background: rgb(255 255 255 / 0.22);
+            background: var(--color-surface-3);
         }
     }
 
     .btn-primary {
         background: var(--color-accent);
-        color: #fff;
+        color: var(--color-accent-contrast);
 
         &:hover {
-            background: #5596e0;
+            background: var(--color-accent-hover);
         }
 
         &:active {
-            background: #2f74c4;
+            background: color-mix(in srgb, var(--color-accent) 88%, #000);
         }
     }
 
@@ -195,8 +213,8 @@ main {
 
     /* A toggle that is on (rotation, mono output, beeps) and a button reporting a problem. */
     .btn.is-on {
-        background: rgb(63 134 216 / 0.18);
-        color: #79aeea;
+        background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+        color: var(--color-accent-text);
     }
 
     .btn.is-alert {
@@ -215,9 +233,9 @@ main {
         height: 1.75rem;
         min-width: 0;
         padding: 0 0.625rem;
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 7px;
-        background: rgb(255 255 255 / 0.06);
+        border: 1px solid var(--color-hairline);
+        border-radius: var(--radius-control);
+        background: var(--color-surface);
         color: var(--color-label);
         font-size: 13px;
         outline: none;
@@ -230,13 +248,13 @@ main {
         }
 
         &:focus {
-            border-color: var(--color-accent);
-            box-shadow: 0 0 0 3px rgb(63 134 216 / 0.3);
+            border-color: var(--color-hairline-strong);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 55%, transparent);
         }
 
         &[aria-invalid='true'] {
             border-color: var(--color-danger);
-            box-shadow: 0 0 0 3px rgb(240 86 61 / 0.25);
+            box-shadow: 0 0 0 2px rgb(240 86 61 / 0.3);
         }
 
         &:disabled {
@@ -256,7 +274,7 @@ main {
     .field-sm {
         height: 1.5rem;
         padding: 0 0.5rem;
-        border-radius: 6px;
+        border-radius: var(--radius-control);
         font-size: 12px;
     }
 
@@ -278,7 +296,7 @@ main {
         height: 1.375rem;
         border-radius: 999px;
         appearance: none;
-        background: rgb(120 120 128 / 0.36);
+        background: var(--color-hairline-strong);
         transition: background-color 180ms ease;
 
         &::before {
@@ -295,7 +313,7 @@ main {
         }
 
         &:checked {
-            background: var(--color-success);
+            background: var(--color-switch);
         }
 
         &:checked::before {
@@ -303,7 +321,7 @@ main {
         }
 
         &:focus-visible {
-            outline: 2px solid rgb(63 134 216 / 0.8);
+            outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
             outline-offset: 2px;
         }
     }
@@ -343,21 +361,19 @@ main {
         }
     }
 
-    /* Translucent panels: menus, popovers, toasts. */
+    /* Floating panels (menus, popovers, toasts): the third surface step with a stronger
+       hairline. Only a faint shadow, to separate them from the video behind. */
     .material {
-        border: 1px solid rgb(255 255 255 / 0.1);
-        background: rgb(36 38 44 / 0.82);
-        box-shadow:
-            0 0 0 0.5px rgb(0 0 0 / 0.6),
-            0 12px 32px rgb(0 0 0 / 0.5);
+        border: 1px solid var(--color-hairline-strong);
+        background: var(--color-surface-3);
+        box-shadow: var(--shadow-float);
         color: var(--color-label);
-        backdrop-filter: blur(24px) saturate(180%);
     }
 
     .menu {
         min-width: 11rem;
-        padding: 0.3125rem;
-        border-radius: 10px;
+        padding: 0.25rem;
+        border-radius: var(--radius-panel);
     }
 
     .menu-item {
@@ -374,16 +390,15 @@ main {
 
         &:hover,
         &:focus-visible {
-            background: var(--color-accent);
-            color: #fff;
+            background: rgb(255 255 255 / 0.07);
             outline: none;
         }
     }
 
     .menu-separator {
         height: 1px;
-        margin: 0.3125rem 0.625rem;
-        background: rgb(255 255 255 / 0.1);
+        margin: 0.25rem 0.375rem;
+        background: var(--color-hairline-strong);
     }
 
     .menu-heading {
@@ -400,8 +415,8 @@ main {
         margin: auto;
         padding: 0;
         overflow: hidden;
-        border: 1px solid rgb(255 255 255 / 0.1);
-        border-radius: 14px;
+        border: 1px solid var(--color-hairline-strong);
+        border-radius: var(--radius-dialog);
         background: var(--color-surface);
         box-shadow: 0 24px 64px rgb(0 0 0 / 0.6);
         color: var(--color-label);
@@ -410,8 +425,7 @@ main {
             scale 160ms ease;
 
         &::backdrop {
-            background: rgb(0 0 0 / 0.5);
-            backdrop-filter: blur(3px);
+            background: rgb(0 0 0 / 0.64);
         }
 
         &[open] {
@@ -427,17 +441,19 @@ main {
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        padding: 1rem 1rem 0.75rem 1.25rem;
+        padding: 0.75rem 0.75rem 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--color-hairline);
 
         & h2 {
             font-size: 15px;
             font-weight: 600;
+            letter-spacing: -0.012em;
         }
     }
 
     .dialog-body {
         min-height: 0;
-        padding: 0 1.25rem 1.25rem;
+        padding: 1.25rem;
         overflow: auto;
     }
 
@@ -456,7 +472,8 @@ main {
     /* Inset grouped list, like the Settings app. */
     .list-group {
         overflow: hidden;
-        border-radius: 10px;
+        border: 1px solid var(--color-hairline);
+        border-radius: var(--radius-panel);
         background: var(--color-surface-2);
 
         & > * + * {
@@ -465,12 +482,11 @@ main {
     }
 
     .group-title {
-        padding: 0 0.75rem 0.375rem;
+        padding: 0 0.25rem 0.5rem;
         color: var(--color-label-2);
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
     }
 
     .group-row {
@@ -498,10 +514,10 @@ main {
         height: 1.25rem;
         padding: 0 0.5rem;
         border-radius: 999px;
-        background: rgb(255 255 255 / 0.08);
-        color: var(--color-label-2);
+        background: var(--color-surface-2);
+        color: #d0d6e0;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .pill-danger {
@@ -518,7 +534,7 @@ main {
         padding: 0 0.25rem;
         border-radius: 999px;
         background: var(--color-danger);
-        box-shadow: 0 0 0 2px #141518;
+        box-shadow: 0 0 0 2px var(--color-canvas);
         color: #fff;
         font-size: 10px;
         font-weight: 700;
@@ -527,14 +543,92 @@ main {
     }
 }
 
-/* Below 100% the header shrinks with the box so every button still fits; above 100%
-   it stays at normal size. */
+/* The header is a toolbar that fades in over the top of the video when the pointer or
+   keyboard focus is in the box, so the picture keeps the whole tile. Below 100% it shrinks
+   with the box so every button still fits; above 100% it stays at normal size. */
 .box-header {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 4px;
+    background: rgb(1 1 2 / 0.78);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
     zoom: min(1, var(--box-scale));
+}
+
+article:hover > .box-header,
+article:focus-within > .box-header,
+.box-dragging > .box-header {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .box-expanded > .box-header {
     zoom: 1;
+}
+
+/* Name and status sit on the picture, bottom left. */
+.box-chip {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - 3rem);
+    padding: 3px 8px;
+    border-radius: var(--radius-control);
+    background: rgb(1 1 2 / 0.66);
+    color: var(--color-label);
+    font-size: 12px;
+    line-height: 1.3;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    /* Shrinks with the box but never below 9px text. */
+    zoom: max(0.75, min(1, var(--box-scale)));
+}
+
+/* The player draws its own controls along the bottom while the pointer is over it, so the
+   chip steps aside. An alerting box keeps it. */
+article:hover:not(.box-alert):not(.box-expanded) .box-chip {
+    opacity: 0;
+}
+
+.box-chip > .box-number {
+    color: var(--color-label-2);
+    pointer-events: auto;
+}
+
+.box-chip > .box-title {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.box-dot {
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-success);
+}
+
+.box-chip:has(~ .empty-state:not(.hidden)) > .box-dot {
+    background: var(--color-label-3);
+}
+
+.box-alert .box-dot {
+    background: var(--color-danger);
 }
 
 /* The volume popover sits in the top layer (the toolbar clips overflow) and is
@@ -587,7 +681,7 @@ main {
 }
 
 .box-tool-btn {
-    @apply text-label-2 hover:text-label mx-px h-[18px] w-5 rounded-[5px] px-0 hover:bg-white/10;
+    @apply text-label-2 hover:text-label mx-px h-5 w-[22px] rounded-[5px] px-0 hover:bg-white/8;
 }
 
 .box-tool-btn.btn-danger:hover {
@@ -604,6 +698,93 @@ main {
 
 .app-header:has(#preset-menu[open]) {
     z-index: 200;
+}
+
+/* Wall status chips in the header. */
+.status-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    height: 1.5rem;
+    padding: 0 0.625rem;
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    color: var(--color-label);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+button.status-chip {
+    cursor: pointer;
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease;
+
+    &:hover {
+        background: var(--color-surface-3);
+    }
+
+    &:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+        outline-offset: 1px;
+    }
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-label-3);
+}
+
+.status-ok .status-dot {
+    background: var(--color-success);
+}
+
+.status-warn {
+    border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-hairline));
+}
+
+.status-warn .status-dot {
+    background: var(--color-warning);
+}
+
+.status-danger {
+    border-color: color-mix(in srgb, var(--color-danger) 50%, var(--color-hairline));
+}
+
+.status-danger .status-dot {
+    background: var(--color-danger);
+}
+
+.status-idle {
+    color: var(--color-label-2);
+}
+
+/* A box the status chips just scrolled to. */
+.box-ping {
+    animation: box-ping 1.4s ease-out;
+}
+
+@keyframes box-ping {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-label) 70%, transparent);
+    }
+    40% {
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-label) 70%, transparent);
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* Fit mode: the boxes are sized to fill the window, so centre them in it. */
+.is-fit {
+    justify-content: center;
+    align-content: center;
 }
 
 .gallery-dragging webview {
@@ -632,16 +813,15 @@ main {
 
 .box-alert {
     border-color: var(--color-danger);
+    box-shadow: 0 0 0 1px var(--color-danger);
 }
 
-.box-alert .box-header,
-.box-alert .box-title {
-    @apply bg-danger text-white;
+.box-alert .box-chip {
+    background: color-mix(in srgb, var(--color-danger) 80%, #000);
 }
 
-.box-alert .box-number,
-.box-alert .box-tool-btn {
-    @apply text-white/85 hover:bg-white/20 hover:text-white;
+.box-alert .box-number {
+    color: rgb(255 255 255 / 0.8);
 }
 
 .box-expanded {
@@ -672,22 +852,20 @@ main {
 }
 
 .box-expanded > .box-header {
+    position: relative;
     height: var(--expanded-header-height);
     padding: 0 8px;
+    background: var(--color-surface-2);
+    border-bottom: 1px solid var(--color-hairline);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .box-expanded .box-tool-btn {
-    @apply h-7 w-7 rounded-[7px];
+    @apply h-7 w-7 rounded-md;
 }
 
-.box-expanded .box-number {
-    left: 40px;
-    height: var(--expanded-header-height);
-    font-size: 13px;
-    line-height: var(--expanded-header-height);
-}
-
-.box-expanded .box-title {
+.box-expanded .box-chip {
     font-size: 13px;
 }
 
@@ -710,13 +888,23 @@ main {
 }
 
 .box-expanded > .box-form {
-    top: calc(var(--expanded-header-height) + 6px);
-    right: 0 !important;
-    left: 0 !important;
-    margin-right: auto !important;
-    margin-left: auto !important;
-    translate: none !important;
-    transform: none !important;
+    inset: calc(var(--expanded-header-height) + 6px) 0 auto;
+    margin: 0 auto;
+    zoom: 1;
+}
+
+/* The edit form sits centred on the picture and shrinks with the box, like the header, so
+   its buttons are never clipped by a small box. */
+.box-form {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    width: 15rem;
+    height: fit-content;
+    max-height: 100%;
+    margin: auto;
+    overflow-y: auto;
+    zoom: min(1, var(--box-scale));
 }
 
 /* An unconfigured box shows a dark ukiyo-e wave nightscape, inspired by Hokusai's waves,
@@ -730,6 +918,56 @@ main {
 
 .empty-state > * {
     position: relative;
+}
+
+.empty-card {
+    max-width: calc(100% - 1rem);
+    padding: 12px 14px;
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-panel);
+    background: rgb(1 1 2 / 0.74);
+    zoom: min(1, var(--box-scale));
+}
+
+.empty-title {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.empty-hint {
+    margin-top: 2px;
+    color: var(--color-label-2);
+    font-size: 11.5px;
+}
+
+/* Small boxes drop the extras so the card always fits inside the picture. */
+@container (max-width: 340px) {
+    .empty-hint {
+        display: none;
+    }
+
+    .empty-card {
+        padding: 8px 10px;
+    }
+
+    .empty-actions {
+        margin-top: 8px;
+    }
+}
+
+@container (max-width: 230px) {
+    .empty-edit,
+    .empty-screen {
+        display: none;
+    }
+}
+
+.empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
 }
 
 /* Toasts fade in from below. */
@@ -758,4 +996,8 @@ main {
 
 #clipboard-toast[data-variant='error'] #clipboard-toast-icon {
     color: var(--color-danger);
+}
+
+.viewport {
+    container-type: inline-size;
 }
