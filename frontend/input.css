@@ -1,8 +1,12 @@
 @import 'tailwindcss';
 
-/* Linear-style dark UI (see awesome-design-md): a near-black canvas, a ladder of
-   surfaces separated by hairlines instead of shadows, and one indigo accent. The Hokusai
-   wave art stays in the empty boxes. The gallery itself stays black so video reads true. */
+/* Linear-style dark UI: a near-black canvas, a ladder of surfaces separated by hairlines
+   instead of shadows, and one indigo accent for actions. The Hokusai wave art stays in the
+   empty boxes. The gallery itself stays black so video reads true.
+
+   Box status colours work like tally lights and mean one thing each: green live, amber not
+   playing, red alert or failure, cyan the box you are hearing. Keyboard focus is neutral
+   white so it never reads as one of them. */
 @theme {
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
@@ -11,6 +15,10 @@
     --color-accent-hover: #828fff;
     --color-accent-text: #a3abf5;
     --color-danger: #f0563d; /* shu, vermilion */
+    /* Fills behind white text: 5.1:1, where the brighter danger is only 3.4:1. */
+    --color-danger-strong: #c93a24;
+    --color-listen: #3cc8e0;
+    --color-focus: rgb(247 248 248 / 0.7);
     --color-success: #3fbf7f;
     --color-warning: #e0a82e;
     --color-canvas: #010102;
@@ -139,7 +147,7 @@ main {
         }
 
         &:focus-visible {
-            outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+            outline: 2px solid var(--color-focus);
             outline-offset: 1px;
         }
 
@@ -321,7 +329,7 @@ main {
         }
 
         &:focus-visible {
-            outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+            outline: 2px solid var(--color-focus);
             outline-offset: 2px;
         }
     }
@@ -533,7 +541,7 @@ main {
         height: 1rem;
         padding: 0 0.25rem;
         border-radius: 999px;
-        background: var(--color-danger);
+        background: var(--color-danger-strong);
         box-shadow: 0 0 0 2px var(--color-canvas);
         color: #fff;
         font-size: 10px;
@@ -623,12 +631,72 @@ article:hover:not(.box-alert):not(.box-expanded) .box-chip {
     background: var(--color-success);
 }
 
-.box-chip:has(~ .empty-state:not(.hidden)) > .box-dot {
+/* Green only while playback time is moving; see BoxSignal in app.ts. */
+[data-signal='empty'] .box-dot,
+[data-signal='loading'] .box-dot {
     background: var(--color-label-3);
 }
 
+[data-signal='not-playing'] .box-dot,
+[data-signal='no-video'] .box-dot {
+    background: var(--color-warning);
+}
+
+[data-signal='failed'] .box-dot,
 .box-alert .box-dot {
     background: var(--color-danger);
+}
+
+/* Says in words what the dot says in colour, unless the box is live. */
+.box-state:empty {
+    display: none;
+}
+
+.box-state {
+    flex-shrink: 0;
+    color: var(--color-label-2);
+    font-weight: 500;
+}
+
+[data-signal='not-playing'] .box-state,
+[data-signal='no-video'] .box-state {
+    color: var(--color-warning);
+}
+
+[data-signal='failed'] .box-state {
+    color: #ff9a85;
+}
+
+.box-alert .box-state {
+    color: rgb(255 255 255 / 0.85);
+}
+
+/* The speaker marks the box you are hearing, next to its name. */
+.box-listen {
+    display: none;
+    flex-shrink: 0;
+    color: var(--color-listen);
+}
+
+.box-unmuted .box-listen {
+    display: inline-flex;
+}
+
+.box-alert .box-listen {
+    color: #fff;
+}
+
+/* An alerting box's problems, on one line across the top of the picture. */
+.alert-banner {
+    overflow: hidden;
+    padding: 4px 10px;
+    background: var(--color-danger-strong);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    zoom: min(1, var(--box-scale));
 }
 
 /* The volume popover sits in the top layer (the toolbar clips overflow) and is
@@ -692,6 +760,23 @@ article:hover:not(.box-alert):not(.box-expanded) .box-chip {
     @apply ml-auto;
 }
 
+/* Remove sits apart at the end, so reaching for Edit or Expand cannot hit it. */
+.box-tool-divider {
+    @apply bg-hairline-strong mx-1 h-3.5 w-px shrink-0;
+}
+
+.box-tool-btn.is-on {
+    @apply text-listen;
+}
+
+.box-header-name {
+    display: none;
+}
+
+.box-tool-label {
+    display: none;
+}
+
 .app-header {
     z-index: 40;
 }
@@ -728,7 +813,7 @@ button.status-chip {
     }
 
     &:focus-visible {
-        outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+        outline: 2px solid var(--color-focus);
         outline-offset: 1px;
     }
 }
@@ -807,7 +892,7 @@ button.status-chip {
 
 /* The box you are hearing. */
 .box-unmuted {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-listen);
     outline-offset: 1px;
 }
 
@@ -817,7 +902,7 @@ button.status-chip {
 }
 
 .box-alert .box-chip {
-    background: color-mix(in srgb, var(--color-danger) 80%, #000);
+    background: var(--color-danger-strong);
 }
 
 .box-alert .box-number {
@@ -825,32 +910,30 @@ button.status-chip {
 }
 
 .box-expanded {
+    --expanded-header-height: 36px;
     position: fixed !important;
-    top: 0 !important;
+    top: var(--app-header-height, 0px) !important;
     right: 0 !important;
     bottom: 0 !important;
     left: 0 !important;
-    z-index: 250 !important;
+    z-index: 35 !important;
     width: 100vw !important;
-    height: 100dvh !important;
+    height: calc(100dvh - var(--app-header-height, 0px)) !important;
     max-width: none !important;
     margin: 0 !important;
     box-sizing: border-box !important;
+    border-width: 1px 0 0 !important;
     border-radius: 0 !important;
     outline: none !important;
     transform: none !important;
 }
 
 .box-expanded > .viewport {
-    height: calc(100dvh - var(--expanded-header-height)) !important;
+    height: calc(100dvh - var(--app-header-height, 0px) - var(--expanded-header-height)) !important;
 }
 
-/* Expanded, the box's own header takes the toolbar's place, so its controls match the
-   toolbar's size instead of the gallery's compact ones. */
-.box-expanded {
-    --expanded-header-height: 36px;
-}
-
+/* Expanded, the box fills the window below the toolbar, so the wall's status chips and
+   alerts stay in view. Its own header names it and offers the way back. */
 .box-expanded > .box-header {
     position: relative;
     height: var(--expanded-header-height);
@@ -859,6 +942,32 @@ button.status-chip {
     border-bottom: 1px solid var(--color-hairline);
     opacity: 1;
     pointer-events: auto;
+}
+
+.box-expanded .drag-handle {
+    display: none;
+}
+
+.box-expanded .box-header-name {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    padding-left: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: pre;
+}
+
+.box-expanded .box-tool-label {
+    display: inline;
+}
+
+.box-expanded .box-tool-btn.expand {
+    width: auto;
+    padding: 0 8px;
+    color: var(--color-label);
+    font-size: 12px;
 }
 
 .box-expanded .box-tool-btn {
@@ -968,6 +1077,58 @@ button.status-chip {
     justify-content: center;
     gap: 6px;
     margin-top: 10px;
+}
+
+/* The Alerts panel docks at the right under the toolbar and leaves the wall usable. */
+.alerts-sheet {
+    position: fixed;
+    inset: auto;
+    top: calc(var(--app-header-height, 40px) + 8px);
+    right: 8px;
+    z-index: 100;
+    width: min(36rem, calc(100vw - 1rem));
+    max-height: calc(100dvh - var(--app-header-height, 40px) - 16px);
+    margin: 0;
+    box-shadow: var(--shadow-float);
+}
+
+/* Below an expanded box's own header, so its controls stay reachable. */
+body:has(.box-expanded) .alerts-sheet {
+    top: calc(var(--app-header-height, 40px) + 36px + 8px);
+    max-height: calc(100dvh - var(--app-header-height, 40px) - 36px - 16px);
+}
+
+.alerts-sheet .dialog-body {
+    padding: 0.75rem;
+}
+
+.alert-row {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+}
+
+.alert-row > .pill {
+    justify-self: start;
+}
+
+.alert-row-main {
+    min-width: 0;
+    margin: -0.25rem -0.375rem;
+    padding: 0.25rem 0.375rem;
+    border-radius: var(--radius-control);
+    text-align: left;
+
+    &:not(:disabled):hover {
+        background: rgb(255 255 255 / 0.05);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 0;
+    }
 }
 
 /* Toasts fade in from below. */

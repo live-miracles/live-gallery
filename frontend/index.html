@@ -13,7 +13,7 @@
       class="app-header border-hairline sticky top-0 z-10 flex min-h-0 flex-wrap items-center gap-1 border-b bg-canvas px-2 py-1">
       <details id="preset-menu" class="relative">
         <summary class="btn list-none [&::-webkit-details-marker]:hidden">
-          Preset
+          <span id="preset-label" class="max-w-48 truncate">Preset</span>
           <svg
             class="chevron"
             aria-hidden="true"
@@ -249,9 +249,11 @@
 
     <div
       id="clipboard-toast"
-      class="toast material fixed right-0 bottom-5 left-0 z-260 mx-auto hidden w-fit items-center gap-2 rounded-lg py-2 pr-4 pl-3 font-medium">
+      class="toast material fixed right-0 bottom-5 left-0 z-260 mx-auto hidden w-fit items-center gap-2 rounded-lg py-2 pr-4 pl-3 font-medium has-[button:not(.hidden)]:pr-2"
+      role="status">
       <span id="clipboard-toast-icon" class="shrink-0"></span>
       <span id="clipboard-toast-text">Copied</span>
+      <button id="clipboard-toast-action" type="button" class="btn btn-sm btn-gray ml-2 hidden">Undo</button>
     </div>
 
     <dialog id="preset-name-dialog" class="dialog w-[26rem]">
@@ -269,10 +271,17 @@
       </form>
     </dialog>
 
-    <dialog id="alerts-dialog" class="dialog w-[40rem]">
-      <form method="dialog" class="flex max-h-[calc(100dvh-2rem)] flex-col">
+    <dialog id="alerts-dialog" class="dialog alerts-sheet" aria-labelledby="alerts-title">
+      <form method="dialog" class="flex max-h-full min-h-0 flex-col">
         <div class="dialog-header">
-          <h2>Alerts</h2>
+          <h2 id="alerts-title">Alerts</h2>
+          <button
+            id="alerts-ack-all"
+            type="button"
+            class="btn btn-sm btn-gray ml-auto hidden"
+            title="Stop the beep for every active alert; boxes stay red">
+            Acknowledge all
+          </button>
           <button value="cancel" class="btn btn-icon btn-muted" aria-label="Close alerts">
             <svg
               aria-hidden="true"
@@ -288,7 +297,7 @@
             </svg>
           </button>
         </div>
-        <div class="dialog-body">
+        <div class="dialog-body min-h-0 overflow-auto">
           <div id="alerts-list" class="list-group"></div>
         </div>
       </form>

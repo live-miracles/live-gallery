@@ -35,6 +35,8 @@ type AlertRecord = {
     firstSeenAt: number;
     lastSeenAt: number;
     resolvedAt?: number;
+    // Acknowledged alerts stop beeping but keep the box red until they clear.
+    acknowledged?: boolean;
 };
 
 type AudioHealthState = {
@@ -66,7 +68,9 @@ type AlertControllerOptions = {
     alertsButton: HTMLButtonElement;
     alertsCount: HTMLElement;
     alertsList: HTMLElement;
+    alertsAckAllButton: HTMLButtonElement;
     getBoxTitle: (box: GalleryBox) => string;
+    onShowBox: (boxId: string) => void;
     onChange?: (alerts: { boxId: string; kind: AlertKind }[]) => void;
 };
 
@@ -107,7 +111,9 @@ export function createAlertController({
     alertsButton,
     alertsCount,
     alertsList,
+    alertsAckAllButton,
     getBoxTitle,
+    onShowBox,
     onChange,
 }: AlertControllerOptions) {
     const alerts = new Map<string, AlertRecord>();
@@ -320,12 +326,6 @@ export function createAlertController({
     function render(): void {
         pruneAlerts();
         const activeAlerts = Array.from(alerts.values()).filter((alert) => alert.active);
-        const visibleAlerts = Array.from(alerts.values()).sort((a, b) => {
-            if (a.active !== b.active) {
-                return a.active ? -1 : 1;
-            }
-            return b.lastSeenAt - a.lastSeenAt;
-        });
 
         alertsCount.textContent = String(activeAlerts.length);
         alertsCount.classList.toggle('hidden', activeAlerts.length === 0);
@@ -344,7 +344,8 @@ export function createAlertController({
             entry.root.classList.toggle('box-alert', hasActiveBoxAlerts);
             entry.alertToggleButton.innerHTML = icon(isHidden ? 'eye-off' : 'eye');
             entry.alertToggleButton.title = alertToggleLabel;
-            entry.alertToggleButton.setAttribute('aria-label', alertToggleLabel);
+            entry.alertToggleButton.setAttribute('aria-label', 'Hide alerts for this box');
+            entry.alertToggleButton.setAttribute('aria-pressed', String(isHidden));
             entry.alertOverlay.replaceChildren();
             entry.alertOverlay.classList.toggle('hidden', !hasActiveBoxAlerts || isHidden);
 
@@ -352,22 +353,38 @@ export function createAlertController({
                 return;
             }
 
-            boxAlerts.forEach((alert) => {
-                const banner = document.createElement('div');
-                banner.className =
-                    'bg-danger truncate px-2.5 py-1 text-[11px] font-medium text-white';
-                banner.textContent = alert.message;
-                entry.alertOverlay.appendChild(banner);
-            });
+            // Several alerts share one banner line so the picture stays visible.
+            const banner = document.createElement('div');
+            banner.className = 'alert-banner';
+            banner.textContent = boxAlerts
+                .map((alert) => alert.message + (alert.acknowledged ? ' (acknowledged)' : ''))
+                .join(' · ');
+            banner.title = banner.textContent;
+            entry.alertOverlay.appendChild(banner);
         });
 
         onChange?.(activeAlerts.map(({ boxId, kind }) => ({ boxId, kind })));
+        renderList();
+    }
+
+    // The list shows how long each alert has lasted, so it is redrawn every second while
+    // the Alerts panel is open, without touching the beep or the boxes.
+    function renderList(): void {
+        const now = Date.now();
+        const visibleAlerts = Array.from(alerts.values()).sort((a, b) => {
+            if (a.active !== b.active) {
+                return a.active ? -1 : 1;
+            }
+            return b.lastSeenAt - a.lastSeenAt;
+        });
+        const unacknowledged = visibleAlerts.filter((alert) => alert.active && !alert.acknowledged);
+        alertsAckAllButton.classList.toggle('hidden', unacknowledged.length < 2);
 
         alertsList.replaceChildren();
         if (visibleAlerts.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'text-label-2 px-4 py-6 text-center';
-            empty.textContent = 'No active alerts';
+            empty.textContent = 'No alerts in the last five minutes';
             alertsList.appendChild(empty);
             return;
         }
@@ -376,31 +393,59 @@ export function createAlertController({
             const box = boxes.find((item) => item.id === alert.boxId);
             const number = box ? boxes.indexOf(box) + 1 : '?';
             const row = document.createElement('div');
-            row.className = 'grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 px-3.5 py-2.5';
+            row.className = 'alert-row';
 
             const badge = document.createElement('span');
-            badge.className = alert.active
-                ? 'pill pill-danger justify-self-start'
-                : 'pill justify-self-start';
-            badge.textContent = alert.active ? 'Active' : 'Resolved';
+            badge.className = alert.active ? 'pill pill-danger' : 'pill';
+            badge.textContent = !alert.active
+                ? 'Resolved'
+                : alert.acknowledged
+                  ? 'Acknowledged'
+                  : 'Active';
 
-            const text = document.createElement('div');
-            text.className = 'min-w-0';
-            text.innerHTML = `<div class="font-medium">${escapeHtml(alert.message)}</div>
-                <div class="text-label-2 truncate text-xs">Box ${number} &middot; ${escapeHtml(box ? getBoxTitle(box) : alert.boxId)}</div>`;
+            const duration = formatDuration((alert.resolvedAt ?? now) - alert.activeSince);
+            const main = document.createElement('button');
+            main.type = 'button';
+            main.className = 'alert-row-main';
+            main.title = box ? `Show box ${number}` : '';
+            main.disabled = !box;
+            main.innerHTML = `<span class="block font-medium">${escapeHtml(alert.message)}</span>
+                <span class="text-label-2 block truncate text-xs">Box ${number} &middot; ${escapeHtml(box ? getBoxTitle(box) : alert.boxId)} &middot; ${alert.active ? 'for' : 'lasted'} ${duration}</span>`;
+            main.addEventListener('click', () => onShowBox(alert.boxId));
 
             const time = document.createElement('time');
             time.className = 'text-label-2 text-xs whitespace-nowrap tabular-nums';
-            time.dateTime = new Date(alert.lastSeenAt).toISOString();
-            time.textContent = new Date(alert.lastSeenAt).toLocaleTimeString([], {
+            time.dateTime = new Date(alert.activeSince).toISOString();
+            time.title = 'Started at';
+            time.textContent = new Date(alert.activeSince).toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
             });
 
-            row.append(badge, text, time);
+            row.append(badge, main, time);
+            if (alert.active && !alert.acknowledged) {
+                const ack = document.createElement('button');
+                ack.type = 'button';
+                ack.className = 'btn btn-sm btn-gray';
+                ack.textContent = 'Acknowledge';
+                ack.title = 'Stop the beep for this alert; the box stays red until it clears';
+                ack.addEventListener('click', () => acknowledge([alert]));
+                row.append(ack);
+            }
             alertsList.appendChild(row);
         });
+    }
+
+    function acknowledge(targets: AlertRecord[]): void {
+        targets.forEach((alert) => {
+            alert.acknowledged = true;
+        });
+        render();
+    }
+
+    function acknowledgeAll(): void {
+        acknowledge(Array.from(alerts.values()).filter((alert) => alert.active));
     }
 
     function setAlert(boxId: string, kind: AlertKind, active: boolean): void {
@@ -545,7 +590,10 @@ export function createAlertController({
     function hasBeepableAlert(candidateAlerts: AlertRecord[]): boolean {
         const now = Date.now();
         return candidateAlerts.some(
-            (alert) => alert.active && now - alert.activeSince <= alertBeepMaxActiveMs,
+            (alert) =>
+                alert.active &&
+                !alert.acknowledged &&
+                now - alert.activeSince <= alertBeepMaxActiveMs,
         );
     }
 
@@ -568,9 +616,11 @@ export function createAlertController({
     }
 
     return {
+        acknowledgeAll,
         clearBox,
         clearDisabled,
         render,
+        renderList,
         resetAll,
         toggleBoxAlerts,
         updateAudioHealth,
@@ -595,6 +645,19 @@ function getAlertMessage(kind: AlertKind): string {
         'audio-phase-mismatch': 'Audio phase mismatch',
     };
     return messages[kind];
+}
+
+// 34s, 2m 05s, 1h 02m.
+export function formatDuration(ms: number): string {
+    const seconds = Math.max(0, Math.floor(ms / 1000));
+    if (seconds < 60) {
+        return `${seconds}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) {
+        return `${minutes}m ${String(seconds % 60).padStart(2, '0')}s`;
+    }
+    return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
 }
 
 function escapeHtml(value: string): string {
