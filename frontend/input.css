@@ -93,6 +93,7 @@ main {
     background: color-mix(in srgb, var(--color-accent) 45%, transparent);
 }
 
+/* Fit mode leaves room for this width (scrollbarWidth in app.ts). */
 ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -598,7 +599,8 @@ article:focus-within > .box-header,
 
 /* The player draws its own controls along the bottom while the pointer is over it, so the
    chip steps aside. An alerting box keeps it. */
-article:hover:not(.box-alert):not(.box-expanded) .box-chip {
+article:hover:not(.box-alert):not(.box-expanded) .box-chip,
+article:has(> .box-form:not(.hidden)) .box-chip {
     opacity: 0;
 }
 
@@ -781,12 +783,6 @@ button.status-chip {
     }
 }
 
-/* Fit mode: the boxes are sized to fill the window, so centre them in it. */
-.is-fit {
-    justify-content: center;
-    align-content: center;
-}
-
 .gallery-dragging webview {
     pointer-events: none;
 }
@@ -867,6 +863,7 @@ button.status-chip {
 
 .box-expanded .box-chip {
     font-size: 13px;
+    zoom: 1;
 }
 
 /* The player is laid out at 160% and scaled to 62.5% in the gallery. Expanded, that is a
@@ -920,13 +917,26 @@ button.status-chip {
     position: relative;
 }
 
+/* Below 100% the card shrinks with the box, like the header, so it is laid out for at
+   least a 100% box. It keeps clear of the hover toolbar along the top and of the name tag
+   along the bottom; the name tag never shrinks below 75%, so neither does its band. */
+.empty-state {
+    container-type: size;
+    padding: 34px 8px calc(34px * max(1, 0.75 / var(--box-scale)));
+    zoom: min(1, var(--box-scale));
+}
+
+.box-expanded .empty-state {
+    padding-block: 8px;
+    zoom: 1;
+}
+
 .empty-card {
-    max-width: calc(100% - 1rem);
+    max-width: 100%;
     padding: 12px 14px;
     border: 1px solid var(--color-hairline);
     border-radius: var(--radius-panel);
     background: rgb(1 1 2 / 0.74);
-    zoom: min(1, var(--box-scale));
 }
 
 .empty-title {
@@ -940,9 +950,19 @@ button.status-chip {
     font-size: 11.5px;
 }
 
-/* Small boxes drop the extras so the card always fits inside the picture. */
-@container (max-width: 340px) {
-    .empty-hint {
+.empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+/* Boxes narrower than about 380px get the compact card: one row of buttons, no hint.
+   Screen Share stays reachable from Other. */
+@container (width < 360px) {
+    .empty-hint,
+    .empty-screen {
         display: none;
     }
 
@@ -951,23 +971,20 @@ button.status-chip {
     }
 
     .empty-actions {
+        flex-wrap: nowrap;
         margin-top: 8px;
     }
 }
 
-@container (max-width: 230px) {
-    .empty-edit,
-    .empty-screen {
+/* Boxes below about 60% leave room for the buttons only. */
+@container (height < 70px) {
+    .empty-title {
         display: none;
     }
-}
 
-.empty-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 10px;
+    .empty-actions {
+        margin-top: 0;
+    }
 }
 
 /* Toasts fade in from below. */
@@ -996,8 +1013,4 @@ button.status-chip {
 
 #clipboard-toast[data-variant='error'] #clipboard-toast-icon {
     color: var(--color-danger);
-}
-
-.viewport {
-    container-type: inline-size;
 }
