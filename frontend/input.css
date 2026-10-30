@@ -592,7 +592,8 @@ article:focus-within > .box-header,
     line-height: 1.3;
     pointer-events: none;
     transition: opacity 120ms ease;
-    zoom: min(1, var(--box-scale));
+    /* Shrinks with the box but never below 9px text. */
+    zoom: max(0.75, min(1, var(--box-scale)));
 }
 
 /* The player draws its own controls along the bottom while the pointer is over it, so the
@@ -887,13 +888,23 @@ button.status-chip {
 }
 
 .box-expanded > .box-form {
-    top: calc(var(--expanded-header-height) + 6px);
-    right: 0 !important;
-    left: 0 !important;
-    margin-right: auto !important;
-    margin-left: auto !important;
-    translate: none !important;
-    transform: none !important;
+    inset: calc(var(--expanded-header-height) + 6px) 0 auto;
+    margin: 0 auto;
+    zoom: 1;
+}
+
+/* The edit form sits centred on the picture and shrinks with the box, like the header, so
+   its buttons are never clipped by a small box. */
+.box-form {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    width: 15rem;
+    height: fit-content;
+    max-height: 100%;
+    margin: auto;
+    overflow-y: auto;
+    zoom: min(1, var(--box-scale));
 }
 
 /* An unconfigured box shows a dark ukiyo-e wave nightscape, inspired by Hokusai's waves,
@@ -927,6 +938,28 @@ button.status-chip {
     margin-top: 2px;
     color: var(--color-label-2);
     font-size: 11.5px;
+}
+
+/* Small boxes drop the extras so the card always fits inside the picture. */
+@container (max-width: 340px) {
+    .empty-hint {
+        display: none;
+    }
+
+    .empty-card {
+        padding: 8px 10px;
+    }
+
+    .empty-actions {
+        margin-top: 8px;
+    }
+}
+
+@container (max-width: 230px) {
+    .empty-edit,
+    .empty-screen {
+        display: none;
+    }
 }
 
 .empty-actions {
@@ -965,131 +998,6 @@ button.status-chip {
     color: var(--color-danger);
 }
 
-/* Theme candidates for comparison (temporary; see theme-preview.ts). The default :root
-   tokens above are Linear. Each block only overrides what differs. */
-:root[data-theme='raycast'] {
-    --color-accent: #f4f4f6;
-    --color-accent-hover: #fff;
-    --color-accent-text: #fff;
-    --color-accent-contrast: #000;
-    --color-switch: #3fbf7f;
-    --color-canvas: #07080a;
-    --color-surface: #0d0d0d;
-    --color-surface-2: #101111;
-    --color-surface-3: #121212;
-    --color-label: #f4f4f6;
-    --color-label-2: #9c9c9d;
-    --color-label-3: #6a6b6c;
-    --color-hairline: #242728;
-    --color-hairline-strong: rgb(255 255 255 / 0.16);
-    --radius-control: 8px;
-    --radius-panel: 10px;
-    --radius-dialog: 12px;
-}
-
-:root[data-theme='vercel'] {
-    --color-accent: #ededed;
-    --color-accent-hover: #fff;
-    --color-accent-text: #52a8ff;
-    --color-accent-contrast: #000;
-    --color-switch: #0070f3;
-    --color-canvas: #000;
-    --color-surface: #0a0a0a;
-    --color-surface-2: #111;
-    --color-surface-3: #171717;
-    --color-label: #ededed;
-    --color-label-2: #a1a1a1;
-    --color-label-3: #6b6b6b;
-    --color-hairline: #262626;
-    --color-hairline-strong: #3a3a3a;
-    --radius-control: 6px;
-    --radius-panel: 6px;
-    --radius-dialog: 12px;
-    --shadow-float:
-        0 0 0 1px rgb(255 255 255 / 0.06), 0 8px 16px -4px rgb(0 0 0 / 0.4),
-        0 24px 32px -8px rgb(0 0 0 / 0.4);
-}
-
-:root[data-theme='supabase'] {
-    --color-accent: #3ecf8e;
-    --color-accent-hover: #4fdb9c;
-    --color-accent-text: #3ecf8e;
-    --color-accent-contrast: #171717;
-    --color-canvas: #121212;
-    --color-surface: #171717;
-    --color-surface-2: #1c1c1c;
-    --color-surface-3: #202020;
-    --color-label: #fafafa;
-    --color-label-2: #9a9a9a;
-    --color-label-3: #707070;
-    --color-hairline: #2e2e2e;
-    --color-hairline-strong: #3e3e3e;
-    --color-success: #3ecf8e;
-    --radius-control: 6px;
-    --radius-panel: 8px;
-    --radius-dialog: 12px;
-    --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
-}
-
-:root[data-theme='sentry'] {
-    --color-accent: #6a5fc1;
-    --color-accent-hover: #8174e0;
-    --color-accent-text: #b5acf5;
-    --color-canvas: #150f23;
-    --color-surface: #1f1633;
-    --color-surface-2: #261b3d;
-    --color-surface-3: #2d2148;
-    --color-label: #fff;
-    --color-label-2: #bdb8c0;
-    --color-label-3: #7d7690;
-    --color-hairline: #362d59;
-    --color-hairline-strong: #4a3f75;
-    --color-success: #c2ef4e;
-    --color-switch: #c2ef4e;
-    --radius-control: 8px;
-    --radius-panel: 8px;
-    --radius-dialog: 12px;
-    --shadow-float: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
-    --wave-opacity: 0.4;
-}
-
-/* Cursor's palette is light; this is its warm ink and orange on a dark ground. */
-:root[data-theme='cursor'] {
-    --color-accent: #f54e00;
-    --color-accent-hover: #ff6a26;
-    --color-accent-text: #ff8a50;
-    --color-canvas: #14130f;
-    --color-surface: #1a1915;
-    --color-surface-2: #201f1a;
-    --color-surface-3: #27261f;
-    --color-label: #f2f1ec;
-    --color-label-2: #a09c92;
-    --color-label-3: #6f6c63;
-    --color-hairline: #2e2d26;
-    --color-hairline-strong: #433f35;
-    --radius-control: 8px;
-    --radius-panel: 8px;
-    --radius-dialog: 12px;
-    --wave-opacity: 0.5;
-}
-
-/* The look before the Linear restyle: Apple-style translucent dark with Prussian blue. */
-:root[data-theme='hokusai'] {
-    --color-accent: #3f86d8;
-    --color-accent-hover: #5596e0;
-    --color-accent-text: #79aeea;
-    --color-canvas: #141518;
-    --color-surface: #18191d;
-    --color-surface-2: #25272c;
-    --color-surface-3: #32353b;
-    --color-label: #f2efe8;
-    --color-label-2: rgb(240 236 226 / 0.6);
-    --color-label-3: rgb(240 236 226 / 0.32);
-    --color-hairline: rgb(255 255 255 / 0.09);
-    --color-hairline-strong: rgb(255 255 255 / 0.16);
-    --color-switch: #3fbf7f;
-    --radius-control: 7px;
-    --radius-panel: 10px;
-    --radius-dialog: 14px;
-    --shadow-float: 0 12px 32px rgb(0 0 0 / 0.5);
+.viewport {
+    container-type: inline-size;
 }

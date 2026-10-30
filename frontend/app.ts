@@ -377,10 +377,15 @@ function applyBoxZoom(): void {
     zoomInButton.disabled = settings.boxZoom >= maxBoxZoomPercent;
 }
 
+// The interface size changes the window's usable size, so fit mode has to measure again
+// once it has applied rather than trust the size it saw before.
 function applyUiZoom(): void {
-    window.liveGallery.setUiZoom(settings.uiZoom).catch((error: unknown) => {
-        console.error('Could not set interface size:', error);
-    });
+    window.liveGallery
+        .setUiZoom(settings.uiZoom)
+        .then(() => applyBoxZoom())
+        .catch((error: unknown) => {
+            console.error('Could not set interface size:', error);
+        });
 }
 
 // Choosing a size by hand leaves fit mode, starting from the size fit had chosen.
@@ -530,9 +535,20 @@ function initZoomControls(): void {
     };
     window.addEventListener('resize', refit);
     new ResizeObserver(refit).observe(appHeader);
+    // Adding or removing boxes re-fits at once rather than on the next frame, which a hidden
+    // window never draws.
+    let boxesChanged = false;
     new MutationObserver(() => {
-        refit();
         updateStatusBar();
+        if (!settings.fitLayout || boxesChanged) {
+            return;
+        }
+
+        boxesChanged = true;
+        queueMicrotask(() => {
+            boxesChanged = false;
+            applyBoxZoom();
+        });
     }).observe(gallery, { childList: true });
 }
 
@@ -841,7 +857,7 @@ function render(): void {
 function addBox(): void {
     const box = makeBox();
     boxes.push(box);
-    renderBox(box, boxes.length - 1, true);
+    renderBox(box, boxes.length - 1);
     saveState();
     restartRotation();
 }
@@ -862,7 +878,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           <button class="remove btn btn-danger box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
           <button class="expand btn box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
         </div>
-        <form class="box-form material absolute top-7 left-1/2 z-30 hidden w-[min(15rem,calc(100vw-2rem))] -translate-x-1/2 grid-cols-1 gap-1.5 rounded-lg p-2">
+        <form class="box-form material hidden grid-cols-2 gap-1.5 rounded-lg p-2">
           <input name="name" class="field field-sm" type="text" placeholder="Name" />
           <select name="type" class="field field-sm">
             <option value="YT">YouTube</option>
@@ -872,8 +888,8 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
             <option value="CU">Custom URL</option>
             <option value="LF">Local File</option>
           </select>
-          <div class="value-slot"></div>
-          <div class="mt-1 flex justify-center gap-2">
+          <div class="value-slot col-span-2"></div>
+          <div class="col-span-2 mt-1 flex justify-center gap-2">
             <button type="button" class="cancel btn btn-sm btn-gray min-w-16">Cancel</button>
             <button type="submit" class="btn btn-sm btn-primary min-w-16">Save</button>
           </div>
@@ -897,6 +913,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
                 <button type="button" class="empty-paste btn btn-sm btn-gray">Paste</button>
                 <button type="button" class="empty-file btn btn-sm btn-gray">Choose file…</button>
                 <button type="button" class="empty-screen btn btn-sm btn-gray">Share screen</button>
+                <button type="button" class="empty-edit btn btn-sm btn-gray" title="JW Player, VdoCipher or a typed address">Other…</button>
               </div>
             </div>
           </div>
@@ -1011,6 +1028,9 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
                 }
             })
             .catch(console.error);
+    });
+    root.querySelector<HTMLButtonElement>('.empty-edit')!.addEventListener('click', () => {
+        setEditing(form, true);
     });
     root.querySelector<HTMLButtonElement>('.empty-screen')!.addEventListener('click', () => {
         setBoxSource(box, 'SS', '');
