@@ -16,6 +16,7 @@ import {
     type HealthPayload,
     type LevelPayload,
 } from './alerts.js';
+import { boxBaseWidth, computeFitLayout } from './fit-layout.js';
 import { icon } from './icons.js';
 import { createPresetController } from './presets.js';
 
@@ -283,35 +284,6 @@ function clampBoxZoom(percent: number): number {
     return Math.max(minBoxZoomPercent, Math.min(maxBoxZoomPercent, Math.round(percent)));
 }
 
-// A box is 279px wide at 100%: the 16:9 picture, a 10px meter strip and a 1px border each
-// side. Its outer footprint adds the 4px margin around it.
-const boxBaseWidth = 279;
-const boxChromeWidth = 12;
-const boxMargin = 8;
-const minFitBoxWidth = 200;
-
-// The widest box width at which every box fits in the gallery without scrolling, trying
-// every column count. When even the narrowest box does not fit, the wall scrolls instead.
-function computeFitBoxWidth(
-    count: number,
-    availableWidth: number,
-    availableHeight: number,
-): number {
-    let best = 0;
-    for (let columns = 1; columns <= count; columns += 1) {
-        const rows = Math.ceil(count / columns);
-        const byWidth = availableWidth / columns - boxMargin;
-        const byHeight = ((availableHeight / rows - boxMargin - 2) * 16) / 9 + boxChromeWidth;
-        best = Math.max(best, Math.min(byWidth, byHeight));
-    }
-    if (best >= minFitBoxWidth) {
-        return Math.floor(best);
-    }
-
-    const columns = Math.max(1, Math.floor(availableWidth / (minFitBoxWidth + boxMargin)));
-    return Math.max(minFitBoxWidth, Math.floor(availableWidth / columns - boxMargin));
-}
-
 function updateStatusBar(): void {
     const groups = new Map<StatusGroup, string[]>();
     activeBoxAlerts.forEach(({ boxId, kind }) => {
@@ -454,22 +426,25 @@ function showBox(boxId: string): void {
     window.setTimeout(() => root.classList.remove('box-ping'), 1400);
 }
 
+// The ::-webkit-scrollbar width in input.css.
+const scrollbarWidth = 10;
+
 function applyBoxZoom(): void {
     let scale = settings.boxZoom / 100;
     if (settings.fitLayout) {
+        // The gallery sits under the sticky toolbar with main's 6px padding above and below.
         const top = appHeader.getBoundingClientRect().bottom + 6;
         const availableHeight = window.innerHeight - top - 6;
-        const availableWidth = gallery.clientWidth;
+        // Leave room for the scrollbar even while it is hidden, so it appearing never
+        // narrows the row enough to wrap a box.
+        const shownScrollbar = window.innerWidth - document.documentElement.clientWidth;
+        const availableWidth = gallery.clientWidth - Math.max(0, scrollbarWidth - shownScrollbar);
         if (availableWidth > 0 && availableHeight > 0) {
-            const width = computeFitBoxWidth(boxes.length, availableWidth, availableHeight);
-            scale = width / boxBaseWidth;
+            const { boxWidth } = computeFitLayout(boxes.length, availableWidth, availableHeight);
+            scale = boxWidth / boxBaseWidth;
             settings.boxZoom = clampBoxZoom(scale * 100);
-            gallery.style.minHeight = `${availableHeight}px`;
         }
-    } else {
-        gallery.style.minHeight = '';
     }
-    gallery.classList.toggle('is-fit', settings.fitLayout);
     fitToggleButton.classList.toggle('is-on', settings.fitLayout);
     fitToggleButton.classList.toggle('btn-muted', !settings.fitLayout);
     document.documentElement.style.setProperty('--box-scale', String(scale));
@@ -1007,7 +982,7 @@ function addBox(): void {
 function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
-        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] border-hairline overflow-hidden rounded-lg border';
+        'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100%-0.5rem)] border-hairline overflow-hidden rounded-lg border';
     root.setAttribute('role', 'group');
     root.innerHTML = `
         <div class="box-header">
@@ -1052,7 +1027,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           </div>
           <canvas class="meter pointer-events-none absolute top-0 right-0 h-full w-2.5 bg-black/30" width="10" height="180"></canvas>
           <div class="alert-overlay pointer-events-none absolute inset-x-0 top-0 z-20 hidden"></div>
-          <div class="empty-state pointer-events-none absolute inset-0 grid place-items-center p-3 text-center">
+          <div class="empty-state pointer-events-none absolute inset-0 grid place-items-center text-center">
             <div class="empty-card pointer-events-auto">
               <div class="empty-title">Paste a link or drop a file</div>
               <div class="empty-hint">YouTube, HLS or any web page. ${pasteShortcut} works anywhere.</div>
