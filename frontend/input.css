@@ -779,8 +779,30 @@ article:has(> .box-form:not(.hidden)) .box-chip {
     display: none;
 }
 
+/* A small top-edge target stays above webviews, including expanded boxes. */
+:root {
+    --app-header-height: 0px;
+}
+
+.app-header-reveal {
+    position: fixed;
+    inset: 0 0 auto;
+    height: 12px;
+    z-index: 200;
+}
+
 .app-header {
-    z-index: 40;
+    position: absolute;
+    inset: 0 0 auto;
+    transform: translateY(-100%);
+    visibility: hidden;
+}
+
+.app-header-reveal:hover > .app-header,
+.app-header-reveal:focus-within > .app-header,
+.app-header-reveal:has([popover]:popover-open, details[open]) > .app-header {
+    transform: translateY(0);
+    visibility: visible;
 }
 
 .app-header:has(#preset-menu[open]) {
@@ -928,8 +950,7 @@ button.status-chip {
     height: calc(100dvh - var(--app-header-height, 0px) - var(--expanded-header-height)) !important;
 }
 
-/* Expanded, the box fills the window below the toolbar, so the wall's status chips and
-   alerts stay in view. Its own header names it and offers the way back. */
+/* Expanded, the box fills the window. Its own header names it and offers the way back. */
 .box-expanded > .box-header {
     position: relative;
     height: var(--expanded-header-height);

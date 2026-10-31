@@ -2,6 +2,8 @@
 
 A box is one source with its own player, audio meter and alerts. Drag a box by its grip to reorder it.
 
+The global toolbar hides by default. Move the pointer to the top edge to reveal it, or press **Tab** to reach it with the keyboard. It stays visible while a toolbar menu is open. Revealing it overlays the gallery without resizing boxes.
+
 ## Sources
 
 - YouTube, including privacy-enhanced `youtube-nocookie` links
@@ -27,7 +29,7 @@ The toolbar counts the wall by these states. Click a count other than **live** t
 
 - The eye button hides alerts for one box, for example a feed you know is down.
 - The copy button copies the box's URL.
-- Expand fills the window below the toolbar, so the status counts stay in view; press **Esc** to go back.
+- Expand fills the window; press **Esc** to go back.
 - A removed box can be restored with **Undo** for 8 s.
 
 ## Sizing

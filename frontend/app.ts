@@ -123,7 +123,6 @@ const zoomInButton = mustGet<HTMLButtonElement>('zoom-in');
 const zoomStatusButton = mustGet<HTMLButtonElement>('zoom-status');
 const fitToggleButton = mustGet<HTMLButtonElement>('fit-toggle');
 const statusBar = mustGet<HTMLElement>('status-bar');
-const appHeader = mustGet<HTMLElement>('app-header');
 const updateToast = mustGet<HTMLElement>('update-toast');
 const updateText = mustGet<HTMLElement>('update-text');
 const updateProgress = mustGet<HTMLProgressElement>('update-progress');
@@ -432,9 +431,8 @@ const scrollbarWidth = 10;
 function applyBoxZoom(): void {
     let scale = settings.boxZoom / 100;
     if (settings.fitLayout) {
-        // The gallery sits under the sticky toolbar with main's 6px padding above and below.
-        const top = appHeader.getBoundingClientRect().bottom + 6;
-        const availableHeight = window.innerHeight - top - 6;
+        // The toolbar overlays the wall; main has 6px padding above and below.
+        const availableHeight = window.innerHeight - 12;
         // Leave room for the scrollbar even while it is hidden, so it appearing never
         // narrows the row enough to wrap a box.
         const shownScrollbar = window.innerWidth - document.documentElement.clientWidth;
@@ -639,13 +637,6 @@ function initZoomControls(): void {
         });
     };
     window.addEventListener('resize', refit);
-    new ResizeObserver(() => {
-        document.documentElement.style.setProperty(
-            '--app-header-height',
-            `${Math.round(appHeader.getBoundingClientRect().height)}px`,
-        );
-        refit();
-    }).observe(appHeader);
     // Adding or removing boxes re-fits at once rather than on the next frame, which a hidden
     // window never draws.
     let boxesChanged = false;
