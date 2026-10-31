@@ -107,6 +107,9 @@ const REPEATED_BUFFERING_COUNT = 5;
 const FROZEN_ALERT_MS = 8000;
 const FROZEN_ALERT_MAX_MS = 60 * 1000;
 const VIDEO_HEALTH_INTERVAL_MS = 500;
+// A box counts as playing only while its playback time keeps moving. The same 8 s as the
+// frozen alert, so a stuck picture never looks live.
+const PLAYBACK_STALE_MS = FROZEN_ALERT_MS;
 
 function parseScreenShareValue(value: string): { micDeviceId: string } {
     try {
@@ -608,6 +611,7 @@ function startMediaHealthLoop(media: HTMLMediaElement): void {
     let repeatedBufferingActive = false;
     let bufferingEvents: number[] = [];
     let frozenActive = false;
+    let playbackReported: boolean | null = null;
 
     const markStarted = (): void => {
         hasStarted = true;
@@ -665,6 +669,12 @@ function startMediaHealthLoop(media: HTMLMediaElement): void {
         if (nextFrozenActive !== frozenActive) {
             frozenActive = nextFrozenActive;
             sendVideoHealth('video-frozen', frozenActive);
+        }
+
+        const playing = expectedPlaying && frozenForMs < PLAYBACK_STALE_MS;
+        if (playing !== playbackReported) {
+            playbackReported = playing;
+            ipcRenderer.sendToHost('gallery-playback', { boxId, playing });
         }
     }, VIDEO_HEALTH_INTERVAL_MS);
 }

@@ -33,6 +33,8 @@ type ScreenShareValue = {
 type BoxElements = {
     root: HTMLElement;
     title: HTMLElement;
+    state: HTMLElement;
+    headerName: HTMLElement;
     number: HTMLElement;
     form: HTMLFormElement;
     viewport: HTMLElement;
@@ -40,6 +42,7 @@ type BoxElements = {
     webview: Electron.WebviewTag;
     canvas: HTMLCanvasElement;
     muteButton: HTMLButtonElement;
+    soloButton: HTMLButtonElement;
     alertToggleButton: HTMLButtonElement;
     alertOverlay: HTMLElement;
     webviewReady: boolean;
@@ -102,6 +105,7 @@ const alertAudioChannelMissingInput = mustGet<HTMLInputElement>('alert-audio-cha
 const alertAudioImbalanceInput = mustGet<HTMLInputElement>('alert-audio-imbalance');
 const alertAudioPhaseMismatchInput = mustGet<HTMLInputElement>('alert-audio-phase-mismatch');
 const presetMenu = mustGet<HTMLDetailsElement>('preset-menu');
+const presetLabel = mustGet<HTMLElement>('preset-label');
 const savedPresetList = mustGet<HTMLElement>('saved-preset-list');
 const newPresetButton = mustGet<HTMLButtonElement>('new-preset');
 const exportPresetButton = mustGet<HTMLButtonElement>('export-preset');
@@ -128,11 +132,15 @@ const updateRestartButton = mustGet<HTMLButtonElement>('update-restart-btn');
 const clipboardToast = mustGet<HTMLElement>('clipboard-toast');
 const clipboardToastIcon = mustGet<HTMLElement>('clipboard-toast-icon');
 const clipboardToastText = mustGet<HTMLElement>('clipboard-toast-text');
+const clipboardToastAction = mustGet<HTMLButtonElement>('clipboard-toast-action');
+let toastAction: { label: string; run: () => void } | null = null;
 const presetNameDialog = mustGet<HTMLDialogElement>('preset-name-dialog');
 const presetNameTitle = mustGet<HTMLElement>('preset-name-title');
 const presetNameInput = mustGet<HTMLInputElement>('preset-name-input');
 const alertsDialog = mustGet<HTMLDialogElement>('alerts-dialog');
 const alertsList = mustGet<HTMLElement>('alerts-list');
+const alertsAckAllButton = mustGet<HTMLButtonElement>('alerts-ack-all');
+let alertsListTimer = 0;
 const settingsDialog = mustGet<HTMLDialogElement>('settings-dialog');
 const settingsForm = mustGet<HTMLFormElement>('settings-form');
 const jwServerHostInput = mustGet<HTMLInputElement>('jw-server-host');
@@ -181,9 +189,28 @@ const boxZoomStops = (() => {
     return stops;
 })();
 
-// The header summarizes the wall: how many boxes are fine and how many have each kind of
+// What a box's player is doing, apart from alerts. Only 'playing' counts as live: the
+// guest preload reports it while playback time keeps moving.
+type BoxSignal = 'loading' | 'playing' | 'not-playing' | 'no-video' | 'failed';
+
+const boxSignalLabels: Record<BoxSignal, string> = {
+    loading: 'Starting…',
+    playing: '',
+    'not-playing': 'Not playing',
+    'no-video': 'No video',
+    failed: 'Load failed',
+};
+
+// How long a box may stay 'Starting…' before it is shown as not playing.
+const boxStartTimeoutMs = 20000;
+const boxSignals = new Map<string, BoxSignal>();
+const boxSignalTimers = new Map<string, number>();
+const boxesWithMedia = new Set<string>();
+
+// The header summarizes the wall: how many boxes are live and how many have each kind of
 // problem. Each problem chip jumps to the boxes it counts, one per click.
 type StatusGroup = 'frozen' | 'buffering' | 'silent' | 'audio';
+type StatusKey = StatusGroup | 'failed' | 'not-playing' | 'loading';
 
 const statusGroupOf: Record<AlertKind, StatusGroup> = {
     'video-frozen': 'frozen',
@@ -205,7 +232,7 @@ const statusGroupLabels: Record<StatusGroup, string> = {
 };
 
 let activeBoxAlerts: { boxId: string; kind: AlertKind }[] = [];
-const statusJumpIndex = new Map<StatusGroup, number>();
+const statusJumpIndex = new Map<StatusKey, number>();
 
 const alertController = createAlertController({
     settings,
@@ -214,7 +241,9 @@ const alertController = createAlertController({
     alertsButton,
     alertsCount,
     alertsList,
+    alertsAckAllButton,
     getBoxTitle,
+    onShowBox: (boxId) => showBox(boxId),
     onChange: (alerts) => {
         activeBoxAlerts = alerts;
         updateStatusBar();
@@ -224,6 +253,7 @@ const alertController = createAlertController({
 const presetController = createPresetController({
     boxes,
     presetMenu,
+    presetLabel,
     savedPresetList,
     presetNameDialog,
     presetNameTitle,
@@ -293,31 +323,96 @@ function updateStatusBar(): void {
         groups.set(group, ids);
     });
 
+    // An alerting box is counted under its alert only, never also as live or not playing.
     const alertingIds = new Set(activeBoxAlerts.map((alert) => alert.boxId));
     const configured = boxes.filter((box) => getPlayerUrl(box, settings));
-    const live = configured.filter((box) => !alertingIds.has(box.id)).length;
+    const bySignal = (signals: BoxSignal[]): string[] =>
+        configured
+            .filter((box) => !alertingIds.has(box.id))
+            .filter((box) => signals.includes(boxSignals.get(box.id) ?? 'loading'))
+            .map((box) => box.id);
+    const live = bySignal(['playing']).length;
+    const failed = bySignal(['failed']);
+    const notPlaying = bySignal(['not-playing', 'no-video']);
+    const loading = bySignal(['loading']);
     const empty = boxes.length - configured.length;
 
     const chips: HTMLElement[] = [];
     if (live > 0) {
         chips.push(makeStatusChip(`${live} live`, 'ok'));
     }
+    if (failed.length > 0) {
+        chips.push(
+            makeStatusChip(`${failed.length} failed`, 'danger', () =>
+                jumpToStatusGroup('failed', failed),
+            ),
+        );
+    }
     (Object.keys(statusGroupLabels) as StatusGroup[]).forEach((group) => {
         const ids = groups.get(group);
         if (ids?.length) {
             chips.push(
-                makeStatusChip(
-                    `${ids.length} ${statusGroupLabels[group]}`,
-                    group === 'frozen' ? 'danger' : 'warn',
-                    () => jumpToStatusGroup(group, ids),
+                makeStatusChip(`${ids.length} ${statusGroupLabels[group]}`, 'danger', () =>
+                    jumpToStatusGroup(group, ids),
                 ),
             );
         }
     });
+    if (notPlaying.length > 0) {
+        chips.push(
+            makeStatusChip(`${notPlaying.length} not playing`, 'warn', () =>
+                jumpToStatusGroup('not-playing', notPlaying),
+            ),
+        );
+    }
+    if (loading.length > 0) {
+        chips.push(makeStatusChip(`${loading.length} starting`, 'idle'));
+    }
     if (empty > 0) {
         chips.push(makeStatusChip(`${empty} empty`, 'idle'));
     }
     statusBar.replaceChildren(...chips);
+}
+
+function setBoxSignal(boxId: string, signal: BoxSignal | null): void {
+    window.clearTimeout(boxSignalTimers.get(boxId));
+    boxSignalTimers.delete(boxId);
+    if (signal) {
+        boxSignals.set(boxId, signal);
+    } else {
+        boxSignals.delete(boxId);
+        boxesWithMedia.delete(boxId);
+    }
+
+    if (signal === 'loading') {
+        boxesWithMedia.delete(boxId);
+        boxSignalTimers.set(
+            boxId,
+            window.setTimeout(() => {
+                if (boxSignals.get(boxId) === 'loading') {
+                    setBoxSignal(boxId, boxesWithMedia.has(boxId) ? 'not-playing' : 'no-video');
+                }
+            }, boxStartTimeoutMs),
+        );
+    }
+
+    const entry = elements.get(boxId);
+    if (entry) {
+        entry.root.dataset.signal = signal ?? 'empty';
+        entry.state.textContent = signal ? boxSignalLabels[signal] : '';
+        syncBoxLabel(boxId);
+    }
+    updateStatusBar();
+}
+
+function onBoxPlayback(boxId: string, playing: boolean): void {
+    boxesWithMedia.add(boxId);
+    if (playing) {
+        setBoxSignal(boxId, 'playing');
+    } else if (boxSignals.get(boxId) !== 'loading') {
+        // Until the start timeout, a player that has not started yet is still starting.
+        setBoxSignal(boxId, 'not-playing');
+    }
 }
 
 function makeStatusChip(
@@ -336,16 +431,22 @@ function makeStatusChip(
     return chip;
 }
 
-function jumpToStatusGroup(group: StatusGroup, ids: string[]): void {
+function jumpToStatusGroup(group: StatusKey, ids: string[]): void {
     const index = (statusJumpIndex.get(group) ?? -1) + 1;
-    const boxId = ids[index % ids.length];
     statusJumpIndex.set(group, index % ids.length);
+    showBox(ids[index % ids.length]);
+}
+
+// Brings a box into view, collapsing an expanded one first, and pings it.
+function showBox(boxId: string): void {
     const root = elements.get(boxId)?.root;
     if (!root) {
         return;
     }
 
-    closeExpandedBox();
+    if (!root.classList.contains('box-expanded')) {
+        closeExpandedBox();
+    }
     root.scrollIntoView({ behavior: 'smooth', block: 'center' });
     root.classList.remove('box-ping');
     void root.offsetWidth;
@@ -402,12 +503,41 @@ function setBoxZoom(percent: number): void {
     saveState();
 }
 
+const boxTypeLabels: Record<BoxType, string> = {
+    YT: 'YouTube',
+    JW: 'JW Player',
+    VC: 'VdoCipher',
+    SS: 'Screen Share',
+    CU: 'Custom URL',
+    LF: 'Local File',
+};
+
 function getBoxTitle(box: GalleryBox): string {
     if (!box.value.trim() && box.type !== 'SS') {
         return box.name || 'Empty';
     }
 
-    return box.name ? `${box.type}: ${box.name}` : box.type;
+    return box.name || boxTypeLabels[box.type];
+}
+
+// Screen readers hear each box as a named group, so its buttons need no box name of their
+// own.
+function syncBoxLabel(boxId: string): void {
+    const box = boxes.find((item) => item.id === boxId);
+    const entry = elements.get(boxId);
+    if (!box || !entry) {
+        return;
+    }
+
+    const signal = boxSignals.get(boxId);
+    const parts = [`Box ${boxes.indexOf(box) + 1}: ${getBoxTitle(box)}`];
+    if (signal && signal !== 'playing') {
+        parts.push(boxSignalLabels[signal]);
+    }
+    if (!box.muted) {
+        parts.push('listening');
+    }
+    entry.root.setAttribute('aria-label', parts.join(', '));
 }
 
 const pasteShortcut = navigator.platform.includes('Mac') ? '⌘V' : 'Ctrl+V';
@@ -534,7 +664,13 @@ function initZoomControls(): void {
         });
     };
     window.addEventListener('resize', refit);
-    new ResizeObserver(refit).observe(appHeader);
+    new ResizeObserver(() => {
+        document.documentElement.style.setProperty(
+            '--app-header-height',
+            `${Math.round(appHeader.getBoundingClientRect().height)}px`,
+        );
+        refit();
+    }).observe(appHeader);
     // Adding or removing boxes re-fits at once rather than on the next frame, which a hidden
     // window never draws.
     let boxesChanged = false;
@@ -848,7 +984,12 @@ function render(): void {
     elements.clear();
     meterStates.clear();
     meterClipHoldUntil.clear();
+    boxSignalTimers.forEach((timer) => window.clearTimeout(timer));
+    boxSignalTimers.clear();
+    boxSignals.clear();
+    boxesWithMedia.clear();
     boxes.forEach((box, index) => renderBox(box, index));
+    syncSoloButtons();
     alertController.resetAll();
     saveState();
     restartRotation();
@@ -858,6 +999,7 @@ function addBox(): void {
     const box = makeBox();
     boxes.push(box);
     renderBox(box, boxes.length - 1);
+    syncSoloButtons();
     saveState();
     restartRotation();
 }
@@ -866,21 +1008,24 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
         'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100vw-1.5rem)] border-hairline overflow-hidden rounded-lg border';
+    root.setAttribute('role', 'group');
     root.innerHTML = `
         <div class="box-header">
           <button class="drag-handle btn box-tool-btn cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
+          <span class="box-header-name"></span>
           <button class="alert-visibility btn box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
           <button class="mute btn box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
-          <button class="solo btn box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others">${icon('headphones')}</button>
+          <button class="solo btn box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others" aria-pressed="false">${icon('headphones')}</button>
           <button class="reload btn box-tool-btn" title="Reload this box" aria-label="Reload this box">${icon('refresh')}</button>
           <button class="copy-url btn box-tool-btn" title="Copy this box's URL" aria-label="Copy this box's URL">${icon('copy')}</button>
           <button class="edit btn box-tool-btn" title="Edit this box" aria-label="Edit this box">${icon('pencil')}</button>
-          <button class="remove btn btn-danger box-tool-btn" title="Remove this box" aria-label="Remove this box">${icon('trash')}</button>
           <button class="expand btn box-tool-btn" title="Expand this box" aria-label="Expand this box">${icon('maximize')}</button>
+          <span class="box-tool-divider" aria-hidden="true"></span>
+          <button class="remove btn btn-danger box-tool-btn" title="Remove this box (you can undo)" aria-label="Remove this box">${icon('trash')}</button>
         </div>
         <form class="box-form material hidden grid-cols-2 gap-1.5 rounded-lg p-2">
-          <input name="name" class="field field-sm" type="text" placeholder="Name" />
-          <select name="type" class="field field-sm">
+          <input name="name" class="field field-sm" type="text" placeholder="Name" aria-label="Box name" />
+          <select name="type" class="field field-sm" aria-label="Source type">
             <option value="YT">YouTube</option>
             <option value="JW">JW Player</option>
             <option value="VC">VdoCipher</option>
@@ -899,6 +1044,8 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
             <span class="box-dot"></span>
             <span class="box-number cursor-grab tabular-nums select-none" title="Drag to reorder this box"></span>
             <strong class="box-title"></strong>
+            <span class="box-listen" title="You are hearing this box">${icon('volume-2', 'h-3 w-3')}</span>
+            <span class="box-state"></span>
           </div>
           <div class="player-frame relative mr-2.5 aspect-video overflow-hidden">
             <webview class="player absolute bg-black top-0 left-0 h-[160%] w-[160%] origin-top-left scale-[0.625]" style="color-scheme: light" allowpopups></webview>
@@ -919,43 +1066,34 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           </div>
         </div>`;
 
-    const title = root.querySelector<HTMLElement>('.box-title')!;
-    const number = root.querySelector<HTMLElement>('.box-number')!;
-    const form = root.querySelector<HTMLFormElement>('.box-form')!;
+    const entry: BoxElements = {
+        root,
+        title: root.querySelector<HTMLElement>('.box-title')!,
+        state: root.querySelector<HTMLElement>('.box-state')!,
+        headerName: root.querySelector<HTMLElement>('.box-header-name')!,
+        number: root.querySelector<HTMLElement>('.box-number')!,
+        form: root.querySelector<HTMLFormElement>('.box-form')!,
+        viewport: root.querySelector<HTMLElement>('.viewport')!,
+        emptyState: root.querySelector<HTMLElement>('.empty-state')!,
+        webview: root.querySelector<Electron.WebviewTag>('webview')!,
+        canvas: root.querySelector<HTMLCanvasElement>('canvas')!,
+        muteButton: root.querySelector<HTMLButtonElement>('.mute')!,
+        soloButton: root.querySelector<HTMLButtonElement>('.solo')!,
+        alertToggleButton: root.querySelector<HTMLButtonElement>('.alert-visibility')!,
+        alertOverlay: root.querySelector<HTMLElement>('.alert-overlay')!,
+        webviewReady: false,
+        pendingCommands: [],
+    };
+    const { number, form, webview, canvas, muteButton, alertToggleButton } = entry;
     const dragHandle = root.querySelector<HTMLButtonElement>('.drag-handle')!;
-    const viewport = root.querySelector<HTMLElement>('.viewport')!;
-    const emptyState = root.querySelector<HTMLElement>('.empty-state')!;
-    const webview = root.querySelector<Electron.WebviewTag>('webview')!;
-    const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
-    const muteButton = root.querySelector<HTMLButtonElement>('.mute')!;
     const expandButton = root.querySelector<HTMLButtonElement>('.expand')!;
-    const alertToggleButton = root.querySelector<HTMLButtonElement>('.alert-visibility')!;
-    const alertOverlay = root.querySelector<HTMLElement>('.alert-overlay')!;
 
     root.dataset.id = box.id;
     [dragHandle, number].forEach((dragTarget) => {
         dragTarget.draggable = true;
     });
     number.textContent = String(index + 1);
-    syncBoxControls(
-        {
-            root,
-            title,
-            number,
-            form,
-            viewport,
-            emptyState,
-            webview,
-            canvas,
-            muteButton,
-            alertToggleButton,
-            alertOverlay,
-            webviewReady: false,
-            pendingCommands: [],
-        },
-        box,
-        isEditing,
-    );
+    syncBoxControls(entry, box, isEditing);
 
     webview.setAttribute('preload', window.liveGallery.guestPreloadUrl);
     webview.setAttribute('useragent', navigator.userAgent.replace(/\sElectron\/\S+/g, ''));
@@ -977,6 +1115,8 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
             alertController.updateAudioHealth(payload);
         } else if (event.channel === 'gallery-health') {
             alertController.updateFromHealth(event.args[0] as HealthPayload);
+        } else if (event.channel === 'gallery-playback') {
+            onBoxPlayback(box.id, Boolean((event.args[0] as { playing?: boolean }).playing));
         } else if (event.channel === 'gallery-error') {
             console.warn(`Box ${box.name || box.id} player error:`, event.args[0]);
         } else if (event.channel === 'gallery-screen-share-source') {
@@ -995,6 +1135,13 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     });
     webview.addEventListener('did-fail-load', (event) => {
         console.warn(`Box ${box.name || box.id} failed to load:`, event.errorDescription);
+        // -3 is an aborted load, which happens on every reload or new URL.
+        if (event.isMainFrame && event.errorCode !== -3) {
+            setBoxSignal(box.id, 'failed');
+        }
+    });
+    webview.addEventListener('render-process-gone', () => {
+        setBoxSignal(box.id, 'failed');
     });
     webview.addEventListener('dom-ready', () => {
         const entry = elements.get(box.id);
@@ -1013,6 +1160,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         toggleExpanded(root);
         syncExpandButtonTitle(expandButton, root);
     });
+    syncExpandButtonTitle(expandButton, root);
     root.querySelector<HTMLButtonElement>('.empty-paste')!.addEventListener('click', () => {
         navigator.clipboard
             .readText()
@@ -1047,7 +1195,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     root.querySelector<HTMLButtonElement>('.remove')!.addEventListener('click', () =>
         removeBox(box.id),
     );
-    root.querySelector<HTMLButtonElement>('.solo')!.addEventListener('click', () => {
+    entry.soloButton.addEventListener('click', () => {
         disableRotationAudio();
         soloBox(box.id);
     });
@@ -1130,55 +1278,26 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
                   ? normalizeScreenShareFormValue(rawValue, box.value)
                   : rawValue;
         setEditing(form, false);
-        syncBoxControls(
-            {
-                root,
-                title,
-                number,
-                form,
-                viewport,
-                emptyState,
-                webview,
-                canvas,
-                muteButton,
-                alertToggleButton,
-                alertOverlay,
-                webviewReady: false,
-                pendingCommands: [],
-            },
-            box,
-            false,
-        );
+        syncBoxControls(entry, box, false);
         loadWebview(box);
         saveState();
         restartRotation();
     });
 
     gallery.appendChild(root);
-    elements.set(box.id, {
-        root,
-        title,
-        number,
-        form,
-        viewport,
-        emptyState,
-        webview,
-        canvas,
-        muteButton,
-        alertToggleButton,
-        alertOverlay,
-        webviewReady: false,
-        pendingCommands: [],
-    });
+    elements.set(box.id, entry);
+    syncBoxLabel(box.id);
     loadWebview(box);
 }
 
 function syncBoxControls(entry: BoxElements, box: GalleryBox, isEditing: boolean): void {
     entry.title.textContent = getBoxTitle(box);
+    syncHeaderName(entry, box);
     entry.muteButton.innerHTML = icon(box.muted ? 'volume-x' : 'volume-2');
     syncMuteButtonTitle(entry.muteButton, box.muted);
     setUnmuted(entry.root, !box.muted);
     setEditing(entry.form, isEditing);
+    syncBoxLabel(box.id);
 
     (entry.form.elements.namedItem('name') as HTMLInputElement).value = box.name;
     (entry.form.elements.namedItem('type') as HTMLSelectElement).value = box.type;
@@ -1531,15 +1650,34 @@ function setEditing(form: HTMLFormElement, isEditing: boolean): void {
 }
 
 function syncMuteButtonTitle(button: HTMLButtonElement, isMuted: boolean): void {
-    const label = isMuted ? 'Unmute this box' : 'Mute this box';
-    button.title = label;
-    button.setAttribute('aria-label', label);
+    button.title = isMuted ? 'Unmute this box' : 'Mute this box';
+    button.setAttribute('aria-label', 'Mute this box');
+    button.setAttribute('aria-pressed', String(isMuted));
 }
 
+// The solo button reads as pressed on the one box you hear when every other box is muted.
+function syncSoloButtons(): void {
+    const unmuted = boxes.filter((box) => !box.muted);
+    const soloId = unmuted.length === 1 && boxes.length > 1 ? unmuted[0].id : '';
+    elements.forEach((entry, boxId) => {
+        entry.soloButton.setAttribute('aria-pressed', String(boxId === soloId));
+        entry.soloButton.classList.toggle('is-on', boxId === soloId);
+    });
+}
+
+// Expanded, the button says where it goes, since it is the way back to the wall.
 function syncExpandButtonTitle(button: HTMLButtonElement, root: HTMLElement): void {
-    const label = root.classList.contains('box-expanded') ? 'Collapse this box' : 'Expand this box';
+    const expanded = root.classList.contains('box-expanded');
+    const label = expanded ? 'Back to the wall (Esc)' : 'Expand this box';
+    button.innerHTML = expanded
+        ? `${icon('minimize')}<span class="box-tool-label">Back to wall</span>`
+        : icon('maximize');
     button.title = label;
-    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-label', expanded ? 'Back to the wall' : 'Expand this box');
+}
+
+function syncHeaderName(entry: BoxElements, box: GalleryBox): void {
+    entry.headerName.textContent = `${boxes.indexOf(box) + 1}  ${getBoxTitle(box)}`;
 }
 
 function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
@@ -1566,7 +1704,10 @@ function closeExpandedBox(): boolean {
 
 function updateBoxNumbers(): void {
     boxes.forEach((box, index) => {
-        elements.get(box.id)!.number.textContent = String(index + 1);
+        const entry = elements.get(box.id)!;
+        entry.number.textContent = String(index + 1);
+        syncHeaderName(entry, box);
+        syncBoxLabel(box.id);
     });
 }
 
@@ -1578,10 +1719,10 @@ function loadWebview(box: GalleryBox, forceReload = false): void {
 
     const src = getPlayerUrl(box, settings);
     entry.emptyState.classList.toggle('hidden', Boolean(src));
-    updateStatusBar();
     entry.webview.classList.toggle('hidden', !src);
 
     if (!src) {
+        setBoxSignal(box.id, null);
         return;
     }
 
@@ -1589,15 +1730,18 @@ function loadWebview(box: GalleryBox, forceReload = false): void {
         if (forceReload) {
             alertController.clearBox(box.id);
             if (entry.webviewReady) {
+                setBoxSignal(box.id, 'loading');
                 entry.webview.reloadIgnoringCache();
             }
         }
+        updateStatusBar();
         return;
     }
 
     entry.webviewReady = false;
     entry.pendingCommands = [];
     alertController.clearBox(box.id);
+    setBoxSignal(box.id, 'loading');
     entry.webview.src = src;
 }
 
@@ -1648,6 +1792,8 @@ function toggleMute(boxId: string, forceMuted?: boolean): void {
     setUnmuted(entry.root, !box.muted);
     entry.muteButton.innerHTML = icon(box.muted ? 'volume-x' : 'volume-2');
     syncMuteButtonTitle(entry.muteButton, box.muted);
+    syncBoxLabel(box.id);
+    syncSoloButtons();
     sendCommand(box.id, { type: 'mute', muted: box.muted });
     saveState();
 }
@@ -1675,6 +1821,7 @@ function disableRotationAudio(): void {
 
     muteRotationInput.checked = false;
     updateAllSettings();
+    showToast('Rotate audio turned off', 'primary');
 }
 
 function copyBoxUrl(box: GalleryBox): void {
@@ -1695,22 +1842,62 @@ function copyBoxUrl(box: GalleryBox): void {
 
 function removeBox(boxId: string): void {
     const index = boxes.findIndex((box) => box.id === boxId);
-    if (index >= 0) {
-        const [removed] = boxes.splice(index, 1);
-        elements.get(removed.id)?.root.remove();
-        elements.delete(removed.id);
-        meterClipHoldUntil.delete(removed.id);
-        meterStates.delete(removed.id);
-        alertController.clearBox(removed.id);
-
-        if (boxes.length === 0) {
-            addBox();
-            return;
-        }
-        updateBoxNumbers();
-        saveState();
-        restartRotation();
+    if (index < 0) {
+        return;
     }
+
+    const [removed] = boxes.splice(index, 1);
+    elements.get(removed.id)?.root.remove();
+    elements.delete(removed.id);
+    meterClipHoldUntil.delete(removed.id);
+    meterStates.delete(removed.id);
+    setBoxSignal(removed.id, null);
+    alertController.clearBox(removed.id);
+
+    // Removing the last box leaves an empty one; undo takes that placeholder away again.
+    const placeholder = boxes.length === 0 ? makeBox() : null;
+    if (placeholder) {
+        boxes.push(placeholder);
+        renderBox(placeholder, 0);
+    }
+    updateBoxNumbers();
+    syncSoloButtons();
+    saveState();
+    restartRotation();
+
+    showToast(`Removed box ${index + 1}`, 'primary', {
+        label: 'Undo',
+        run: () => {
+            if (placeholder && boxes.length === 1 && boxes[0] === placeholder) {
+                removeBoxQuietly(placeholder.id);
+            }
+            restoreBox(removed, index);
+        },
+    });
+}
+
+function removeBoxQuietly(boxId: string): void {
+    const index = boxes.findIndex((box) => box.id === boxId);
+    if (index >= 0) {
+        boxes.splice(index, 1);
+        elements.get(boxId)?.root.remove();
+        elements.delete(boxId);
+        setBoxSignal(boxId, null);
+    }
+}
+
+function restoreBox(box: GalleryBox, index: number): void {
+    const at = Math.min(index, boxes.length);
+    boxes.splice(at, 0, box);
+    renderBox(box, at);
+    const next = boxes[at + 1];
+    if (next) {
+        gallery.insertBefore(elements.get(box.id)!.root, elements.get(next.id)!.root);
+    }
+    updateBoxNumbers();
+    syncSoloButtons();
+    saveState();
+    restartRotation();
 }
 
 function moveBox(sourceId: string, targetId: string): void {
@@ -1951,16 +2138,36 @@ function saveSettingsFromDialog(): void {
     showToast('Settings saved');
 }
 
-function showToast(message: string, variant: 'success' | 'primary' | 'error' = 'success'): void {
+type ToastAction = { label: string; run: () => void };
+
+// A toast with an action (Undo) stays long enough to reach it: 8 s instead of 1.8 s.
+function showToast(
+    message: string,
+    variant: 'success' | 'primary' | 'error' = 'success',
+    action?: ToastAction,
+): void {
     window.clearTimeout(clipboardToastTimer);
     clipboardToastIcon.innerHTML = icon(variant === 'error' ? 'circle-alert' : 'check', 'h-4 w-4');
     clipboardToastText.textContent = message;
     clipboardToast.dataset.variant = variant;
     clipboardToast.classList.remove('hidden');
-    clipboardToastTimer = window.setTimeout(() => {
-        clipboardToast.classList.add('hidden');
-    }, 1800);
+    toastAction = action ?? null;
+    clipboardToastAction.classList.toggle('hidden', !action);
+    clipboardToastAction.textContent = action?.label ?? '';
+    clipboardToastTimer = window.setTimeout(hideToast, action ? 8000 : 1800);
 }
+
+function hideToast(): void {
+    window.clearTimeout(clipboardToastTimer);
+    clipboardToast.classList.add('hidden');
+    toastAction = null;
+}
+
+clipboardToastAction.addEventListener('click', () => {
+    const action = toastAction;
+    hideToast();
+    action?.run();
+});
 
 document.getElementById('add-box')!.addEventListener('click', () => {
     addBox();
@@ -1972,19 +2179,33 @@ document.getElementById('docs-button')!.addEventListener('click', () => {
     window.open(DOCS_URL, '_blank', 'noopener');
 });
 
+// The Alerts panel is a side sheet, not a modal: the wall stays live and clickable beside
+// it, and each row jumps to its box.
 alertsButton.addEventListener('click', () => {
     presetMenu.open = false;
+    if (alertsDialog.open) {
+        alertsDialog.close();
+        return;
+    }
+
     alertController.render();
-    alertsDialog.showModal();
+    alertsDialog.show();
+    window.clearInterval(alertsListTimer);
+    alertsListTimer = window.setInterval(() => alertController.renderList(), 1000);
 });
+alertsButton.setAttribute('aria-controls', 'alerts-dialog');
+alertsDialog.addEventListener('close', () => {
+    window.clearInterval(alertsListTimer);
+    alertsButton.setAttribute('aria-expanded', 'false');
+});
+alertsDialog.addEventListener('toggle', () => {
+    alertsButton.setAttribute('aria-expanded', String(alertsDialog.open));
+});
+alertsAckAllButton.addEventListener('click', () => alertController.acknowledgeAll());
 
 document.getElementById('settings-button')!.addEventListener('click', () => {
     syncControlsFromSettings();
     settingsDialog.showModal();
-    requestAnimationFrame(() => {
-        jwServerHostInput.focus();
-        jwServerHostInput.select();
-    });
 });
 
 settingsForm.addEventListener('submit', (event) => {
@@ -2007,7 +2228,14 @@ document.getElementById('lowest-quality')!.addEventListener('click', () => {
 });
 
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && closeExpandedBox()) {
+    if (event.key !== 'Escape') {
+        return;
+    }
+
+    if (alertsDialog.open && !document.querySelector('dialog[open]:modal')) {
+        alertsDialog.close();
+        event.preventDefault();
+    } else if (closeExpandedBox()) {
         event.preventDefault();
         event.stopPropagation();
     }

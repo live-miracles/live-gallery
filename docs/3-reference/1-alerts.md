@@ -1,6 +1,6 @@
 # Alerts
 
-Every box is checked for video and audio problems. The **Alerts** button turns red while anything is active and lists the last five minutes of history. Each alert can be switched off in **Settings → Alerts**, or hidden for one box with its eye button.
+Every box is checked for video and audio problems. The **Alerts** button turns red while anything is active and opens a side panel with the last five minutes of history, including how long each alert lasted. The panel leaves the wall usable; click an alert to jump to its box. Each alert can be switched off in **Settings → Alerts**, or hidden for one box with its eye button.
 
 ## Video
 
@@ -23,4 +23,4 @@ Every box is checked for video and audio problems. The **Alerts** button turns r
 
 Phase mismatch catches a feed whose left and right channels cancel each other in mono while looking and sounding fine in stereo. See [One faulty audio embedder disrupted 20 live streams](https://live-miracles.github.io/blog/one-faulty-embedder-20-streams/).
 
-The bell turns the alert beep on or off; hover it for a volume slider (0 to 500%). The button beside it switches the output between stereo and mono.
+A new alert beeps once a second for up to 30 s. **Acknowledge** stops its beep sooner; the box stays red until the alert clears. The bell turns the beep on or off; hover it for a volume slider (0 to 500%). The button beside it switches the output between stereo and mono.
