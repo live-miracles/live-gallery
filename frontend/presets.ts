@@ -1,11 +1,15 @@
 import { BoxType, GalleryBox, makeBox } from './utils.js';
 import { icon } from './icons.js';
 
-type ToastVariant = 'success' | 'error';
+type ToastVariant = 'success' | 'primary' | 'error';
+type ToastAction = { label: string; run: () => void };
+
+const presetNameKey = 'live-gallery-preset-name';
 
 type PresetControllerOptions = {
     boxes: GalleryBox[];
     presetMenu: HTMLDetailsElement;
+    presetLabel: HTMLElement;
     savedPresetList: HTMLElement;
     presetNameDialog: HTMLDialogElement;
     presetNameTitle: HTMLElement;
@@ -17,12 +21,13 @@ type PresetControllerOptions = {
     importPresetClipboardButton: HTMLButtonElement;
     savePresetButton: HTMLButtonElement;
     render: () => void;
-    showToast: (message: string, variant?: ToastVariant) => void;
+    showToast: (message: string, variant?: ToastVariant, action?: ToastAction) => void;
 };
 
 export function createPresetController({
     boxes,
     presetMenu,
+    presetLabel,
     savedPresetList,
     presetNameDialog,
     presetNameTitle,
@@ -50,12 +55,47 @@ export function createPresetController({
         );
     }
 
-    function loadPresetBoxes(presetBoxes: PresetBox[]): void {
-        boxes.splice(0, boxes.length, ...presetToBoxes(presetBoxes));
+    // The Preset button shows the name of the preset the wall was loaded from or saved as.
+    let currentName = readCurrentName();
+
+    function readCurrentName(): string {
+        try {
+            return localStorage.getItem(presetNameKey) ?? '';
+        } catch {
+            return '';
+        }
+    }
+
+    function setCurrentName(name: string): void {
+        currentName = name;
+        try {
+            localStorage.setItem(presetNameKey, name);
+        } catch {
+            // The label is a convenience; losing it is harmless.
+        }
+        presetLabel.textContent = name || 'Preset';
+        presetLabel.title = name ? `Preset: ${name}` : '';
+    }
+
+    // Everything that replaces the wall can be undone from the toast it shows.
+    function replaceWall(nextBoxes: GalleryBox[], name: string, message: string): void {
+        const previousBoxes = boxes.slice();
+        const previousName = currentName;
+        boxes.splice(0, boxes.length, ...nextBoxes);
         if (boxes.length === 0) {
             boxes.push(makeBox());
         }
+        setCurrentName(name);
         render();
+        presetMenu.open = false;
+        showToast(message, 'primary', {
+            label: 'Undo',
+            run: () => {
+                boxes.splice(0, boxes.length, ...previousBoxes);
+                setCurrentName(previousName);
+                render();
+            },
+        });
     }
 
     function importPresetBoxes(presetBoxes: PresetBox[] | null): void {
@@ -63,9 +103,7 @@ export function createPresetController({
             return;
         }
 
-        loadPresetBoxes(presetBoxes);
-        showToast('Preset imported');
-        presetMenu.open = false;
+        replaceWall(presetToBoxes(presetBoxes), '', 'Preset imported');
     }
 
     function renderSavedPresets(presets: SavedPreset[]): void {
@@ -89,8 +127,7 @@ export function createPresetController({
             loadButton.textContent = preset.name;
             loadButton.title = preset.name;
             loadButton.addEventListener('click', () => {
-                loadPresetBoxes(preset.boxes);
-                presetMenu.open = false;
+                replaceWall(presetToBoxes(preset.boxes), preset.name, `Loaded “${preset.name}”`);
             });
 
             const renameButton = document.createElement('button');
@@ -176,6 +213,7 @@ export function createPresetController({
             .savePreset(name, boxesToPreset())
             .then((presets) => {
                 renderSavedPresets(presets);
+                setCurrentName(name);
                 showToast('Preset saved');
             })
             .catch((error) => {
@@ -192,7 +230,12 @@ export function createPresetController({
 
         window.liveGallery
             .renamePreset(oldName, newName)
-            .then(renderSavedPresets)
+            .then((presets) => {
+                renderSavedPresets(presets);
+                if (currentName === oldName) {
+                    setCurrentName(newName);
+                }
+            })
             .catch((error) => {
                 console.error('Could not rename preset:', error);
                 showToast('Rename failed', 'error');
@@ -208,6 +251,9 @@ export function createPresetController({
             .deletePreset(name)
             .then((presets) => {
                 renderSavedPresets(presets);
+                if (currentName === name) {
+                    setCurrentName('');
+                }
                 showToast('Preset deleted');
             })
             .catch((error) => {
@@ -217,10 +263,9 @@ export function createPresetController({
     }
 
     function init(): void {
+        setCurrentName(currentName);
         newPresetButton.addEventListener('click', () => {
-            boxes.splice(0, boxes.length, makeBox());
-            render();
-            presetMenu.open = false;
+            replaceWall([makeBox()], '', 'Started a new preset');
         });
 
         exportPresetButton.addEventListener('click', () => {

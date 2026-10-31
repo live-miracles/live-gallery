@@ -9,6 +9,7 @@ type IconName =
     | 'grip'
     | 'headphones'
     | 'maximize'
+    | 'minimize'
     | 'pencil'
     | 'plus'
     | 'refresh'
@@ -34,6 +35,8 @@ const paths: Record<IconName, string> = {
         '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />',
     maximize:
         '<path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M16 3h3a2 2 0 0 1 2 2v3" /><path d="M21 16v3a2 2 0 0 1-2 2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" />',
+    minimize:
+        '<path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" /><path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />',
     pencil: '<path d="M21.2 6.8 17.2 2.8a2 2 0 0 0-2.8 0L3 14.2V21h6.8L21.2 9.6a2 2 0 0 0 0-2.8Z" /><path d="m14 4 6 6" />',
     plus: '<path d="M12 5v14" /><path d="M5 12h14" />',
     refresh:

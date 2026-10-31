@@ -12,4 +12,4 @@ Backup Feed https://youtu.be/dQw4w9WgXcQ
 https://www.youtube.com/live/dQw4w9WgXcQ
 ```
 
-Importing replaces the current boxes, as does **New Preset**, which leaves a single empty box.
+Loading or importing a preset replaces the current boxes, as does **New Preset**, which leaves a single empty box. Each can be undone with **Undo** for 8 s. The **Preset** button shows the name of the preset you loaded or saved last.
