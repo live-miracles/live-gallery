@@ -21,11 +21,15 @@
         font: inherit;
       }
 
-      /* Until a window is shared, show the wave nightscape like the app's empty boxes. */
+      /* Match the static gradient and dot pattern of empty gallery boxes. */
       body:not(.active)::before {
         position: absolute;
         inset: 0;
-        background: url('images/great-wave.avif') center / cover no-repeat;
+        background:
+          radial-gradient(circle, rgb(166 174 211 / 0.1) 1px, transparent 1px) 0 0 / 24px 24px,
+          radial-gradient(ellipse at 12% 12%, rgb(94 106 210 / 0.18), transparent 60%),
+          radial-gradient(ellipse at 90% 85%, rgb(48 114 133 / 0.14), transparent 55%),
+          #080a10;
         content: '';
       }
 

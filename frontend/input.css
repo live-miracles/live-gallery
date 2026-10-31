@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 
 /* Linear-style dark UI: a near-black canvas, a ladder of surfaces separated by hairlines
-   instead of shadows, and one indigo accent for actions. The Hokusai wave art stays in the
-   empty boxes. The gallery itself stays black so video reads true.
+   instead of shadows, and one indigo accent for actions. Empty boxes use subtle gradients
+   and a dot pattern. The gallery itself stays black so video reads true.
 
    Box status colours work like tally lights and mean one thing each: green live, amber not
    playing, red alert or failure, cyan the box you are hearing. Keyboard focus is neutral
@@ -1034,12 +1034,15 @@ button.status-chip {
     zoom: min(1, var(--box-scale));
 }
 
-/* An unconfigured box shows a dark ukiyo-e wave nightscape, inspired by Hokusai's waves,
-   filling the box. */
+/* Static glows and a quiet dot grid give empty boxes texture without animation. */
 .empty-state::before {
     position: absolute;
     inset: 0;
-    background: url('../images/great-wave.avif') center / cover no-repeat;
+    background:
+        radial-gradient(circle, rgb(166 174 211 / 0.1) 1px, transparent 1px) 0 0 / 24px 24px,
+        radial-gradient(ellipse at 12% 12%, rgb(94 106 210 / 0.18), transparent 60%),
+        radial-gradient(ellipse at 90% 85%, rgb(48 114 133 / 0.14), transparent 55%),
+        #080a10;
     content: '';
 }
 
