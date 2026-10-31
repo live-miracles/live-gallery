@@ -28,6 +28,9 @@ export type HealthPayload = {
 
 type AlertRecord = {
     boxId: string;
+    boxTitle?: string;
+    boxNumber?: number;
+    interrupted?: boolean;
     kind: AlertKind;
     message: string;
     active: boolean;
@@ -76,7 +79,8 @@ type AlertControllerOptions = {
 
 export type AlertController = ReturnType<typeof createAlertController>;
 
-const alertHistoryMs = 5 * 60 * 1000;
+const alertHistoryKey = 'live-gallery-alert-history';
+const alertHistoryLimit = 100;
 const alertMinimumActiveMs = 5000;
 const alertBeepIntervalMs = 1000;
 const alertBeepMaxActiveMs = 30 * 1000;
@@ -117,6 +121,25 @@ export function createAlertController({
     onChange,
 }: AlertControllerOptions) {
     const alerts = new Map<string, AlertRecord>();
+    const history = readAlertHistory();
+
+    function saveHistory(): void {
+        try {
+            localStorage.setItem(alertHistoryKey, JSON.stringify(history));
+        } catch {
+            // Monitoring continues if local storage is unavailable or full.
+        }
+    }
+
+    window.addEventListener('pagehide', () => {
+        const now = Date.now();
+        history
+            .filter((alert) => alert.active)
+            .forEach((alert) => {
+                alert.lastSeenAt = now;
+            });
+        saveHistory();
+    });
     const audioHealth = new Map<string, AudioHealthState>();
     const hiddenBoxAlerts = new Set<string>();
     const alertResolveTimers = new Map<string, number>();
@@ -299,6 +322,11 @@ export function createAlertController({
             .filter((key) => key.startsWith(`${boxId}:`))
             .forEach((key) => {
                 clearAlertResolveTimer(key);
+                const alert = alerts.get(key);
+                if (alert?.active) {
+                    alert.interrupted = true;
+                    resolveAlert(alert);
+                }
                 alerts.delete(key);
             });
         audioHealth.delete(boxId);
@@ -309,6 +337,12 @@ export function createAlertController({
     function resetAll(): void {
         alertResolveTimers.forEach((timer) => window.clearTimeout(timer));
         alertResolveTimers.clear();
+        alerts.forEach((alert) => {
+            if (alert.active) {
+                alert.interrupted = true;
+                resolveAlert(alert);
+            }
+        });
         alerts.clear();
         audioHealth.clear();
         hiddenBoxAlerts.clear();
@@ -371,7 +405,10 @@ export function createAlertController({
     // the Alerts panel is open, without touching the beep or the boxes.
     function renderList(): void {
         const now = Date.now();
-        const visibleAlerts = Array.from(alerts.values()).sort((a, b) => {
+        const visibleAlerts = [
+            ...Array.from(alerts.values()).filter((alert) => alert.active),
+            ...history.filter((alert) => !alert.active),
+        ].sort((a, b) => {
             if (a.active !== b.active) {
                 return a.active ? -1 : 1;
             }
@@ -384,21 +421,23 @@ export function createAlertController({
         if (visibleAlerts.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'text-label-2 px-4 py-6 text-center';
-            empty.textContent = 'No alerts in the last five minutes';
+            empty.textContent = 'No saved alerts';
             alertsList.appendChild(empty);
             return;
         }
 
         visibleAlerts.forEach((alert) => {
             const box = boxes.find((item) => item.id === alert.boxId);
-            const number = box ? boxes.indexOf(box) + 1 : '?';
+            const number = alert.boxNumber ?? (box ? boxes.indexOf(box) + 1 : '?');
             const row = document.createElement('div');
             row.className = 'alert-row';
 
             const badge = document.createElement('span');
             badge.className = alert.active ? 'pill pill-danger' : 'pill';
             badge.textContent = !alert.active
-                ? 'Resolved'
+                ? alert.interrupted
+                    ? 'Interrupted'
+                    : 'Resolved'
                 : alert.acknowledged
                   ? 'Acknowledged'
                   : 'Active';
@@ -410,14 +449,16 @@ export function createAlertController({
             main.title = box ? `Show box ${number}` : '';
             main.disabled = !box;
             main.innerHTML = `<span class="block font-medium">${escapeHtml(alert.message)}</span>
-                <span class="text-label-2 block truncate text-xs">Box ${number} &middot; ${escapeHtml(box ? getBoxTitle(box) : alert.boxId)} &middot; ${alert.active ? 'for' : 'lasted'} ${duration}</span>`;
+                <span class="text-label-2 block truncate text-xs">Box ${number} &middot; ${escapeHtml(alert.boxTitle ?? (box ? getBoxTitle(box) : 'Removed box'))} &middot; ${alert.active ? 'for' : 'lasted'} ${duration}</span>`;
             main.addEventListener('click', () => onShowBox(alert.boxId));
 
             const time = document.createElement('time');
             time.className = 'text-label-2 text-xs whitespace-nowrap tabular-nums';
             time.dateTime = new Date(alert.activeSince).toISOString();
-            time.title = 'Started at';
-            time.textContent = new Date(alert.activeSince).toLocaleTimeString([], {
+            time.title = new Date(alert.activeSince).toLocaleString();
+            time.textContent = new Date(alert.activeSince).toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
@@ -441,6 +482,7 @@ export function createAlertController({
         targets.forEach((alert) => {
             alert.acknowledged = true;
         });
+        saveHistory();
         render();
     }
 
@@ -464,15 +506,22 @@ export function createAlertController({
                 existing.lastSeenAt = now;
                 existing.resolvedAt = undefined;
             } else {
-                alerts.set(key, {
+                const box = boxes.find((item) => item.id === boxId);
+                const record: AlertRecord = {
                     boxId,
+                    boxTitle: box ? getBoxTitle(box) : 'Removed box',
+                    boxNumber: box ? boxes.indexOf(box) + 1 : undefined,
                     kind,
                     message: getAlertMessage(kind),
                     active: true,
                     activeSince: now,
                     firstSeenAt: existing?.firstSeenAt ?? now,
                     lastSeenAt: now,
-                });
+                };
+                alerts.set(key, record);
+                history.unshift(record);
+                history.splice(alertHistoryLimit);
+                saveHistory();
                 changed = true;
             }
         } else if (existing?.active) {
@@ -498,6 +547,7 @@ export function createAlertController({
         alert.active = false;
         alert.lastSeenAt = now;
         alert.resolvedAt = now;
+        saveHistory();
     }
 
     function scheduleAlertResolve(key: string, delayMs: number): void {
@@ -598,11 +648,8 @@ export function createAlertController({
     }
 
     function pruneAlerts(): void {
-        const now = Date.now();
         alerts.forEach((alert, key) => {
-            if (!alert.active && alert.resolvedAt && now - alert.resolvedAt > alertHistoryMs) {
-                alerts.delete(key);
-            }
+            if (!alert.active) alerts.delete(key);
         });
     }
 
@@ -626,6 +673,53 @@ export function createAlertController({
         updateAudioHealth,
         updateFromHealth,
     };
+}
+
+// Treat persisted live records as interrupted; a new session must detect problems afresh.
+export function parseAlertHistory(value: string | null): AlertRecord[] {
+    try {
+        const records: unknown = JSON.parse(value ?? '[]');
+        if (!Array.isArray(records)) return [];
+        return records
+            .filter((record): record is AlertRecord => {
+                return (
+                    record &&
+                    typeof record.boxId === 'string' &&
+                    typeof record.kind === 'string' &&
+                    typeof getAlertMessage(record.kind as AlertKind) === 'string' &&
+                    typeof record.message === 'string' &&
+                    typeof record.active === 'boolean' &&
+                    Number.isFinite(record.activeSince) &&
+                    Number.isFinite(record.lastSeenAt) &&
+                    record.activeSince >= 0 &&
+                    record.activeSince <= 8640000000000000 &&
+                    record.lastSeenAt <= 8640000000000000 &&
+                    record.lastSeenAt >= record.activeSince &&
+                    (record.resolvedAt === undefined ||
+                        (Number.isFinite(record.resolvedAt) &&
+                            record.resolvedAt >= record.activeSince)) &&
+                    (record.boxTitle === undefined || typeof record.boxTitle === 'string') &&
+                    (record.boxNumber === undefined || Number.isInteger(record.boxNumber))
+                );
+            })
+            .slice(0, alertHistoryLimit)
+            .map((record) => ({
+                ...record,
+                active: false,
+                interrupted: record.active || record.interrupted,
+                resolvedAt: record.resolvedAt ?? record.lastSeenAt,
+            }));
+    } catch {
+        return [];
+    }
+}
+
+function readAlertHistory(): AlertRecord[] {
+    try {
+        return parseAlertHistory(localStorage.getItem(alertHistoryKey));
+    } catch {
+        return [];
+    }
 }
 
 function alertKey(boxId: string, kind: AlertKind): string {

@@ -25,7 +25,7 @@ It was built by a team that streams large live events to viewers around the worl
 - **Many sources, one window.** Add YouTube (including privacy-enhanced `youtube-nocookie`), JW Player, VdoCipher, HLS (`.m3u8`) and other embeddable pages as custom URLs, local files, and screen shares with a chosen audio input, which also covers Zoom and any other desktop app. Drag boxes to reorder them.
 - **Audio meters on every box.** Separate left and right levels, so you can see a one-sided or silent feed at a glance.
 - **Mute, solo and rotate.** Hear one stream at a time, or turn on rotation to move the audio across boxes you pick (for example `1 3 5-8`) every few seconds.
-- **Alerts that catch real problems.** Every alert is switchable, has a documented threshold, and keeps a five-minute history:
+- **Alerts that catch real problems.** Every alert is switchable, has a documented threshold, and saves the latest 100 alerts locally:
     - Video: buffering, repeated buffering, frozen picture.
     - Audio: silence, dropouts, clipping, one channel missing, left/right level imbalance, and phase mismatch (left and right cancelling out when played in mono).
     - An optional alert beep with its own volume control.
@@ -67,7 +67,7 @@ The installers are not code-signed yet, so Windows SmartScreen or macOS Gatekeep
 1. Copy a stream link and press **Ctrl V** anywhere in the window (Cmd V on macOS). It fills the first empty box, or adds one; paste several links, one per line, to add several boxes at once.
 2. For JW Player, VdoCipher or an address you type, use **Other…** on an empty box (**+** adds one).
 3. Use the headphones button on a box to solo it, or enable **Rotate audio** to cycle through boxes.
-4. Open **Settings** to choose which alerts are on. The Alerts button shows active alerts and the last five minutes of history.
+4. Open **Settings** to choose which alerts are on. The Alerts button shows active alerts and the latest 100 alerts saved locally.
 
 The full guides are in the [documentation](docs/README.md), also reachable from the **Docs** button in the app.
 
