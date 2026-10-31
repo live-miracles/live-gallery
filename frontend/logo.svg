@@ -1,24 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" width="512" height="512">
+<svg role="img" aria-labelledby="logo-title" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" width="512" height="512">
+<title id="logo-title">Live Gallery — a curling wave across nine screens</title>
 <defs>
-<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8CF93"/><stop offset="1" stop-color="#D9BB7C"/></linearGradient>
-<linearGradient id="deep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#245F99"/><stop offset="1" stop-color="#0A2347"/></linearGradient>
-<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#12305A"/><stop offset="1" stop-color="#091A38"/></linearGradient>
-<clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
 <clipPath id="c00"><rect x="16.00" y="16.00" width="149.33" height="149.33" rx="30.0"/></clipPath><clipPath id="c01"><rect x="181.33" y="16.00" width="149.33" height="149.33" rx="30.0"/></clipPath><clipPath id="c02"><rect x="346.67" y="16.00" width="149.33" height="149.33" rx="30.0"/></clipPath><clipPath id="c10"><rect x="16.00" y="181.33" width="149.33" height="149.33" rx="30.0"/></clipPath><clipPath id="c11"><rect x="181.33" y="181.33" width="149.33" height="149.33" rx="30.0"/></clipPath><clipPath id="c12"><rect x="346.67" y="181.33" width="149.33" height="149.33" rx="30.0"/></clipPath><clipPath id="c20"><rect x="16.00" y="346.67" width="149.33" height="149.33" rx="30.0"/></clipPath><clipPath id="c21"><rect x="181.33" y="346.67" width="149.33" height="149.33" rx="30.0"/></clipPath><clipPath id="c22"><rect x="346.67" y="346.67" width="149.33" height="149.33" rx="30.0"/></clipPath>
-<g id="scene" transform="translate(16.0 16.0) scale(0.9375)" stroke-linejoin="round" stroke-linecap="round">
-<rect width="512" height="512" fill="url(#sky)"/>
-<circle cx="104" cy="104" r="44" fill="#C8372D"/>
-<path d="M0 336 C70 306 120 296 190 306 C260 316 330 354 400 364 C440 370 480 366 512 354 V512 H0 Z" fill="#3A7DB5" stroke="#0A2347" stroke-width="5"/>
-<path d="M-10 512 V362 C20 332 70 302 112 238 C150 180 196 106 288 86 C352 72 424 98 452 158 C462 180 460 202 452 216 C440 198 420 180 394 178 C352 174 316 198 306 240 C298 274 314 308 346 332 C388 364 450 378 522 374 V512 Z" fill="url(#deep)" stroke="#06152E" stroke-width="6"/>
-<g fill="none" stroke="#5B9BCC" stroke-width="7" opacity=".9"><path d="M44 424 C112 400 172 354 192 286"/><path d="M152 452 C226 442 288 402 296 350"/><path d="M270 470 C330 464 388 436 414 408"/></g>
-<path d="M112 238 C150 180 196 106 288 86 C352 72 424 98 452 158 C462 180 460 202 452 216 C444 206 436 198 426 192 C434 168 420 138 388 126 C338 106 280 120 238 162 C190 204 150 226 112 238 Z" fill="#FBF6E6" stroke="#06152E" stroke-width="6"/>
-<g fill="#FBF6E6" stroke="#06152E" stroke-width="5.5">
-<path d="M452 158 C478 170 494 206 490 244 C486 262 476 266 470 256 C472 240 466 226 454 218 Z"/>
-<path d="M426 192 C448 204 460 236 454 268 C450 280 442 280 438 270 C440 256 434 246 424 240 Z"/>
-<path d="M394 128 C420 140 432 166 428 192 C424 202 416 202 412 194 C412 182 406 174 396 170 Z"/>
-<path d="M340 108 C364 116 376 134 372 156 C368 164 360 164 356 156 C356 146 350 140 342 138 Z"/></g>
-<g fill="#FBF6E6" stroke="#06152E" stroke-width="4"><circle cx="488" cy="288" r="8"/><circle cx="468" cy="306" r="6"/><circle cx="444" cy="298" r="5"/><circle cx="410" cy="226" r="5"/></g>
-<path d="M-6 478 C30 466 66 486 108 474 C150 462 172 484 216 476 C262 468 292 488 342 478 C392 468 432 486 518 472 V520 H-6 Z" fill="#FBF6E6" stroke="#06152E" stroke-width="5"/>
+<g id="scene" stroke-linecap="round" stroke-linejoin="round">
+  <rect width="512" height="512" fill="#c9d4ba"/>
+  <!-- One continuous curling swell, seen through the nine gallery cells. -->
+  <path d="M-20 472C18 389 28 225 106 137C176 57 273 40 358 76C453 117 494 215 480 310C469 393 498 458 540 484V540H-20Z" fill="#101d43"/>
+  <path d="M-8 412C49 348 41 218 126 140C202 70 300 68 370 113C436 155 469 236 455 303" fill="none" stroke="#344b7d" stroke-width="17"/>
+  <path d="M13 438C88 376 69 248 147 174C211 112 289 110 347 146C402 181 425 233 409 282C396 318 365 330 337 308C312 289 316 256 342 247" fill="none" stroke="#637bb1" stroke-width="12"/>
+  <path d="M78 441C135 377 122 289 181 228C222 185 282 171 323 190C351 203 366 225 366 246" fill="none" stroke="#293b6a" stroke-width="16"/>
+  <path d="M162 467C199 418 182 345 220 300C247 269 281 268 305 285" fill="none" stroke="#425d92" stroke-width="10"/>
+  <!-- Lavender foam on the rising left shoulder; broad curls survive small sizes. -->
+  <path d="M-14 384C7 357 16 331 24 301C29 282 23 264 34 253C43 244 56 250 56 260C69 252 66 236 62 224C57 210 63 194 77 191C90 188 99 198 94 209C111 209 117 193 111 181C105 169 111 153 125 151C139 149 146 161 139 172C155 176 165 164 162 151C158 137 169 125 182 130C194 134 195 146 185 153C196 167 217 161 225 174C233 188 224 200 211 198C217 188 208 178 198 184C181 193 176 213 160 224C145 235 137 250 145 262C152 274 143 286 131 283C121 280 122 269 127 264C111 256 94 274 100 288C106 301 98 314 85 312C75 310 71 300 77 292C63 288 53 300 54 314C58 346 39 366 47 391C56 415 42 430 26 426C12 423 12 409 19 401C7 399-3 409-14 425Z" fill="#9daddb" stroke="#101d43" stroke-width="5"/>
+  <path d="M5 468C20 443 39 453 46 440C54 427 45 413 55 404C65 395 78 402 74 413C89 414 100 400 94 387C88 374 98 361 112 366C123 370 124 382 115 388C133 394 145 383 140 369C135 356 145 343 159 348C173 354 168 369 157 371C153 385 169 394 180 387C193 379 207 387 205 399C204 411 190 415 184 406C168 408 169 428 151 431C132 433 132 416 119 420C105 424 115 444 99 450C84 457 78 443 69 450C57 461 67 475 51 484L-10 510Z" fill="#9daddb" stroke="#101d43" stroke-width="5"/>
+  <!-- Pale sage foam curls inward from the right, like the supplied wave print. -->
+  <path d="M524 283C507 276 488 280 484 294C481 307 490 314 499 307C499 324 483 333 470 324C456 315 441 321 440 335C439 348 450 354 459 345C463 362 448 374 434 366C421 359 407 366 409 379C410 390 422 394 429 386C432 403 415 413 402 405C389 397 377 404 378 416C380 428 391 431 399 423C401 440 384 448 369 440C355 432 341 439 343 452C345 464 358 467 366 458C367 477 348 486 334 475C320 465 304 472 306 486C307 496 319 501 327 494L329 527H529Z" fill="#c9d4ba" stroke="#101d43" stroke-width="5"/>
+  <path d="M518 389C499 378 482 389 484 402C487 414 500 414 505 406C509 425 490 436 475 425C460 414 445 423 448 436C451 449 465 447 470 440C472 459 451 469 438 457C425 446 407 456 411 469C415 482 429 479 434 472C436 489 419 500 402 494" fill="none" stroke="#718d9b" stroke-width="9"/>
+  <!-- A few clean spray marks, rather than the source print's fine grain. -->
+  <g fill="#c9d4ba">
+    <circle cx="213" cy="101" r="5"/><circle cx="242" cy="92" r="3"/>
+    <circle cx="300" cy="111" r="4"/><circle cx="384" cy="169" r="4"/>
+    <circle cx="270" cy="225" r="4"/><circle cx="206" cy="256" r="3"/>
+  </g>
+  <g fill="#9daddb"><circle cx="78" cy="334" r="5"/><circle cx="174" cy="311" r="4"/><circle cx="234" cy="407" r="5"/></g>
 </g>
 </defs>
 <g><g clip-path="url(#c00)"><use href="#scene"/></g><g clip-path="url(#c01)"><use href="#scene"/></g><g clip-path="url(#c02)"><use href="#scene"/></g><g clip-path="url(#c10)"><use href="#scene"/></g><g clip-path="url(#c11)"><use href="#scene"/></g><g clip-path="url(#c12)"><use href="#scene"/></g><g clip-path="url(#c20)"><use href="#scene"/></g><g clip-path="url(#c21)"><use href="#scene"/></g><g clip-path="url(#c22)"><use href="#scene"/></g></g>
