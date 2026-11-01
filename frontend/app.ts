@@ -19,6 +19,16 @@ import {
 import { boxBaseWidth, computeFitLayout } from './fit-layout.js';
 import { icon } from './icons.js';
 import { createPresetController } from './presets.js';
+import {
+    createSignalTracker,
+    getRotationSyntaxError,
+    isSolo,
+    selectRotationBoxes,
+    soloBoxId,
+    summarizeWall,
+    type BoxSignal,
+    type StatusGroup,
+} from './wall.js';
 
 const DOCS_URL = 'https://live-miracles.github.io/projects/live-gallery/docs/';
 
@@ -189,10 +199,6 @@ const boxZoomStops = (() => {
     return stops;
 })();
 
-// What a box's player is doing, apart from alerts. Only 'playing' counts as live: the
-// guest preload reports it while playback time keeps moving.
-type BoxSignal = 'loading' | 'playing' | 'not-playing' | 'no-video' | 'failed';
-
 const boxSignalLabels: Record<BoxSignal, string> = {
     loading: 'Starting…',
     playing: '',
@@ -202,27 +208,16 @@ const boxSignalLabels: Record<BoxSignal, string> = {
 };
 
 // How long a box may stay 'Starting…' before it is shown as not playing.
-const boxStartTimeoutMs = 20000;
-const boxSignals = new Map<string, BoxSignal>();
-const boxSignalTimers = new Map<string, number>();
-const boxesWithMedia = new Set<string>();
+const signalTracker = createSignalTracker({
+    startTimeoutMs: 20000,
+    schedule: (run, ms) => window.setTimeout(run, ms),
+    cancel: (handle) => window.clearTimeout(handle),
+    onChange: applyBoxSignal,
+});
 
 // The header summarizes the wall: how many boxes are live and how many have each kind of
 // problem. Each problem chip jumps to the boxes it counts, one per click.
-type StatusGroup = 'frozen' | 'buffering' | 'silent' | 'audio';
 type StatusKey = StatusGroup | 'failed' | 'not-playing' | 'loading';
-
-const statusGroupOf: Record<AlertKind, StatusGroup> = {
-    'video-frozen': 'frozen',
-    'video-buffering': 'buffering',
-    'video-repeated-buffering': 'buffering',
-    'audio-silent': 'silent',
-    'audio-dropouts': 'audio',
-    'audio-clipping': 'audio',
-    'audio-channel-missing': 'audio',
-    'audio-imbalance': 'audio',
-    'audio-phase-mismatch': 'audio',
-};
 
 const statusGroupLabels: Record<StatusGroup, string> = {
     frozen: 'frozen',
@@ -284,29 +279,11 @@ function clampBoxZoom(percent: number): number {
 }
 
 function updateStatusBar(): void {
-    const groups = new Map<StatusGroup, string[]>();
-    activeBoxAlerts.forEach(({ boxId, kind }) => {
-        const group = statusGroupOf[kind];
-        const ids = groups.get(group) ?? [];
-        if (!ids.includes(boxId)) {
-            ids.push(boxId);
-        }
-        groups.set(group, ids);
-    });
-
-    // An alerting box is counted under its alert only, never also as live or not playing.
-    const alertingIds = new Set(activeBoxAlerts.map((alert) => alert.boxId));
-    const configured = boxes.filter((box) => getPlayerUrl(box, settings));
-    const bySignal = (signals: BoxSignal[]): string[] =>
-        configured
-            .filter((box) => !alertingIds.has(box.id))
-            .filter((box) => signals.includes(boxSignals.get(box.id) ?? 'loading'))
-            .map((box) => box.id);
-    const live = bySignal(['playing']).length;
-    const failed = bySignal(['failed']);
-    const notPlaying = bySignal(['not-playing', 'no-video']);
-    const loading = bySignal(['loading']);
-    const empty = boxes.length - configured.length;
+    const { live, empty, failed, notPlaying, loading, alerts } = summarizeWall(
+        boxes.map((box) => ({ id: box.id, configured: Boolean(getPlayerUrl(box, settings)) })),
+        (boxId) => signalTracker.get(boxId),
+        activeBoxAlerts,
+    );
 
     const chips: HTMLElement[] = [];
     if (live > 0) {
@@ -320,7 +297,7 @@ function updateStatusBar(): void {
         );
     }
     (Object.keys(statusGroupLabels) as StatusGroup[]).forEach((group) => {
-        const ids = groups.get(group);
+        const ids = alerts.get(group);
         if (ids?.length) {
             chips.push(
                 makeStatusChip(`${ids.length} ${statusGroupLabels[group]}`, 'danger', () =>
@@ -345,28 +322,7 @@ function updateStatusBar(): void {
     statusBar.replaceChildren(...chips);
 }
 
-function setBoxSignal(boxId: string, signal: BoxSignal | null): void {
-    window.clearTimeout(boxSignalTimers.get(boxId));
-    boxSignalTimers.delete(boxId);
-    if (signal) {
-        boxSignals.set(boxId, signal);
-    } else {
-        boxSignals.delete(boxId);
-        boxesWithMedia.delete(boxId);
-    }
-
-    if (signal === 'loading') {
-        boxesWithMedia.delete(boxId);
-        boxSignalTimers.set(
-            boxId,
-            window.setTimeout(() => {
-                if (boxSignals.get(boxId) === 'loading') {
-                    setBoxSignal(boxId, boxesWithMedia.has(boxId) ? 'not-playing' : 'no-video');
-                }
-            }, boxStartTimeoutMs),
-        );
-    }
-
+function applyBoxSignal(boxId: string, signal: BoxSignal | null): void {
     const entry = elements.get(boxId);
     if (entry) {
         entry.root.dataset.signal = signal ?? 'empty';
@@ -374,16 +330,6 @@ function setBoxSignal(boxId: string, signal: BoxSignal | null): void {
         syncBoxLabel(boxId);
     }
     updateStatusBar();
-}
-
-function onBoxPlayback(boxId: string, playing: boolean): void {
-    boxesWithMedia.add(boxId);
-    if (playing) {
-        setBoxSignal(boxId, 'playing');
-    } else if (boxSignals.get(boxId) !== 'loading') {
-        // Until the start timeout, a player that has not started yet is still starting.
-        setBoxSignal(boxId, 'not-playing');
-    }
 }
 
 function makeStatusChip(
@@ -502,7 +448,7 @@ function syncBoxLabel(boxId: string): void {
         return;
     }
 
-    const signal = boxSignals.get(boxId);
+    const signal = signalTracker.get(boxId);
     const parts = [`Box ${boxes.indexOf(box) + 1}: ${getBoxTitle(box)}`];
     if (signal && signal !== 'playing') {
         parts.push(boxSignalLabels[signal]);
@@ -879,33 +825,10 @@ function sanitizeRotationBoxesInput(): void {
 }
 
 function updateRotationBoxesValidity(): boolean {
-    const error = getRotationBoxesSyntaxError(rotationBoxesInput.value);
+    const error = getRotationSyntaxError(rotationBoxesInput.value);
     rotationBoxesInput.setAttribute('aria-invalid', String(Boolean(error)));
     rotationBoxesInput.title = error ?? '';
     return !error;
-}
-
-function getRotationBoxesSyntaxError(value: string): string | null {
-    const tokens = value.trim().split(/\s+/).filter(Boolean);
-    for (const token of tokens) {
-        const singleNumber = token.match(/^\d+$/);
-        if (singleNumber) {
-            continue;
-        }
-
-        const range = token.match(/^(\d+)-(\d+)$/);
-        if (!range) {
-            return 'Use numbers or ranges like 2 4 9-11. Dashes need numbers on both sides.';
-        }
-
-        const start = Number(range[1]);
-        const end = Number(range[2]);
-        if (end <= start) {
-            return 'Range end must be greater than range start.';
-        }
-    }
-
-    return null;
 }
 
 function saveState(): void {
@@ -1038,10 +961,7 @@ function render(): void {
     elements.clear();
     meterStates.clear();
     meterClipHoldUntil.clear();
-    boxSignalTimers.forEach((timer) => window.clearTimeout(timer));
-    boxSignalTimers.clear();
-    boxSignals.clear();
-    boxesWithMedia.clear();
+    signalTracker.clear();
     boxes.forEach((box, index) => renderBox(box, index));
     syncSoloButtons();
     alertController.resetAll();
@@ -1170,7 +1090,10 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         } else if (event.channel === 'gallery-health') {
             alertController.updateFromHealth(event.args[0] as HealthPayload);
         } else if (event.channel === 'gallery-playback') {
-            onBoxPlayback(box.id, Boolean((event.args[0] as { playing?: boolean }).playing));
+            signalTracker.onPlayback(
+                box.id,
+                Boolean((event.args[0] as { playing?: boolean }).playing),
+            );
         } else if (event.channel === 'gallery-error') {
             console.warn(`Box ${box.name || box.id} player error:`, event.args[0]);
         } else if (event.channel === 'gallery-screen-share-source') {
@@ -1191,11 +1114,11 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         console.warn(`Box ${box.name || box.id} failed to load:`, event.errorDescription);
         // -3 is an aborted load, which happens on every reload or new URL.
         if (event.isMainFrame && event.errorCode !== -3) {
-            setBoxSignal(box.id, 'failed');
+            signalTracker.set(box.id, 'failed');
         }
     });
     webview.addEventListener('render-process-gone', () => {
-        setBoxSignal(box.id, 'failed');
+        signalTracker.set(box.id, 'failed');
     });
     webview.addEventListener('dom-ready', () => {
         const entry = elements.get(box.id);
@@ -1691,8 +1614,7 @@ function syncMuteButtonTitle(button: HTMLButtonElement, isMuted: boolean): void 
 
 // The solo button reads as pressed on the one box you hear when every other box is muted.
 function syncSoloButtons(): void {
-    const unmuted = boxes.filter((box) => !box.muted);
-    const soloId = unmuted.length === 1 && boxes.length > 1 ? unmuted[0].id : '';
+    const soloId = soloBoxId(boxes);
     elements.forEach((entry, boxId) => {
         entry.soloButton.setAttribute('aria-pressed', String(boxId === soloId));
         entry.soloButton.classList.toggle('is-on', boxId === soloId);
@@ -1756,7 +1678,7 @@ function loadWebview(box: GalleryBox, forceReload = false): void {
     entry.webview.classList.toggle('hidden', !src);
 
     if (!src) {
-        setBoxSignal(box.id, null);
+        signalTracker.set(box.id, null);
         return;
     }
 
@@ -1764,7 +1686,7 @@ function loadWebview(box: GalleryBox, forceReload = false): void {
         if (forceReload) {
             alertController.clearBox(box.id);
             if (entry.webviewReady) {
-                setBoxSignal(box.id, 'loading');
+                signalTracker.set(box.id, 'loading');
                 entry.webview.reloadIgnoringCache();
             }
         }
@@ -1775,7 +1697,7 @@ function loadWebview(box: GalleryBox, forceReload = false): void {
     entry.webviewReady = false;
     entry.pendingCommands = [];
     alertController.clearBox(box.id);
-    setBoxSignal(box.id, 'loading');
+    signalTracker.set(box.id, 'loading');
     entry.webview.src = src;
 }
 
@@ -1842,9 +1764,7 @@ function soloBox(boxId: string): void {
         return;
     }
 
-    const alreadySolo = !box.muted && boxes.every((item) => item.id === boxId || item.muted);
-
-    if (alreadySolo) {
+    if (isSolo(boxes, boxId)) {
         toggleMute(boxId, true);
         return;
     }
@@ -1925,7 +1845,7 @@ function forgetBox(boxId: string): void {
     elements.delete(boxId);
     meterClipHoldUntil.delete(boxId);
     meterStates.delete(boxId);
-    setBoxSignal(boxId, null);
+    signalTracker.set(boxId, null);
     alertController.clearBox(boxId);
 }
 
@@ -2100,7 +2020,7 @@ function restartRotation(): void {
 
     let index = 0;
     const rotate = (): void => {
-        const selected = getRotationBoxes();
+        const selected = selectRotationBoxes(boxes, settings.rotationBoxes);
         if (selected.length === 0) {
             return;
         }
@@ -2114,43 +2034,6 @@ function restartRotation(): void {
 
     rotate();
     rotationTimer = window.setInterval(rotate, Math.max(1, settings.rotationTime) * 1000);
-}
-
-function getRotationBoxes(): GalleryBox[] {
-    if (settings.rotationBoxes.trim() === '') {
-        return boxes;
-    }
-
-    if (getRotationBoxesSyntaxError(settings.rotationBoxes)) {
-        return [];
-    }
-
-    const numbers = parseRotationNumbers(settings.rotationBoxes);
-
-    return numbers
-        .map((number) => boxes[number - 1])
-        .filter((box): box is GalleryBox => Boolean(box));
-}
-
-function parseRotationNumbers(value: string): number[] {
-    return value.split(/\s+/).flatMap((token) => {
-        const match = token.match(/^(\d+)(?:-(\d+))?$/);
-        if (!match) {
-            return [];
-        }
-
-        const start = Number(match[1]);
-        const end = match[2] ? Number(match[2]) : start;
-        if (!Number.isInteger(start) || !Number.isInteger(end) || start <= 0 || end <= 0) {
-            return [];
-        }
-
-        const range: number[] = [];
-        for (let current = start; current <= end; current += 1) {
-            range.push(current);
-        }
-        return range;
-    });
 }
 
 function updateAllSettings(): void {
