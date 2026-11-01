@@ -16,9 +16,9 @@ Windows is the primary, tested platform; macOS (Apple Silicon) and Linux builds 
 | [Download](#download) | [Documentation](docs/README.md) | [Get help](https://github.com/live-miracles/live-gallery/discussions) | [Report a bug](https://github.com/live-miracles/live-gallery/issues/new/choose) |
 | --------------------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 
-[![Live Gallery showing four video feeds, stereo audio meters, audio rotation and a phase mismatch alert](assets/live-gallery-demo.gif)](assets/live-gallery-demo.png)
+[![Live Gallery showing five feeds including YouTube Live, stereo audio meters, audio rotation, clipping and phase mismatch alerts](assets/live-gallery-demo.gif)](assets/live-gallery-demo.png)
 
-_Recorded in Live Gallery with local demo clips. Audio rotates between feeds; the fourth has deliberately altered audio to demonstrate the phase mismatch alert. Select the demo for a full-size still._
+_Recorded in Live Gallery with a YouTube live stream and local demo clips. Audio rotates across five feeds; the bottom row demonstrates clipping and phase mismatch alerts with deliberately altered audio. Select the demo for a full-size still._
 
 **Useful for your next live event? [Download Live Gallery](https://github.com/live-miracles/live-gallery/releases/latest) and [give it a star](https://github.com/live-miracles/live-gallery) to help other stream operators find it.**
 
