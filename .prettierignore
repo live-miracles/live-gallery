@@ -8,3 +8,4 @@ stable
 *.min.css
 *.min.js
 v
+.codex/
