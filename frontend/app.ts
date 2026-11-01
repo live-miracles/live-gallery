@@ -82,7 +82,6 @@ const meterReleaseDbPerSecond = 20;
 const meterFrameMs = 33;
 
 const gallery = mustGet<HTMLElement>('gallery');
-const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
 const rotateMenu = mustGet<HTMLElement>('rotate-menu');
 const rotateToggleButton = mustGet<HTMLButtonElement>('rotate-toggle');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
@@ -706,7 +705,7 @@ function initHoverMenus(): void {
         return {
             button,
             panel,
-            canOpen: () => name !== 'rotate' || muteRotationInput.checked,
+            canOpen: () => name !== 'rotate' || settings.muteRotation,
             isOpen: () => panel.matches(':popover-open'),
             open: () => panel.showPopover(),
             close: () => panel.hidePopover(),
@@ -827,7 +826,6 @@ function initUpdateControls(): void {
 }
 
 function syncSettingsFromControls(): void {
-    settings.muteRotation = muteRotationInput.checked;
     settings.rotationBoxes = rotationBoxesInput.value;
     settings.rotationTime = Math.max(1, Number(rotationTimeInput.value) || 1);
     settings.autoLive = autoLiveInput.checked;
@@ -845,7 +843,6 @@ function syncSettingsFromControls(): void {
 }
 
 function syncControlsFromSettings(): void {
-    muteRotationInput.checked = settings.muteRotation;
     rotationBoxesInput.value = settings.rotationBoxes;
     rotationTimeInput.value = String(settings.rotationTime);
     autoLiveInput.checked = settings.autoLive;
@@ -867,7 +864,7 @@ function syncControlsFromSettings(): void {
 }
 
 function syncRotationControlsVisibility(): void {
-    const isRotating = muteRotationInput.checked;
+    const isRotating = settings.muteRotation;
     if (!isRotating && rotateMenu.matches(':popover-open')) rotateMenu.hidePopover();
     rotateToggleButton.classList.toggle('is-on', isRotating);
     rotateToggleButton.setAttribute('aria-pressed', String(isRotating));
@@ -1872,11 +1869,11 @@ function soloBox(boxId: string): void {
 }
 
 function disableRotationAudio(): void {
-    if (!settings.muteRotation && !muteRotationInput.checked) {
+    if (!settings.muteRotation) {
         return;
     }
 
-    muteRotationInput.checked = false;
+    settings.muteRotation = false;
     updateAllSettings();
     showToast('Rotate audio turned off', 'primary');
 }
@@ -2331,12 +2328,12 @@ alertVolumeInput.addEventListener('change', () => {
 audioOutputButton.addEventListener('click', toggleMonoOutput);
 
 rotateToggleButton.addEventListener('click', () => {
-    muteRotationInput.checked = !muteRotationInput.checked;
+    settings.muteRotation = !settings.muteRotation;
     updateAllSettings();
-    if (muteRotationInput.checked && !rotateMenu.matches(':popover-open')) rotateMenu.showPopover();
+    if (settings.muteRotation && !rotateMenu.matches(':popover-open')) rotateMenu.showPopover();
 });
 rotateToggleButton.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowDown' && muteRotationInput.checked) {
+    if (event.key === 'ArrowDown' && settings.muteRotation) {
         event.preventDefault();
         if (!rotateMenu.matches(':popover-open')) rotateMenu.showPopover();
         rotationBoxesInput.focus();
@@ -2346,7 +2343,7 @@ rotateMenu.addEventListener('toggle', () => {
     rotateToggleButton.setAttribute('aria-expanded', String(rotateMenu.matches(':popover-open')));
 });
 
-[muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
+[rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
     input.addEventListener('change', updateAllSettings);
 });
 rotationBoxesInput.addEventListener('input', sanitizeRotationBoxesInput);
