@@ -1317,11 +1317,6 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         const formData = new FormData(form);
         const nextType = String(formData.get('type') ?? 'YT') as BoxType;
         const rawValue = String(formData.get('value') ?? '');
-        if (requiresBoxValue(nextType) && !rawValue.trim()) {
-            showBoxValueError(form);
-            return;
-        }
-
         clearBoxValueError(form);
         box.name = String(formData.get('name') ?? '');
         box.type = nextType;
@@ -1425,21 +1420,6 @@ function setValueField(form: HTMLFormElement, type: BoxType, value: string): voi
             clearBoxValueError(form);
         });
     }
-}
-
-function requiresBoxValue(_type: BoxType): boolean {
-    return false;
-}
-
-function showBoxValueError(form: HTMLFormElement): void {
-    const control = form.elements.namedItem('value');
-    if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement)) {
-        return;
-    }
-
-    control.setAttribute('aria-invalid', 'true');
-    control.title = 'URL or ID is required.';
-    control.focus();
 }
 
 function clearBoxValueError(form: HTMLFormElement): void {
@@ -1835,7 +1815,7 @@ function syncAudioCommands(box: GalleryBox): void {
     sendCommand(box.id, { type: 'mono-output', enabled: settings.monoOutput });
 }
 
-function toggleMute(boxId: string, forceMuted?: boolean): void {
+function applyMute(boxId: string, forceMuted?: boolean): void {
     const box = boxes.find((item) => item.id === boxId);
     const entry = elements.get(boxId);
     if (!box || !entry) {
@@ -1847,8 +1827,12 @@ function toggleMute(boxId: string, forceMuted?: boolean): void {
     entry.muteButton.innerHTML = icon(box.muted ? 'volume-x' : 'volume-2');
     syncMuteButtonTitle(entry.muteButton, box.muted);
     syncBoxLabel(box.id);
-    syncSoloButtons();
     sendCommand(box.id, { type: 'mute', muted: box.muted });
+}
+
+function toggleMute(boxId: string, forceMuted?: boolean): void {
+    applyMute(boxId, forceMuted);
+    syncSoloButtons();
     saveState();
 }
 
@@ -1865,7 +1849,9 @@ function soloBox(boxId: string): void {
         return;
     }
 
-    boxes.forEach((item) => toggleMute(item.id, item.id !== boxId));
+    boxes.forEach((item) => applyMute(item.id, item.id !== boxId));
+    syncSoloButtons();
+    saveState();
 }
 
 function disableRotationAudio(): void {
@@ -1901,12 +1887,7 @@ function removeBox(boxId: string): void {
     }
 
     const [removed] = boxes.splice(index, 1);
-    elements.get(removed.id)?.root.remove();
-    elements.delete(removed.id);
-    meterClipHoldUntil.delete(removed.id);
-    meterStates.delete(removed.id);
-    setBoxSignal(removed.id, null);
-    alertController.clearBox(removed.id);
+    forgetBox(removed.id);
 
     // Removing the last box leaves an empty one; undo takes that placeholder away again.
     const placeholder = boxes.length === 0 ? makeBox() : null;
@@ -1934,10 +1915,18 @@ function removeBoxQuietly(boxId: string): void {
     const index = boxes.findIndex((box) => box.id === boxId);
     if (index >= 0) {
         boxes.splice(index, 1);
-        elements.get(boxId)?.root.remove();
-        elements.delete(boxId);
-        setBoxSignal(boxId, null);
+        forgetBox(boxId);
     }
+}
+
+// Drops everything the app holds for a box that has left the wall.
+function forgetBox(boxId: string): void {
+    elements.get(boxId)?.root.remove();
+    elements.delete(boxId);
+    meterClipHoldUntil.delete(boxId);
+    meterStates.delete(boxId);
+    setBoxSignal(boxId, null);
+    alertController.clearBox(boxId);
 }
 
 function restoreBox(box: GalleryBox, index: number): void {

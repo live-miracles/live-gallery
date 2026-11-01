@@ -110,28 +110,6 @@ export function detectSource(input: string): { type: BoxType; value: string } | 
     return { type: 'CU', value: text };
 }
 
-export function parseSheetRows(input: string): GalleryBox[] {
-    return input
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line, index) => {
-            const [first = '', second = ''] = line.split('\t');
-            const left = extractYouTubeId(first);
-            const right = extractYouTubeId(second);
-            if (youtubeIdPattern.test(right)) {
-                return makeBox(left || String(index + 1), 'YT', right);
-            }
-
-            if (youtubeIdPattern.test(left)) {
-                return makeBox(right || String(index + 1), 'YT', left);
-            }
-
-            return null;
-        })
-        .filter((box): box is GalleryBox => Boolean(box));
-}
-
 export function makeBox(name = '', type: BoxType = 'YT', value = ''): GalleryBox {
     return { id: createId(), name, type, value, muted: true };
 }

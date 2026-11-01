@@ -47,10 +47,6 @@ ipcMain.handle('gallery:set-ui-zoom', (event, percent: number) => {
     win?.webContents.setZoomFactor(clamped / 100);
     return clamped;
 });
-ipcMain.handle('gallery:get-content-width', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    return win?.getContentBounds().width ?? 0;
-});
 ipcMain.handle('gallery:copy-text', (_event, text: string) => {
     clipboard.writeText(text);
 });

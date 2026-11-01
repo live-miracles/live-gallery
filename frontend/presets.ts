@@ -201,7 +201,12 @@ export function createPresetController({
         }
 
         const presets = await window.liveGallery.listPresets();
-        const existing = presets.find((preset) => preset.name.toLowerCase() === name.toLowerCase());
+        // Match the file-safe form the main process saves under.
+        const savedName = name
+            .trim()
+            .replace(/[\\/:*?"<>|]/g, '-')
+            .toLowerCase();
+        const existing = presets.find((preset) => preset.name.toLowerCase() === savedName);
         if (
             existing &&
             !window.confirm(`Preset "${existing.name}" already exists. Overwrite it?`)

@@ -23,7 +23,6 @@ declare global {
         liveGallery: {
             guestPreloadUrl: string;
             setUiZoom: (percent: number) => Promise<number>;
-            getContentWidth: () => Promise<number>;
             getDesktopSources: () => Promise<DesktopSource[]>;
             selectLocalMediaFile: () => Promise<string | null>;
             fileUrlForFile: (file: File) => string;
