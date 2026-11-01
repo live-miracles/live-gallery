@@ -43,3 +43,13 @@ For UI changes, run `npm run dev` and look at the result; type checks and tests 
 Never run `git push` (or force-push, tag, or open/merge a PR) unless the user explicitly asks for it in that request; committing stays local. Pushing a `v*` tag publishes a release.
 
 **This repository is public on GitHub.** Never commit stream URLs with embedded keys, tokens, `.env` contents or personal data, in code, docs or test fixtures.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues (`live-miracles/live-gallery`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

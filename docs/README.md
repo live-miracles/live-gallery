@@ -18,3 +18,8 @@ Live Gallery is a desktop app for monitoring many live streams in one window.
 
 - [Alerts](3-reference/1-alerts.md): every alert and its threshold
 - [Keyboard shortcuts](3-reference/2-shortcuts.md)
+
+## For contributors
+
+- [Issue tracker](agents/issue-tracker.md): how agents file and read GitHub issues
+- [Domain docs](agents/domain.md): where agents find `CONTEXT.md` and ADRs
