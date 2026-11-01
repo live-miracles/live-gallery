@@ -2,21 +2,25 @@
 
 # Live Gallery
 
-_Open-source multiviewer for live streams: watch many at once, hear the one that matters, and get alerted when one breaks._
+_Watch every stream. Hear the one that matters. Catch problems before your viewers do._
 
 [![CI](https://github.com/live-miracles/live-gallery/actions/workflows/ci.yml/badge.svg)](https://github.com/live-miracles/live-gallery/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/live-miracles/live-gallery)](https://github.com/live-miracles/live-gallery/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Website](https://img.shields.io/badge/website-live--miracles.github.io-blue.svg)](https://live-miracles.github.io/projects/live-gallery/)
 
-**Live Gallery is a desktop app for monitoring many live streams in one window.** Put YouTube, JW Player, HLS and other players side by side, see a live audio meter on every box, solo or rotate the audio between them, and let the app warn you about frozen video, silence, clipping and broken stereo before your viewers do.
+**A free, open-source multiviewer for live streams, with stereo audio meters and automatic alerts.** Monitor YouTube, HLS, JW Player, desktop windows and local files together. Hear one feed at a time, rotate between them, and catch frozen video, silence, clipping and phase problems.
 
-It was built by a team that streams large live events to viewers around the world, where one bad feed among twenty is easy to miss. The installers are free and nothing needs to be installed besides the app. Windows is the primary, tested platform; macOS and Linux builds are in beta.
+Windows is the primary, tested platform; macOS (Apple Silicon) and Linux builds are beta. Nothing needs to be installed besides the app.
 
 | [Download](#download) | [Documentation](docs/README.md) | [Get help](https://github.com/live-miracles/live-gallery/discussions) | [Report a bug](https://github.com/live-miracles/live-gallery/issues/new/choose) |
 | --------------------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 
-<img width="1372" height="380" alt="Live Gallery showing several live streams with audio meters" src="https://github.com/user-attachments/assets/61a912f2-2a03-4cb1-afeb-b618fc6ad01b" />
+[![Live Gallery showing four video feeds, stereo audio meters, audio rotation and a phase mismatch alert](assets/live-gallery-demo.gif)](assets/live-gallery-demo.png)
+
+_Recorded in Live Gallery with local demo clips. Audio rotates between feeds; the fourth has deliberately altered audio to demonstrate the phase mismatch alert. Select the demo for a full-size still._
+
+**Useful for your next live event? [Download Live Gallery](https://github.com/live-miracles/live-gallery/releases/latest) and [give it a star](https://github.com/live-miracles/live-gallery) to help other stream operators find it.**
 
 **Who it's for:** stream operators, AV and church-tech teams, newsrooms and anyone who has to keep an eye on several live feeds at once, such as the main stream, its backups and each language channel. **Who it isn't for:** recording or restreaming (it only watches), or a hosted service (it runs on your computer).
 
@@ -76,8 +80,6 @@ The full guides are in the [documentation](docs/README.md), also reachable from 
 - **Questions and ideas:** [GitHub Discussions](https://github.com/live-miracles/live-gallery/discussions).
 - **Bugs:** [open an issue](https://github.com/live-miracles/live-gallery/issues/new/choose) with your operating system, the Live Gallery version and the source type involved.
 - **More projects from the team:** [live-miracles.github.io](https://live-miracles.github.io/) lists the rest of the open-source streaming tools we use, such as [Bunryu](https://live-miracles.github.io/projects/bunryu/) for restreaming.
-
-If Live Gallery is useful to you, a star on GitHub helps other stream operators find it.
 
 ## Contributing
 
