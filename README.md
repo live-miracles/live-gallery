@@ -39,7 +39,7 @@ _Recorded in Live Gallery with a YouTube live stream and local demo clips. Audio
 
 ## Why the audio checks matter
 
-During one live event, a suspected faulty audio embedder made the left and right channels cancel each other. Both meters were moving and the left channel sounded fine, yet more than 20 streams had broken audio for viewers. The phase mismatch and channel alerts exist because of that incident. Read the story: [One faulty audio embedder disrupted 20 live streams](https://live-miracles.github.io/blog/one-faulty-embedder-20-streams/).
+During one live event, a suspected faulty audio embedder made the left and right channels cancel each other. Both meters were moving and the left channel sounded fine, yet more than 100 streams had broken audio for viewers. The phase mismatch and channel alerts exist because of that incident. Read the story: [One faulty audio embedder disrupted a Mega event](https://live-miracles.github.io/blog/one-faulty-embedder-mega-event/).
 
 ## Monitor Zoom or any desktop app
 

@@ -23,6 +23,6 @@ History survives app restarts and preset changes. Repeated alerts are separate e
 | Audio imbalance      | Both channels have signal but differ by 20 dB or more for 20 s.                |
 | Audio phase mismatch | Stereo phase stays unsafe for mono playback for 10 s.                          |
 
-Phase mismatch catches a feed whose left and right channels cancel each other in mono while looking and sounding fine in stereo. See [One faulty audio embedder disrupted 20 live streams](https://live-miracles.github.io/blog/one-faulty-embedder-20-streams/).
+Phase mismatch catches a feed whose left and right channels cancel each other in mono while looking and sounding fine in stereo. See [One faulty audio embedder disrupted a Mega event](https://live-miracles.github.io/blog/one-faulty-embedder-mega-event/).
 
 A new alert beeps once a second for up to 30 s. **Acknowledge** stops its beep sooner; the box stays red until the alert clears. The bell turns the beep on or off; hover it for a volume slider (0 to 500%). The button beside it switches the output between stereo and mono.
