@@ -83,7 +83,8 @@ const meterFrameMs = 33;
 
 const gallery = mustGet<HTMLElement>('gallery');
 const muteRotationInput = mustGet<HTMLInputElement>('mute-rotation');
-const rotateMenuButton = mustGet<HTMLButtonElement>('rotate-menu-button');
+const rotateMenu = mustGet<HTMLElement>('rotate-menu');
+const rotateToggleButton = mustGet<HTMLButtonElement>('rotate-toggle');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
 const rotationTimeInput = mustGet<HTMLInputElement>('rotation-time');
 const autoLiveInput = mustGet<HTMLInputElement>('auto-live');
@@ -696,6 +697,93 @@ function initPresetMenuControls(): void {
     });
 }
 
+// Hover shortcuts keep native click, touch and keyboard menu controls available.
+function initHoverMenus(): void {
+    const menus = ['rotate', 'youtube'].map((name) => {
+        const button =
+            name === 'rotate' ? rotateToggleButton : mustGet<HTMLElement>(`${name}-menu-button`);
+        const panel = mustGet<HTMLElement>(`${name}-menu`);
+        return {
+            button,
+            panel,
+            canOpen: () => name !== 'rotate' || muteRotationInput.checked,
+            isOpen: () => panel.matches(':popover-open'),
+            open: () => panel.showPopover(),
+            close: () => panel.hidePopover(),
+        };
+    });
+    menus.push({
+        canOpen: () => true,
+        button: presetMenu.querySelector<HTMLElement>('summary')!,
+        panel: presetMenu.querySelector<HTMLElement>('.menu')!,
+        isOpen: () => presetMenu.open,
+        open: () => {
+            presetMenu.open = true;
+        },
+        close: () => {
+            presetMenu.open = false;
+        },
+    });
+
+    menus.forEach((menu) => {
+        let closeTimer = 0;
+        let openedByHover = false;
+        const cancelClose = (): void => {
+            window.clearTimeout(closeTimer);
+        };
+        const closeSoon = (): void => {
+            cancelClose();
+            // Leave time to cross the gap between the button and its panel.
+            closeTimer = window.setTimeout(() => {
+                if (
+                    !menu.button.matches(':hover') &&
+                    !menu.panel.matches(':hover') &&
+                    !menu.panel.contains(document.activeElement) &&
+                    !menu.button.matches(':focus-visible')
+                ) {
+                    menu.close();
+                    openedByHover = false;
+                }
+            }, 250);
+        };
+        menu.button.addEventListener('pointerenter', (event) => {
+            if (event.pointerType !== 'mouse' || !menu.canOpen()) return;
+            cancelClose();
+            if (!menu.isOpen()) {
+                menus.forEach((other) => {
+                    if (other !== menu) other.close();
+                });
+                menu.open();
+                openedByHover = true;
+            }
+        });
+        menu.button.addEventListener('click', (event) => {
+            // A click after hover keeps the newly opened panel available.
+            if (
+                menu.button !== rotateToggleButton &&
+                openedByHover &&
+                menu.isOpen() &&
+                event.detail > 0
+            )
+                event.preventDefault();
+            openedByHover = false;
+        });
+        menu.button.addEventListener('pointerleave', closeSoon);
+        menu.button.addEventListener('focusout', closeSoon);
+        menu.panel.addEventListener('pointerenter', cancelClose);
+        menu.panel.addEventListener('pointerleave', closeSoon);
+        menu.panel.addEventListener('focusout', closeSoon);
+        menu.panel.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                menu.close();
+                menu.button.focus();
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        });
+    });
+}
+
 function initUpdateControls(): void {
     window.liveGallery.onUpdateAvailable(() => {
         updateToast.classList.remove('hidden');
@@ -780,9 +868,12 @@ function syncControlsFromSettings(): void {
 
 function syncRotationControlsVisibility(): void {
     const isRotating = muteRotationInput.checked;
-    rotationBoxesInput.disabled = !isRotating;
-    rotationTimeInput.disabled = !isRotating;
-    rotateMenuButton.classList.toggle('is-on', isRotating);
+    if (!isRotating && rotateMenu.matches(':popover-open')) rotateMenu.hidePopover();
+    rotateToggleButton.classList.toggle('is-on', isRotating);
+    rotateToggleButton.setAttribute('aria-pressed', String(isRotating));
+    rotateToggleButton.title = isRotating
+        ? 'Turn audio rotation off (hover or press Arrow Down for settings)'
+        : 'Turn audio rotation on';
 }
 
 function sanitizeRotationBoxesInput(): void {
@@ -2239,6 +2330,22 @@ alertVolumeInput.addEventListener('change', () => {
 });
 audioOutputButton.addEventListener('click', toggleMonoOutput);
 
+rotateToggleButton.addEventListener('click', () => {
+    muteRotationInput.checked = !muteRotationInput.checked;
+    updateAllSettings();
+    if (muteRotationInput.checked && !rotateMenu.matches(':popover-open')) rotateMenu.showPopover();
+});
+rotateToggleButton.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' && muteRotationInput.checked) {
+        event.preventDefault();
+        if (!rotateMenu.matches(':popover-open')) rotateMenu.showPopover();
+        rotationBoxesInput.focus();
+    }
+});
+rotateMenu.addEventListener('toggle', () => {
+    rotateToggleButton.setAttribute('aria-expanded', String(rotateMenu.matches(':popover-open')));
+});
+
 [muteRotationInput, rotationBoxesInput, rotationTimeInput, autoLiveInput].forEach((input) => {
     input.addEventListener('change', updateAllSettings);
 });
@@ -2246,6 +2353,7 @@ rotationBoxesInput.addEventListener('input', sanitizeRotationBoxesInput);
 
 initWindowControls();
 initPresetMenuControls();
+initHoverMenus();
 initZoomControls();
 initSourceDropAndPaste();
 initUpdateControls();

@@ -726,7 +726,7 @@ article:has(> .box-form:not(.hidden)) .box-chip {
     anchor-name: --youtube-menu;
 }
 
-#rotate-menu-button {
+#rotate-toggle {
     anchor-name: --rotate-menu;
 }
 
@@ -803,6 +803,35 @@ article:has(> .box-form:not(.hidden)) .box-chip {
 .app-header-reveal:has([popover]:popover-open, details[open]) > .app-header {
     transform: translateY(0);
     visibility: visible;
+}
+
+/* Give toolbar controls a visible surface even before hovering. Keep tally colours
+   for active toggles and alerts, and the filled accent for the Add action. */
+.app-header .btn {
+    border: 1px solid var(--color-hairline-strong);
+}
+
+.app-header .btn:not(.btn-primary, .is-on, .is-alert) {
+    background: var(--color-surface-2);
+}
+
+.app-header .btn:not(.btn-primary, .is-on, .is-alert):hover {
+    border-color: var(--color-label-3);
+    background: var(--color-hairline-strong);
+    color: var(--color-label);
+}
+
+.app-header .btn.is-on:hover {
+    border-color: var(--color-accent-hover);
+    background: color-mix(in srgb, var(--color-accent) 32%, var(--color-surface));
+}
+
+#rotate-toggle[aria-pressed='true'] .switch {
+    background: var(--color-switch);
+}
+
+#rotate-toggle[aria-pressed='true'] .switch::before {
+    translate: 0.75rem 0;
 }
 
 .app-header:has(#preset-menu[open]) {

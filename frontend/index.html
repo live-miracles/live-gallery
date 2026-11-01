@@ -99,19 +99,17 @@
         <section
           class="flex flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap max-[980px]:order-3 max-[980px]:w-full max-[980px]:min-w-0"
           aria-label="Gallery controls">
-          <button id="rotate-menu-button" class="btn" popovertarget="rotate-menu" aria-haspopup="dialog">
+          <button
+            id="rotate-toggle"
+            class="btn"
+            type="button"
+            aria-pressed="false"
+            aria-haspopup="dialog"
+            aria-controls="rotate-menu"
+            aria-expanded="false"
+            title="Turn audio rotation on">
             Rotate
-            <svg
-              class="chevron"
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="3"
-              stroke-linecap="round"
-              stroke-linejoin="round">
-              <path d="m6 9 6 6 6-6" />
-            </svg>
+            <span class="switch switch-sm" aria-hidden="true"></span>
           </button>
           <div id="rotate-menu" popover class="toolbar-menu material menu w-max gap-1 p-2 [&:popover-open]:grid">
             <label class="flex items-center justify-between gap-8 px-1 pb-1" title="Move the audio across the boxes below, one at a time.">

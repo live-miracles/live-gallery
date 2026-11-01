@@ -2,7 +2,7 @@
 
 A box is one source with its own player, audio meter and alerts. Drag a box by its grip to reorder it.
 
-The global toolbar hides by default. Move the pointer to the top edge to reveal it, or press **Tab** to reach it with the keyboard. It stays visible while a toolbar menu is open. Revealing it overlays the gallery without resizing boxes.
+The global toolbar hides by default. Move the pointer to the top edge to reveal it, or press **Tab** to reach it with the keyboard. The Preset and YouTube menus open on hover as well as click. Hover over Rotate while it is enabled to see its settings. The toolbar stays visible while a menu is open. Revealing it overlays the gallery without resizing boxes.
 
 ## Sources
 
