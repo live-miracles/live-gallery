@@ -54,7 +54,6 @@ type BoxElements = {
     canvas: HTMLCanvasElement;
     muteButton: HTMLButtonElement;
     soloButton: HTMLButtonElement;
-    alertToggleButton: HTMLButtonElement;
     alertOverlay: HTMLElement;
     webviewReady: boolean;
     pendingCommands: Record<string, unknown>[];
@@ -1023,8 +1022,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         <div class="box-header">
           <button class="drag-handle btn box-tool-btn cursor-grab" title="Drag to reorder this box" aria-label="Drag to reorder this box">${icon('grip')}</button>
           <span class="box-header-name"></span>
-          <button class="alert-visibility btn box-tool-btn box-tool-btn-first" title="Hide alerts for this box" aria-label="Hide alerts for this box">${icon('eye')}</button>
-          <button class="mute btn box-tool-btn" title="Mute this box" aria-label="Mute this box"></button>
+          <button class="mute btn box-tool-btn box-tool-btn-first" title="Mute this box" aria-label="Mute this box"></button>
           <button class="solo btn box-tool-btn" title="Solo this box and mute the others" aria-label="Solo this box and mute the others" aria-pressed="false">${icon('headphones')}</button>
           <button class="reload btn box-tool-btn" title="Reload this box" aria-label="Reload this box">${icon('refresh')}</button>
           <button class="copy-url btn box-tool-btn" title="Copy this box's URL" aria-label="Copy this box's URL">${icon('copy')}</button>
@@ -1089,12 +1087,11 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         canvas: root.querySelector<HTMLCanvasElement>('canvas')!,
         muteButton: root.querySelector<HTMLButtonElement>('.mute')!,
         soloButton: root.querySelector<HTMLButtonElement>('.solo')!,
-        alertToggleButton: root.querySelector<HTMLButtonElement>('.alert-visibility')!,
         alertOverlay: root.querySelector<HTMLElement>('.alert-overlay')!,
         webviewReady: false,
         pendingCommands: [],
     };
-    const { number, form, webview, canvas, muteButton, alertToggleButton } = entry;
+    const { number, form, webview, canvas, muteButton } = entry;
     const dragHandle = root.querySelector<HTMLButtonElement>('.drag-handle')!;
     const expandButton = root.querySelector<HTMLButtonElement>('.expand')!;
 
@@ -1212,7 +1209,6 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         disableRotationAudio();
         soloBox(box.id);
     });
-    alertToggleButton.addEventListener('click', () => alertController.toggleBoxAlerts(box.id));
     root.querySelector<HTMLButtonElement>('.cancel')!.addEventListener('click', () =>
         setEditing(form, false),
     );

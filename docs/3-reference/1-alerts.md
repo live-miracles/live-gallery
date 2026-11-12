@@ -1,6 +1,6 @@
 # Alerts
 
-Every box is checked for video and audio problems. The **Alerts** button turns red while anything is active and opens a side panel with the all active alerts and the latest 100 alerts saved locally, including how long each alert lasted. The panel leaves the wall usable; click an alert to jump to its box. Each alert can be switched off in **Settings → Alerts**, or hidden for one box with its eye button.
+Every box is checked for video and audio problems. The **Alerts** button turns red while anything is active and opens a side panel with the all active alerts and the latest 100 alerts saved locally, including how long each alert lasted. The panel leaves the wall usable; click an alert to jump to its box. Each alert can be switched off in **Settings → Alerts**.
 
 History survives app restarts and preset changes. Repeated alerts are separate entries, with the box name and number recorded when they started. Alerts still active when monitoring stops are marked **Interrupted**; they do not trigger beeps after restarting.
 

@@ -1,5 +1,4 @@
 import { GalleryBox, GallerySettings } from './utils.js';
-import { icon } from './icons.js';
 
 export type LevelPayload = {
     boxId: string;
@@ -60,7 +59,6 @@ type AudioHealthState = {
 
 type BoxEntry = {
     root: HTMLElement;
-    alertToggleButton: HTMLButtonElement;
     alertOverlay: HTMLElement;
 };
 
@@ -141,7 +139,6 @@ export function createAlertController({
         saveHistory();
     });
     const audioHealth = new Map<string, AudioHealthState>();
-    const hiddenBoxAlerts = new Set<string>();
     const alertResolveTimers = new Map<string, number>();
     let alertBeepTimer = 0;
 
@@ -330,7 +327,6 @@ export function createAlertController({
                 alerts.delete(key);
             });
         audioHealth.delete(boxId);
-        hiddenBoxAlerts.delete(boxId);
         render();
     }
 
@@ -345,7 +341,6 @@ export function createAlertController({
         });
         alerts.clear();
         audioHealth.clear();
-        hiddenBoxAlerts.clear();
         render();
     }
 
@@ -370,20 +365,12 @@ export function createAlertController({
         elements.forEach((entry, boxId) => {
             const boxAlerts = activeAlerts.filter((alert) => alert.boxId === boxId);
             const hasActiveBoxAlerts = boxAlerts.length > 0;
-            const isHidden = hiddenBoxAlerts.has(boxId);
-            const alertToggleLabel = isHidden
-                ? 'Show alerts for this box'
-                : 'Hide alerts for this box';
 
             entry.root.classList.toggle('box-alert', hasActiveBoxAlerts);
-            entry.alertToggleButton.innerHTML = icon(isHidden ? 'eye-off' : 'eye');
-            entry.alertToggleButton.title = alertToggleLabel;
-            entry.alertToggleButton.setAttribute('aria-label', 'Hide alerts for this box');
-            entry.alertToggleButton.setAttribute('aria-pressed', String(isHidden));
             entry.alertOverlay.replaceChildren();
-            entry.alertOverlay.classList.toggle('hidden', !hasActiveBoxAlerts || isHidden);
+            entry.alertOverlay.classList.toggle('hidden', !hasActiveBoxAlerts);
 
-            if (!hasActiveBoxAlerts || isHidden) {
+            if (!hasActiveBoxAlerts) {
                 return;
             }
 
@@ -653,15 +640,6 @@ export function createAlertController({
         });
     }
 
-    function toggleBoxAlerts(boxId: string): void {
-        if (hiddenBoxAlerts.has(boxId)) {
-            hiddenBoxAlerts.delete(boxId);
-        } else {
-            hiddenBoxAlerts.add(boxId);
-        }
-        render();
-    }
-
     return {
         acknowledgeAll,
         clearBox,
@@ -669,7 +647,6 @@ export function createAlertController({
         render,
         renderList,
         resetAll,
-        toggleBoxAlerts,
         updateAudioHealth,
         updateFromHealth,
     };
