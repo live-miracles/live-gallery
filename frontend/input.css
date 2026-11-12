@@ -552,24 +552,46 @@ main {
     }
 }
 
-/* The header is a toolbar that fades in over the top of the video when the pointer or
-   keyboard focus is in the box, so the picture keeps the whole tile. Below 100% it shrinks
-   with the box so every button still fits; above 100% it stays at normal size. */
+/* The header is a toolbar that fades in when the pointer or keyboard focus is in the box.
+   It floats as a pill in the middle of the picture, clear of the player's own controls
+   along the top and bottom, so it takes no space. An empty box, or one being edited, has
+   its card in the middle, so there the toolbar runs along the top instead. Below 100% it
+   shrinks with the box so every button still fits; above 100% it stays at normal size. */
 .box-header {
     position: absolute;
-    top: 0;
-    right: 0;
-    left: 0;
+    inset: 0;
     z-index: 30;
     display: flex;
     align-items: center;
-    height: 28px;
-    padding: 0 4px;
-    background: rgb(1 1 2 / 0.78);
+    width: fit-content;
+    max-width: calc(100% - 16px);
+    height: 32px;
+    margin: auto;
+    padding: 0 5px;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    border-radius: 999px;
+    background: rgb(12 13 18 / 0.82);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.45);
+    backdrop-filter: blur(8px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 120ms ease;
     zoom: min(1, var(--box-scale));
+}
+
+[data-signal='empty'] > .box-header,
+article:not(.box-expanded):has(> .box-form:not(.hidden)) > .box-header {
+    bottom: auto;
+    width: auto;
+    max-width: none;
+    height: 28px;
+    margin: 0;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 0;
+    background: rgb(1 1 2 / 0.78);
+    box-shadow: none;
+    backdrop-filter: none;
 }
 
 article:hover > .box-header,
@@ -606,8 +628,8 @@ article:focus-within > .box-header,
 }
 
 /* The player draws its own controls along the bottom while the pointer is over it, so the
-   chip steps aside. An alerting box keeps it. */
-article:hover:not(.box-alert):not(.box-expanded) .box-chip,
+   chip steps aside, on an alerting box too: its red border still marks it. */
+article:hover:not(.box-expanded) .box-chip,
 article:has(> .box-form:not(.hidden)) .box-chip {
     opacity: 0;
 }
@@ -690,6 +712,7 @@ article:has(> .box-form:not(.hidden)) .box-chip {
 
 /* An alerting box's problems, on one line across the top of the picture. */
 .alert-banner {
+    transition: opacity 120ms ease;
     overflow: hidden;
     padding: 4px 10px;
     background: var(--color-danger-strong);
@@ -699,6 +722,12 @@ article:has(> .box-form:not(.hidden)) .box-chip {
     text-overflow: ellipsis;
     white-space: nowrap;
     zoom: min(1, var(--box-scale));
+}
+
+/* The player draws controls along its top while the pointer is over it, so the banner
+   steps aside like the chip; the red border still marks the box. */
+article:hover:not(.box-expanded) .alert-banner {
+    opacity: 0;
 }
 
 /* The volume popover sits in the top layer (the toolbar clips overflow) and is
@@ -982,10 +1011,18 @@ button.status-chip {
 /* Expanded, the box fills the window. Its own header names it and offers the way back. */
 .box-expanded > .box-header {
     position: relative;
+    inset: auto;
+    width: auto;
+    max-width: none;
     height: var(--expanded-header-height);
+    margin: 0;
     padding: 0 8px;
     background: var(--color-surface-2);
+    border: 0;
     border-bottom: 1px solid var(--color-hairline);
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
     opacity: 1;
     pointer-events: auto;
 }
