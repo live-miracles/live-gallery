@@ -579,7 +579,24 @@ main {
     zoom: min(1, var(--box-scale));
 }
 
-[data-signal='empty'] > .box-header,
+/* An empty box has nothing to hear, reload or expand: app.ts moves its toolbar onto the
+   card in the middle (placeBoxHeader), where it sits just above the card with only drag,
+   edit and remove. It already shrinks with the card. */
+.empty-card > .box-header {
+    inset: auto auto calc(100% + 6px) 50%;
+    margin: 0;
+    translate: -50% 0;
+    zoom: 1;
+}
+
+.empty-card > .box-header > :is(.alert-visibility, .mute, .solo, .reload, .copy-url, .expand) {
+    display: none;
+}
+
+article:has(> .box-form:not(.hidden)) .empty-card > .box-header {
+    display: none;
+}
+
 article:not(.box-expanded):has(> .box-form:not(.hidden)) > .box-header {
     bottom: auto;
     width: auto;
@@ -594,9 +611,9 @@ article:not(.box-expanded):has(> .box-form:not(.hidden)) > .box-header {
     backdrop-filter: none;
 }
 
-article:hover > .box-header,
-article:focus-within > .box-header,
-.box-dragging > .box-header {
+article:hover .box-header,
+article:focus-within .box-header,
+.box-dragging .box-header {
     opacity: 1;
     pointer-events: auto;
 }
@@ -1155,6 +1172,24 @@ button.status-chip {
     justify-content: center;
     gap: 6px;
     margin-top: 10px;
+}
+
+/* With no boxes the same card sits in the middle of the window, a little larger. */
+.wall-empty .empty-card {
+    padding: 20px 24px;
+}
+
+.wall-empty .empty-title {
+    font-size: 16px;
+}
+
+.wall-empty .empty-hint {
+    margin-top: 4px;
+    font-size: 12.5px;
+}
+
+.wall-empty .empty-actions {
+    margin-top: 14px;
 }
 
 /* Boxes narrower than about 380px get the compact card: one row of buttons, no hint.

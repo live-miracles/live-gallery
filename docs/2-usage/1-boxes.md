@@ -30,7 +30,7 @@ The toolbar counts the wall by these states. Click a count other than **live** t
 - The eye button hides alerts for one box, for example a feed you know is down.
 - The copy button copies the box's URL.
 - Expand fills the window; press **Esc** to go back.
-- A removed box can be restored with **Undo** for 8 s.
+- A removed box can be restored with **Undo** for 8 s. You can remove every box; the empty wall offers the same ways to add a source as an empty box.
 
 ## Sizing
 

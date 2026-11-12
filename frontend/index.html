@@ -242,6 +242,21 @@
 
     <main class="p-1.5">
       <section id="gallery" class="flex flex-wrap items-start" aria-label="Live boxes"></section>
+      <section
+        id="wall-empty"
+        class="wall-empty pointer-events-none fixed inset-0 hidden place-items-center text-center"
+        aria-label="Add the first source">
+        <div class="empty-card pointer-events-auto">
+          <div class="empty-title">Paste a link or drop a file</div>
+          <div class="empty-hint" id="wall-empty-hint"></div>
+          <div class="empty-actions">
+            <button id="wall-empty-paste" type="button" class="btn btn-sm btn-gray">Paste</button>
+            <button id="wall-empty-file" type="button" class="btn btn-sm btn-gray">Choose file…</button>
+            <button id="wall-empty-screen" type="button" class="btn btn-sm btn-gray">Share screen</button>
+            <button id="wall-empty-other" type="button" class="btn btn-sm btn-gray" title="JW Player, VdoCipher or a typed address">Other…</button>
+          </div>
+        </div>
+      </section>
     </main>
 
     <aside

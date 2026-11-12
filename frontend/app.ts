@@ -92,6 +92,7 @@ const meterReleaseDbPerSecond = 20;
 const meterFrameMs = 33;
 
 const gallery = mustGet<HTMLElement>('gallery');
+const wallEmpty = mustGet<HTMLElement>('wall-empty');
 const rotateMenu = mustGet<HTMLElement>('rotate-menu');
 const rotateToggleButton = mustGet<HTMLButtonElement>('rotate-toggle');
 const rotationBoxesInput = mustGet<HTMLInputElement>('rotation-boxes');
@@ -326,6 +327,7 @@ function applyBoxSignal(boxId: string, signal: BoxSignal | null): void {
     const entry = elements.get(boxId);
     if (entry) {
         entry.root.dataset.signal = signal ?? 'empty';
+        placeBoxHeader(entry.root);
         entry.state.textContent = signal ? boxSignalLabels[signal] : '';
         syncBoxLabel(boxId);
     }
@@ -553,6 +555,41 @@ function initSourceDropAndPaste(): void {
     });
 }
 
+// With no boxes the wall shows the same ways to start as an empty box, in the middle of the
+// window. Each button adds the box itself.
+function syncWallEmpty(): void {
+    const isEmpty = boxes.length === 0;
+    wallEmpty.classList.toggle('hidden', !isEmpty);
+    wallEmpty.classList.toggle('grid', isEmpty);
+}
+
+function initWallEmpty(): void {
+    mustGet<HTMLElement>('wall-empty-hint').textContent =
+        `YouTube, HLS or any web page. ${pasteShortcut} works anywhere.`;
+    mustGet<HTMLButtonElement>('wall-empty-paste').addEventListener('click', () => {
+        navigator.clipboard
+            .readText()
+            .then((text) => addSourcesFromText(text))
+            .catch(() => showToast(`Press ${pasteShortcut} to paste`, 'primary'));
+    });
+    mustGet<HTMLButtonElement>('wall-empty-file').addEventListener('click', () => {
+        window.liveGallery
+            .selectLocalMediaFile()
+            .then((fileUrl) => {
+                if (fileUrl) {
+                    addSources([{ type: 'LF', value: fileUrl }]);
+                }
+            })
+            .catch(console.error);
+    });
+    mustGet<HTMLButtonElement>('wall-empty-screen').addEventListener('click', () => {
+        setBoxSource(addBox(), 'SS', '');
+    });
+    mustGet<HTMLButtonElement>('wall-empty-other').addEventListener('click', () => {
+        setEditing(elements.get(addBox().id)!.form, true);
+    });
+}
+
 function initZoomControls(): void {
     window.liveGallery.onBoxZoomStep((direction) => {
         if (direction === 0) {
@@ -588,6 +625,7 @@ function initZoomControls(): void {
     let boxesChanged = false;
     new MutationObserver(() => {
         updateStatusBar();
+        syncWallEmpty();
         if (!settings.fitLayout || boxesChanged) {
             return;
         }
@@ -868,10 +906,6 @@ function loadState(): void {
     settings.alertAudioPhaseMismatch = storedSettings.alertAudioPhaseMismatch ?? true;
     syncControlsFromSettings();
     boxes.splice(0, boxes.length, ...(sharedBoxes.length > 0 ? sharedBoxes : storedBoxes));
-
-    if (boxes.length === 0) {
-        boxes.push(makeBox());
-    }
 }
 
 function clampAlertVolume(value: number): number {
@@ -963,19 +997,21 @@ function render(): void {
     meterClipHoldUntil.clear();
     signalTracker.clear();
     boxes.forEach((box, index) => renderBox(box, index));
+    syncWallEmpty();
     syncSoloButtons();
     alertController.resetAll();
     saveState();
     restartRotation();
 }
 
-function addBox(): void {
+function addBox(): GalleryBox {
     const box = makeBox();
     boxes.push(box);
     renderBox(box, boxes.length - 1);
     syncSoloButtons();
     saveState();
     restartRotation();
+    return box;
 }
 
 function renderBox(box: GalleryBox, index: number, isEditing = false): void {
@@ -1642,6 +1678,22 @@ function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
 
 function toggleExpanded(root: HTMLElement): void {
     root.classList.toggle('box-expanded');
+    placeBoxHeader(root);
+}
+
+// An empty box shows its toolbar on the card in the middle (see .empty-card > .box-header);
+// otherwise the toolbar belongs to the box itself. Moving it keeps its listeners.
+function placeBoxHeader(root: HTMLElement): void {
+    const header = root.querySelector<HTMLElement>('.box-header');
+    const card = root.querySelector<HTMLElement>('.empty-card');
+    if (!header || !card) {
+        return;
+    }
+    const onCard = root.dataset.signal === 'empty' && !root.classList.contains('box-expanded');
+    const parent = onCard ? card : root;
+    if (header.parentElement !== parent) {
+        parent.prepend(header);
+    }
 }
 
 function closeExpandedBox(): boolean {
@@ -1651,6 +1703,7 @@ function closeExpandedBox(): boolean {
     }
 
     root.classList.remove('box-expanded');
+    placeBoxHeader(root);
     const expandButton = root.querySelector<HTMLButtonElement>('.expand');
     if (expandButton) {
         syncExpandButtonTitle(expandButton, root);
@@ -1809,12 +1862,6 @@ function removeBox(boxId: string): void {
     const [removed] = boxes.splice(index, 1);
     forgetBox(removed.id);
 
-    // Removing the last box leaves an empty one; undo takes that placeholder away again.
-    const placeholder = boxes.length === 0 ? makeBox() : null;
-    if (placeholder) {
-        boxes.push(placeholder);
-        renderBox(placeholder, 0);
-    }
     updateBoxNumbers();
     syncSoloButtons();
     saveState();
@@ -1822,21 +1869,8 @@ function removeBox(boxId: string): void {
 
     showToast(`Removed box ${index + 1}`, 'primary', {
         label: 'Undo',
-        run: () => {
-            if (placeholder && boxes.length === 1 && boxes[0] === placeholder) {
-                removeBoxQuietly(placeholder.id);
-            }
-            restoreBox(removed, index);
-        },
+        run: () => restoreBox(removed, index),
     });
-}
-
-function removeBoxQuietly(boxId: string): void {
-    const index = boxes.findIndex((box) => box.id === boxId);
-    if (index >= 0) {
-        boxes.splice(index, 1);
-        forgetBox(boxId);
-    }
 }
 
 // Drops everything the app holds for a box that has left the wall.
@@ -2225,6 +2259,7 @@ initPresetMenuControls();
 initHoverMenus();
 initZoomControls();
 initSourceDropAndPaste();
+initWallEmpty();
 initUpdateControls();
 loadMics().catch((error) => {
     console.error('Error preloading microphones:', error);

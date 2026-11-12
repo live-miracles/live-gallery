@@ -82,9 +82,6 @@ export function createPresetController({
         const previousBoxes = boxes.slice();
         const previousName = currentName;
         boxes.splice(0, boxes.length, ...nextBoxes);
-        if (boxes.length === 0) {
-            boxes.push(makeBox());
-        }
         setCurrentName(name);
         render();
         presetMenu.open = false;
@@ -270,7 +267,7 @@ export function createPresetController({
     function init(): void {
         setCurrentName(currentName);
         newPresetButton.addEventListener('click', () => {
-            replaceWall([makeBox()], '', 'Started a new preset');
+            replaceWall([], '', 'Started a new preset');
         });
 
         exportPresetButton.addEventListener('click', () => {
