@@ -15,6 +15,16 @@ contextBridge.exposeInMainWorld('liveGallery', {
         ipcRenderer.invoke('gallery:copy-text', text) as Promise<void>,
     toggleFullscreen: (): Promise<void> =>
         ipcRenderer.invoke('gallery:toggle-fullscreen') as Promise<void>,
+    isFullscreen: (): Promise<boolean> =>
+        ipcRenderer.invoke('gallery:is-fullscreen') as Promise<boolean>,
+    onFullscreenChange: (callback: (isFullscreen: boolean) => void): (() => void) => {
+        const listener = (_event: Electron.IpcRendererEvent, isFullscreen: boolean): void => {
+            callback(isFullscreen);
+        };
+        ipcRenderer.on('gallery:fullscreen-changed', listener);
+        return () => ipcRenderer.removeListener('gallery:fullscreen-changed', listener);
+    },
+    closeWindow: (): Promise<void> => ipcRenderer.invoke('gallery:close-window') as Promise<void>,
     reload: (): Promise<void> => ipcRenderer.invoke('gallery:reload') as Promise<void>,
     exportPreset: (boxes: PresetBox[]): Promise<boolean> =>
         ipcRenderer.invoke('gallery:export-preset', boxes) as Promise<boolean>,

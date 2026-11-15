@@ -905,6 +905,12 @@ article:hover:not(.box-expanded) .alert-banner {
     color: var(--color-label);
 }
 
+.app-header .btn.btn-danger:not(.btn-primary, .is-on, .is-alert):hover {
+    border-color: var(--color-danger);
+    background: rgb(240 86 61 / 0.16);
+    color: var(--color-danger);
+}
+
 .app-header .btn.is-on:hover {
     border-color: var(--color-accent-hover);
     background: color-mix(in srgb, var(--color-accent) 32%, var(--color-surface));

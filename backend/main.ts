@@ -54,6 +54,12 @@ ipcMain.handle('gallery:toggle-fullscreen', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     win?.setFullScreen(!win.isFullScreen());
 });
+ipcMain.handle('gallery:is-fullscreen', (event) => {
+    return BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false;
+});
+ipcMain.handle('gallery:close-window', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close();
+});
 ipcMain.handle('gallery:reload', (event) => {
     event.sender.reload();
 });
@@ -315,8 +321,18 @@ function trackWindowState(win: BrowserWindow): void {
     win.on('leave-html-full-screen', () => {
         htmlFullScreen = false;
     });
+    // Tells the page, which shows a close button only in full screen (no title bar then).
+    // The value comes from the event: isFullScreen() still reports the old state while
+    // these events fire.
+    const notifyFullScreen = (isFullScreen: boolean): void => {
+        if (!win.isDestroyed()) {
+            win.webContents.send('gallery:fullscreen-changed', isFullScreen);
+        }
+    };
     win.on('enter-full-screen', syncFullScreen);
     win.on('leave-full-screen', syncFullScreen);
+    win.on('enter-full-screen', () => notifyFullScreen(true));
+    win.on('leave-full-screen', () => notifyFullScreen(false));
     win.on('move', saveSoon);
     win.on('resize', saveSoon);
     win.on('maximize', () => {

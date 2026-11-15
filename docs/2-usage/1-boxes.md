@@ -37,4 +37,4 @@ The toolbar counts the wall by these states. Click a count other than **live** t
 - **Box size** (`-` and `+` in the toolbar, or the [shortcuts](../3-reference/2-shortcuts.md)) goes from 50% to 1000%. Choosing a size turns Fit off.
 - **Interface size** in **Settings → Accessibility** scales the whole window, from 75% to 200%.
 
-The app reopens on the same display, position and full-screen state.
+The app reopens on the same display, position and full-screen state. In full screen the toolbar shows a close button (×) at its right end, so you can quit without leaving full screen.

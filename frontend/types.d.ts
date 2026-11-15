@@ -28,6 +28,9 @@ declare global {
             fileUrlForFile: (file: File) => string;
             copyText: (text: string) => Promise<void>;
             toggleFullscreen: () => Promise<void>;
+            isFullscreen: () => Promise<boolean>;
+            onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void;
+            closeWindow: () => Promise<void>;
             reload: () => Promise<void>;
             exportPreset: (boxes: PresetBox[]) => Promise<boolean>;
             importPreset: () => Promise<PresetBox[] | null>;

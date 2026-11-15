@@ -128,6 +128,7 @@ const alertsButton = mustGet<HTMLButtonElement>('alerts-button');
 const alertsCount = mustGet<HTMLElement>('alerts-count');
 const fullscreenButton = mustGet<HTMLButtonElement>('toggle-fullscreen');
 const refreshPageButton = mustGet<HTMLButtonElement>('refresh-page');
+const closeAppButton = mustGet<HTMLButtonElement>('close-app');
 const zoomOutButton = mustGet<HTMLButtonElement>('zoom-out');
 const zoomInButton = mustGet<HTMLButtonElement>('zoom-in');
 const zoomStatusButton = mustGet<HTMLButtonElement>('zoom-status');
@@ -655,6 +656,15 @@ function initWindowControls(): void {
     refreshPageButton.addEventListener('click', () => {
         window.liveGallery.reload().catch(console.error);
     });
+    // Full screen has no title bar, so the toolbar offers the close button there.
+    closeAppButton.addEventListener('click', () => {
+        window.liveGallery.closeWindow().catch(console.error);
+    });
+    const showCloseButton = (isFullscreen: boolean): void => {
+        closeAppButton.classList.toggle('hidden', !isFullscreen);
+    };
+    window.liveGallery.onFullscreenChange(showCloseButton);
+    window.liveGallery.isFullscreen().then(showCloseButton).catch(console.error);
 }
 
 function initPresetMenuControls(): void {
