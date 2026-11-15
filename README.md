@@ -43,7 +43,7 @@ During one live event, a suspected faulty audio embedder made the left and right
 
 ## Monitor Zoom or any desktop app
 
-Anything you can see on your screen can be a box, so Live Gallery also works with Zoom meetings, webinars and other apps that have no embeddable player. Add a **Screen Share** box, pick the window, and use a virtual audio cable ([VB-Cable](https://vb-audio.com/Cable/) on Windows, [BlackHole](https://existential.audio/blackhole/) on macOS) so Live Gallery can listen to the audio. The step-by-step guide is in [Monitor Zoom or any desktop app](docs/2-usage/5-monitor-zoom.md).
+Anything you can see on your screen can be a box, so Live Gallery also works with Zoom meetings, webinars and other apps that have no embeddable player. Add a **Screen Share** box, pick the window, and use a virtual audio cable ([VB-Cable](https://vb-audio.com/Cable/) on Windows, [BlackHole](https://existential.audio/blackhole/) on macOS) so Live Gallery can listen to the audio. The step-by-step guide is in [Monitor Zoom or any desktop app](docs/2-usage/5-monitor-desktop-apps.md).
 
 ## Download
 

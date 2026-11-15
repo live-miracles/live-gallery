@@ -6,6 +6,6 @@ Anything on your screen can be a box, so Live Gallery also covers Zoom meetings,
 2. In Live Gallery, add a box, choose **Screen Share** and select the Zoom window.
 3. In the same box, choose the virtual cable as the audio input.
 
-The box then shows the meeting with live audio meters and alerts, like any other source.
+The box then shows the meeting with live audio meters and alerts, like any other source. If the shared app closes, the box asks you to share a window again, but the meters keep listening to the chosen audio input and pick up the audio as soon as an app plays into it.
 
 Because Zoom plays only into the cable, you will not hear it on your speakers unless you route the cable's audio to them, using your system's sound settings or the cable's monitoring option. The same steps work for any other app.

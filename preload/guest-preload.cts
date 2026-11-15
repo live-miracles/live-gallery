@@ -64,7 +64,8 @@ contextBridge.exposeInMainWorld('liveGalleryGuest', {
         });
     },
     notifyScreenShareEnded: (): void => {
-        disconnectScreenShareAudio();
+        // The audio channel is a separate device and stays metered, so levels resume when
+        // whatever feeds it (Zoom, say) comes back, without choosing the window again.
         ipcRenderer.sendToHost('gallery-screen-share-ended', { boxId });
     },
     openScreenSharePicker: (): void => {
@@ -86,6 +87,8 @@ let connectedStream: MediaStream | null = null;
 let selectedMicStream: MediaStream | null = null;
 let emitLevelsStarted = false;
 let mediaHealthStarted = false;
+let watchedMedia: HTMLMediaElement | null = null;
+let switchHealthMedia: (next: HTMLMediaElement) => void = () => {};
 let autoLiveTimer = 0;
 let lastUserInputAt = -Infinity;
 let userInputTrackingStarted = false;
@@ -110,6 +113,8 @@ const VIDEO_HEALTH_INTERVAL_MS = 500;
 // A box counts as playing only while its playback time keeps moving. The same 8 s as the
 // frozen alert, so a stuck picture never looks live.
 const PLAYBACK_STALE_MS = FROZEN_ALERT_MS;
+// How often to check that the player's video element is still in the page.
+const MEDIA_RECHECK_MS = 2000;
 
 function parseScreenShareValue(value: string): { micDeviceId: string } {
     try {
@@ -416,7 +421,7 @@ function connectScreenShareAudio(stream: MediaStream): void {
         return;
     }
 
-    disconnectScreenShareAudio(false);
+    disconnectScreenShareAudio();
 
     try {
         const context = new AudioContext();
@@ -447,16 +452,13 @@ function connectScreenShareAudio(stream: MediaStream): void {
     }
 }
 
-function disconnectScreenShareAudio(stopMic = true): void {
+// Tears down the meter graph only. The selected audio device stays open for the life of
+// the page, so the meter can be rebuilt from it.
+function disconnectScreenShareAudio(): void {
     streamAudioTools?.source.disconnect();
     streamAudioTools?.gain.disconnect();
     streamAudioTools?.context.close().catch(() => {});
     streamAudioTools = null;
-
-    if (stopMic) {
-        selectedMicStream?.getTracks().forEach((track) => track.stop());
-        selectedMicStream = null;
-    }
 }
 
 function connectScreenShareAudioFromPage(): void {
@@ -552,6 +554,18 @@ function keepMediaAudibleForMeter(media: HTMLMediaElement): void {
     }, 1000);
 }
 
+function disconnectMediaAudio(): void {
+    if (!audioTools) {
+        return;
+    }
+
+    audioTools.meterSource?.disconnect();
+    audioTools.source.disconnect();
+    audioTools.gain.disconnect();
+    audioTools.context.close().catch(() => {});
+    audioTools = null;
+}
+
 function connectMedia(media: HTMLMediaElement): void {
     const stream = media.srcObject instanceof MediaStream ? media.srcObject : null;
     if (isScreenShare) {
@@ -566,6 +580,8 @@ function connectMedia(media: HTMLMediaElement): void {
         return;
     }
 
+    // A different element than the one the meter was built on: drop the old graph first.
+    disconnectMediaAudio();
     keepMediaAudibleForMeter(media);
     connectedElement = media;
     connectedStream = stream;
@@ -575,7 +591,8 @@ function connectMedia(media: HTMLMediaElement): void {
 }
 
 function watchMedia(media: HTMLMediaElement): void {
-    startMediaHealthLoop(media);
+    watchedMedia = media;
+    switchHealthMedia = startMediaHealthLoop(media);
 
     if (isScreenShare) {
         window.addEventListener('live-gallery-media-ready', connectScreenShareAudioFromPage);
@@ -584,8 +601,30 @@ function watchMedia(media: HTMLMediaElement): void {
 
     connectMedia(media);
     window.addEventListener('live-gallery-media-ready', () => {
-        connectMedia(media);
+        if (watchedMedia) {
+            connectMedia(watchedMedia);
+        }
     });
+    window.setInterval(followReplacedMedia, MEDIA_RECHECK_MS);
+}
+
+// Some players (JW Player, for one) rebuild themselves and put a new <video> in the page.
+// The old element is then dead, so both the meter and the health checks, built on it, would
+// go quiet for good. While the element is in the page this is one cheap property read; once
+// it is gone, the page is searched for its replacement and both are moved over to it.
+function followReplacedMedia(): void {
+    if (!watchedMedia || watchedMedia.isConnected) {
+        return;
+    }
+
+    const next = querySelectorAllShadows<HTMLMediaElement>('video, audio')[0];
+    if (!next || next === watchedMedia) {
+        return;
+    }
+
+    watchedMedia = next;
+    switchHealthMedia(next);
+    connectMedia(next);
 }
 
 function sendVideoHealth(kind: VideoHealthAlert, active: boolean): void {
@@ -596,12 +635,15 @@ function sendVideoHealth(kind: VideoHealthAlert, active: boolean): void {
     });
 }
 
-function startMediaHealthLoop(media: HTMLMediaElement): void {
+// Returns a function that moves the checks onto a replacement element (see
+// followReplacedMedia), starting its playback history afresh.
+function startMediaHealthLoop(initialMedia: HTMLMediaElement): (next: HTMLMediaElement) => void {
     if (mediaHealthStarted) {
-        return;
+        return () => {};
     }
 
     mediaHealthStarted = true;
+    let media = initialMedia;
     let hasStarted = false;
     let bufferingSince = 0;
     let lastTime = media.currentTime;
@@ -619,14 +661,22 @@ function startMediaHealthLoop(media: HTMLMediaElement): void {
         lastTimeChangedAt = performance.now();
     };
 
-    media.addEventListener('playing', markStarted);
-    media.addEventListener('timeupdate', () => {
-        if (media.currentTime !== lastTime) {
-            hasStarted = true;
-            lastTime = media.currentTime;
-            lastTimeChangedAt = performance.now();
-        }
-    });
+    // Events from an element that was replaced are ignored.
+    const listen = (element: HTMLMediaElement): void => {
+        element.addEventListener('playing', () => {
+            if (element === media) {
+                markStarted();
+            }
+        });
+        element.addEventListener('timeupdate', () => {
+            if (element === media && media.currentTime !== lastTime) {
+                hasStarted = true;
+                lastTime = media.currentTime;
+                lastTimeChangedAt = performance.now();
+            }
+        });
+    };
+    listen(media);
 
     window.setInterval(() => {
         const now = performance.now();
@@ -677,6 +727,20 @@ function startMediaHealthLoop(media: HTMLMediaElement): void {
             ipcRenderer.sendToHost('gallery-playback', { boxId, playing });
         }
     }, VIDEO_HEALTH_INTERVAL_MS);
+
+    return (next) => {
+        if (next === media) {
+            return;
+        }
+
+        media = next;
+        listen(next);
+        hasStarted = false;
+        lastTime = next.currentTime;
+        lastTimeChangedAt = performance.now();
+        bufferingSince = 0;
+        wasBuffering = false;
+    };
 }
 
 function clickAutoLive(): void {
@@ -768,7 +832,6 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
             new CustomEvent('live-gallery-start-screen-share', { detail: command.source }),
         );
     } else if (command.type === 'reset-screen-share') {
-        disconnectScreenShareAudio();
         window.dispatchEvent(new CustomEvent('live-gallery-reset-screen-share'));
     }
 });

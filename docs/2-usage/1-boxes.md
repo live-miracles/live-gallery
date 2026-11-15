@@ -10,7 +10,7 @@ The global toolbar hides by default. Move the pointer to the top edge to reveal 
 - JW Player (set the **JW server host** in **Settings** if you use your own) and VdoCipher
 - HLS (`.m3u8`) and other embeddable pages, as custom URLs
 - Local audio or video files
-- Screen shares with a chosen audio input, which also covers [Zoom and other desktop apps](5-monitor-zoom.md)
+- Screen shares with a chosen audio input, which also covers [Zoom and other desktop apps](5-monitor-desktop-apps.md)
 
 ## Box status
 

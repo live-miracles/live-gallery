@@ -12,7 +12,7 @@ Live Gallery is a desktop app for monitoring many live streams in one window.
 - [Presets](2-usage/2-presets.md): save layouts, or build a wall from YouTube links
 - [Rotating audio](2-usage/3-rotating-audio.md)
 - [YouTube controls](2-usage/4-youtube-controls.md): auto live, max volume, lowest quality
-- [Monitor Zoom or any desktop app](2-usage/5-monitor-zoom.md)
+- [Monitor Zoom or any desktop app](2-usage/5-monitor-desktop-apps.md)
 
 ## Reference
 
