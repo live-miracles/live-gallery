@@ -33,11 +33,16 @@
         content: '';
       }
 
+      /* The box's hover toolbar floats in the middle of the picture and its name chip sits at
+         the bottom left, so the prompt sits between them, in the lower part. The button
+         still fills the box, so a click anywhere opens the picker. */
       .start {
         position: absolute;
         inset: 0;
-        display: grid;
-        place-items: center;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0 0 22vh;
         width: 100%;
         height: 100%;
         border: 0;
