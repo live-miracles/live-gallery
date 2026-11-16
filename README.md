@@ -69,7 +69,7 @@ The installers are not code-signed yet, so Windows SmartScreen or macOS Gatekeep
 ## Quick start
 
 1. Copy a stream link and press **Ctrl V** anywhere in the window (Cmd V on macOS). It fills the first empty box, or adds one; paste several links, one per line, to add several boxes at once.
-2. For JW Player, VdoCipher or an address you type, use **Other…** on an empty box (**+** adds one).
+2. For JW Player, VdoCipher or an address you type, use **+** in the toolbar, which adds a box with its form open.
 3. Use the headphones button on a box to solo it, or enable **Rotate audio** to cycle through boxes.
 4. Open **Settings** to choose which alerts are on. The Alerts button shows active alerts and the latest 100 alerts saved locally.
 

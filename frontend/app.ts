@@ -327,7 +327,6 @@ function applyBoxSignal(boxId: string, signal: BoxSignal | null): void {
     const entry = elements.get(boxId);
     if (entry) {
         entry.root.dataset.signal = signal ?? 'empty';
-        placeBoxHeader(entry.root);
         entry.state.textContent = signal ? boxSignalLabels[signal] : '';
         syncBoxLabel(boxId);
     }
@@ -585,9 +584,7 @@ function initWallEmpty(): void {
     mustGet<HTMLButtonElement>('wall-empty-screen').addEventListener('click', () => {
         setBoxSource(addBox(), 'SS', '');
     });
-    mustGet<HTMLButtonElement>('wall-empty-other').addEventListener('click', () => {
-        setEditing(elements.get(addBox().id)!.form, true);
-    });
+    mustGet<HTMLButtonElement>('wall-empty-other').addEventListener('click', addBoxWithForm);
 }
 
 function initZoomControls(): void {
@@ -1023,6 +1020,24 @@ function addBox(): GalleryBox {
     return box;
 }
 
+// A new box opens on its edit form, ready for a name and a source, so adding one is not a
+// second click on Edit. Only the empty wall offers the quick ways to start (see initWallEmpty).
+// The form starts on the previous box's type, since a wall is often built from one kind of
+// source. Only the form's choice changes: the box stays empty until it is saved, which
+// matters for Screen Share, whose page would load at once.
+function addBoxWithForm(): void {
+    const previousType = boxes[boxes.length - 1]?.type;
+    const { form, root } = elements.get(addBox().id)!;
+    if (previousType) {
+        const typeSelect = form.elements.namedItem('type') as HTMLSelectElement;
+        typeSelect.value = previousType;
+        typeSelect.dispatchEvent(new Event('change'));
+    }
+    setEditing(form, true);
+    root.scrollIntoView({ block: 'nearest' });
+    form.querySelector<HTMLInputElement>('[name="name"]')!.focus();
+}
+
 function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
@@ -1070,18 +1085,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
           </div>
           <canvas class="meter pointer-events-none absolute top-0 right-0 h-full w-2.5 bg-black/30" width="10" height="180"></canvas>
           <div class="alert-overlay pointer-events-none absolute inset-x-0 top-0 z-20 hidden"></div>
-          <div class="empty-state pointer-events-none absolute inset-0 grid place-items-center text-center">
-            <div class="empty-card pointer-events-auto">
-              <div class="empty-title">Paste a link or drop a file</div>
-              <div class="empty-hint">YouTube, HLS or any web page. ${pasteShortcut} works anywhere.</div>
-              <div class="empty-actions">
-                <button type="button" class="empty-paste btn btn-sm btn-gray">Paste</button>
-                <button type="button" class="empty-file btn btn-sm btn-gray">Choose file…</button>
-                <button type="button" class="empty-screen btn btn-sm btn-gray">Share screen</button>
-                <button type="button" class="empty-edit btn btn-sm btn-gray" title="JW Player, VdoCipher or a typed address">Other…</button>
-              </div>
-            </div>
-          </div>
+          <div class="empty-state pointer-events-none absolute inset-0" aria-hidden="true"></div>
         </div>`;
 
     const entry: BoxElements = {
@@ -1181,28 +1185,6 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
         syncExpandButtonTitle(expandButton, root);
     });
     syncExpandButtonTitle(expandButton, root);
-    root.querySelector<HTMLButtonElement>('.empty-paste')!.addEventListener('click', () => {
-        navigator.clipboard
-            .readText()
-            .then((text) => addSourcesFromText(text, box.id))
-            .catch(() => showToast(`Press ${pasteShortcut} to paste`, 'primary'));
-    });
-    root.querySelector<HTMLButtonElement>('.empty-file')!.addEventListener('click', () => {
-        window.liveGallery
-            .selectLocalMediaFile()
-            .then((fileUrl) => {
-                if (fileUrl) {
-                    setBoxSource(box, 'LF', fileUrl);
-                }
-            })
-            .catch(console.error);
-    });
-    root.querySelector<HTMLButtonElement>('.empty-edit')!.addEventListener('click', () => {
-        setEditing(form, true);
-    });
-    root.querySelector<HTMLButtonElement>('.empty-screen')!.addEventListener('click', () => {
-        setBoxSource(box, 'SS', '');
-    });
     root.querySelector<HTMLButtonElement>('.edit')!.addEventListener('click', () => {
         setEditing(form, true);
     });
@@ -1684,22 +1666,6 @@ function setUnmuted(root: HTMLElement, isUnmuted: boolean): void {
 
 function toggleExpanded(root: HTMLElement): void {
     root.classList.toggle('box-expanded');
-    placeBoxHeader(root);
-}
-
-// An empty box shows its toolbar on the card in the middle (see .empty-card > .box-header);
-// otherwise the toolbar belongs to the box itself. Moving it keeps its listeners.
-function placeBoxHeader(root: HTMLElement): void {
-    const header = root.querySelector<HTMLElement>('.box-header');
-    const card = root.querySelector<HTMLElement>('.empty-card');
-    if (!header || !card) {
-        return;
-    }
-    const onCard = root.dataset.signal === 'empty' && !root.classList.contains('box-expanded');
-    const parent = onCard ? card : root;
-    if (header.parentElement !== parent) {
-        parent.prepend(header);
-    }
 }
 
 function closeExpandedBox(): boolean {
@@ -1709,7 +1675,6 @@ function closeExpandedBox(): boolean {
     }
 
     root.classList.remove('box-expanded');
-    placeBoxHeader(root);
     const expandButton = root.querySelector<HTMLButtonElement>('.expand');
     if (expandButton) {
         syncExpandButtonTitle(expandButton, root);
@@ -2135,9 +2100,7 @@ clipboardToastAction.addEventListener('click', () => {
     action?.run();
 });
 
-document.getElementById('add-box')!.addEventListener('click', () => {
-    addBox();
-});
+document.getElementById('add-box')!.addEventListener('click', addBoxWithForm);
 
 document.getElementById('docs-button')!.addEventListener('click', () => {
     presetMenu.open = false;
