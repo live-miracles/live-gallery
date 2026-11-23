@@ -42,6 +42,22 @@ type StreamAudioTools = {
     sampleBuffers: AudioSampleBuffers;
 };
 
+type WebAudioLevels = {
+    left: number;
+    right: number;
+    phase: { correlation: number; monoLossDb: number } | null;
+    at: number;
+};
+
+type WebAudioTapOptions = {
+    mono: boolean;
+    fftSize: number;
+    intervalMs: number;
+    phaseIntervalMs: number;
+    levelEvent: string;
+    controlEvent: string;
+};
+
 type CapturableMediaElement = HTMLMediaElement & {
     captureStream?: () => MediaStream;
 };
@@ -97,7 +113,12 @@ let switchHealthMedia: (next: HTMLMediaElement) => void = () => {};
 let autoLiveTimer = 0;
 let lastUserInputAt = -Infinity;
 let userInputTrackingStarted = false;
+let webAudioLevels: WebAudioLevels | null = null;
 const boostedMedia = new WeakSet<HTMLMediaElement>();
+// Events between this world and the page's, for the Web Audio tap.
+const WEB_AUDIO_LEVEL_EVENT = 'live-gallery-web-audio-levels';
+const WEB_AUDIO_CONTROL_EVENT = 'live-gallery-web-audio-control';
+const WEB_AUDIO_STALE_MS = 500;
 const USER_VOLUME_INPUT_WINDOW_MS = 1500;
 const isScreenShare = window.location.pathname.endsWith('/screen-share.html');
 let phaseMetricsEnabled = params.get('audioPhaseMetrics') !== '0';
@@ -118,8 +139,12 @@ const VIDEO_HEALTH_INTERVAL_MS = 500;
 // A box counts as playing only while its playback time keeps moving. The same 8 s as the
 // frozen alert, so a stuck picture never looks live.
 const PLAYBACK_STALE_MS = FROZEN_ALERT_MS;
-// How often to check the page's media elements (see recheckMedia).
+// How often to check that the watched element is still in the page: one property read.
 const MEDIA_RECHECK_MS = 2000;
+// How often to search the whole page for other media elements (see recheckMedia). The
+// search walks every element, so it stays rare; playing and volume events cover the usual
+// cases sooner.
+const MEDIA_SCAN_MS = 15000;
 
 function parseScreenShareValue(value: string): { micDeviceId: string } {
     try {
@@ -366,27 +391,52 @@ function applyMute(): void {
         streamAudioTools.gain.gain.value = muted ? 0 : 1;
         resumeContext(streamAudioTools.context);
     }
+
+    window.dispatchEvent(
+        new CustomEvent(WEB_AUDIO_CONTROL_EVENT, { detail: { muted, mono: monoOutput } }),
+    );
+}
+
+// Levels of the page's own Web Audio output, read by the tap in the page's world (see
+// installWebAudioTap). Older than this and the page has gone quiet.
+function currentWebAudioLevels(): WebAudioLevels | null {
+    return webAudioLevels && performance.now() - webAudioLevels.at < WEB_AUDIO_STALE_MS
+        ? webAudioLevels
+        : null;
 }
 
 function emitLevels(): void {
     const tools = streamAudioTools ?? audioTools;
-    if (tools && levelsEnabled) {
-        const leftSamples = readTimeDomain(tools.analyserL, tools.sampleBuffers.left);
-        const rightSamples = readTimeDomain(tools.analyserR, tools.sampleBuffers.right);
+    const webLevels = currentWebAudioLevels();
+    if ((tools || webLevels) && levelsEnabled) {
         const now = performance.now();
         const shouldReadPhaseMetrics =
             phaseMetricsEnabled && now - lastPhaseMetricsAt >= PHASE_METRICS_INTERVAL_MS;
-        const phaseMetrics = shouldReadPhaseMetrics
-            ? calculatePhaseMetrics(leftSamples, rightSamples)
-            : null;
+        let left = -Infinity;
+        let right = -Infinity;
+        let phaseMetrics: { correlation: number; monoLossDb: number } | null = null;
+        if (tools) {
+            const leftSamples = readTimeDomain(tools.analyserL, tools.sampleBuffers.left);
+            const rightSamples = readTimeDomain(tools.analyserR, tools.sampleBuffers.right);
+            left = calculatePeakDb(leftSamples);
+            right = calculatePeakDb(rightSamples);
+            if (shouldReadPhaseMetrics) {
+                phaseMetrics = calculatePhaseMetrics(leftSamples, rightSamples);
+            }
+        }
+        // The meter shows the loudest of the page's elements and its Web Audio output. Stereo
+        // phase comes from the elements, or from Web Audio when only that has a signal.
+        if (webLevels) {
+            left = Math.max(left, webLevels.left);
+            right = Math.max(right, webLevels.right);
+            if (shouldReadPhaseMetrics && !phaseMetrics) {
+                phaseMetrics = webLevels.phase;
+            }
+        }
         if (shouldReadPhaseMetrics) {
             lastPhaseMetricsAt = now;
         }
-        const payload = {
-            boxId,
-            left: calculatePeakDb(leftSamples),
-            right: calculatePeakDb(rightSamples),
-        };
+        const payload = { boxId, left, right };
         if (!phaseMetricsEnabled) {
             ipcRenderer.sendToHost('gallery-level', {
                 ...payload,
@@ -657,10 +707,27 @@ function watchMedia(media: HTMLMediaElement): void {
             connectMedia(watchedMedia);
         }
     });
-    window.setInterval(recheckMedia, MEDIA_RECHECK_MS);
-    // Media events do not bubble, but a capturing listener still sees them in the page.
-    document.addEventListener('playing', recheckMedia, true);
+    window.setInterval(() => {
+        if (
+            watchedMedia &&
+            (!watchedMedia.isConnected || performance.now() - lastMediaScanAt >= MEDIA_SCAN_MS)
+        ) {
+            recheckMedia();
+        }
+    }, MEDIA_RECHECK_MS);
+    // Media events do not bubble, but a capturing listener still sees them in the page (not
+    // inside shadow trees; the periodic search covers those). The element that fired is
+    // checked on its own, with no search.
+    const onMediaEvent = (event: Event): void => {
+        if (event.target instanceof HTMLMediaElement) {
+            recheckMedia([event.target]);
+        }
+    };
+    document.addEventListener('playing', onMediaEvent, true);
+    document.addEventListener('volumechange', onMediaEvent, true);
 }
+
+let lastMediaScanAt = 0;
 
 // Keeps the box on the page's current media:
 // - Any element in the page that is making sound is added to the meter.
@@ -668,13 +735,17 @@ function watchMedia(media: HTMLMediaElement): void {
 //   The old element is then dead, so the health checks built on it would go quiet for good.
 // - If the watched element is paused while another one plays sound, the health checks and
 //   the "playing" status move to that one.
-function recheckMedia(): void {
+// Without `candidates` it searches the whole page; events pass the one element they saw.
+function recheckMedia(candidates?: HTMLMediaElement[]): void {
     const watched = watchedMedia;
     if (!watched) {
         return;
     }
 
-    const candidates = findMediaElements();
+    if (!candidates) {
+        candidates = findMediaElements();
+        lastMediaScanAt = performance.now();
+    }
     if (audioTools) {
         dropRemovedMedia(audioTools);
         routeAudibleMedia(audioTools, candidates);
@@ -902,6 +973,207 @@ ipcRenderer.on('gallery-command', (_event, command: GalleryCommand) => {
         window.dispatchEvent(new CustomEvent('live-gallery-reset-screen-share'));
     }
 });
+
+// Runs in the page's own world, as text injected before the page's scripts (this preload
+// cannot reach the page's AudioContexts). Whatever the page connects to a context's
+// destination goes through a tap first: a meter, then a gain that this world sets for mute
+// and mono. The tap reports its levels back as events. Everything it uses is inside it or
+// passed in, since it is not compiled with the rest of this file.
+function installWebAudioTap(
+    options: WebAudioTapOptions,
+    peakDb: (data: Float32Array<ArrayBuffer>) => number,
+    phaseOf: (
+        left: Float32Array<ArrayBuffer>,
+        right: Float32Array<ArrayBuffer>,
+    ) => { correlation: number; monoLossDb: number } | null,
+): void {
+    type Tap = { input: GainNode; out: GainNode; analyserL: AnalyserNode; analyserR: AnalyserNode };
+
+    const taps = new Map<BaseAudioContext, Tap>();
+    const nativeConnect = AudioNode.prototype.connect;
+    const nativeDisconnect = AudioNode.prototype.disconnect;
+    const nativeSetInterval = window.setInterval.bind(window);
+    const size = options.fftSize;
+    const readLeft = new Float32Array(size);
+    const readRight = new Float32Array(size);
+    const sumLeft = new Float32Array(size);
+    const sumRight = new Float32Array(size);
+    let muted = true;
+    let mono = options.mono;
+    let reporting = false;
+    let lastPhase: { correlation: number; monoLossDb: number } | null = null;
+    let lastPhaseAt = 0;
+
+    // The page's own connect is patched below; the tap's wiring uses the original.
+    const link = (from: AudioNode, to: AudioNode, output?: number): void => {
+        Reflect.apply(nativeConnect, from, output === undefined ? [to] : [to, output]);
+    };
+
+    const applyOutput = (tap: Tap): void => {
+        tap.out.channelCountMode = mono ? 'explicit' : 'max';
+        tap.out.channelCount = mono ? 1 : 2;
+        tap.out.gain.value = muted ? 0 : 1;
+    };
+
+    const report = (): void => {
+        sumLeft.fill(0);
+        sumRight.fill(0);
+        let active = 0;
+        for (const [context, tap] of taps) {
+            if (context.state === 'closed') {
+                taps.delete(context);
+                continue;
+            }
+            tap.analyserL.getFloatTimeDomainData(readLeft);
+            tap.analyserR.getFloatTimeDomainData(readRight);
+            for (let index = 0; index < size; index += 1) {
+                sumLeft[index] += readLeft[index] ?? 0;
+                sumRight[index] += readRight[index] ?? 0;
+            }
+            active += 1;
+        }
+        if (active === 0) {
+            return;
+        }
+
+        const now = performance.now();
+        if (now - lastPhaseAt >= options.phaseIntervalMs) {
+            lastPhaseAt = now;
+            lastPhase = phaseOf(sumLeft, sumRight);
+        }
+        window.dispatchEvent(
+            new CustomEvent(options.levelEvent, {
+                detail: {
+                    left: peakDb(sumLeft),
+                    right: peakDb(sumRight),
+                    correlation: lastPhase?.correlation ?? null,
+                    monoLossDb: lastPhase?.monoLossDb ?? null,
+                },
+            }),
+        );
+    };
+
+    const tapFor = (destination: AudioDestinationNode): Tap | null => {
+        const context = destination.context;
+        if (context instanceof OfflineAudioContext) {
+            return null;
+        }
+
+        const existing = taps.get(context);
+        if (existing) {
+            return existing;
+        }
+
+        try {
+            // Always two channels into the meter, so a mono page does not read as one
+            // channel missing.
+            const input = context.createGain();
+            input.channelCount = 2;
+            input.channelCountMode = 'explicit';
+            input.channelInterpretation = 'speakers';
+            const out = context.createGain();
+            const splitter = context.createChannelSplitter(2);
+            const analyserL = context.createAnalyser();
+            const analyserR = context.createAnalyser();
+            analyserL.fftSize = size;
+            analyserR.fftSize = size;
+            link(input, out);
+            link(out, destination);
+            link(input, splitter);
+            link(splitter, analyserL, 0);
+            link(splitter, analyserR, 1);
+
+            const tap = { input, out, analyserL, analyserR };
+            applyOutput(tap);
+            taps.set(context, tap);
+            if (!reporting) {
+                reporting = true;
+                nativeSetInterval(report, options.intervalMs);
+            }
+            return tap;
+        } catch {
+            return null;
+        }
+    };
+
+    AudioNode.prototype.connect = function (this: AudioNode, ...args: unknown[]) {
+        const [target, ...rest] = args;
+        if (target instanceof AudioDestinationNode) {
+            const tap = tapFor(target);
+            if (tap) {
+                Reflect.apply(nativeConnect, this, [tap.input, ...rest]);
+                return target;
+            }
+        }
+        return Reflect.apply(nativeConnect, this, args);
+    } as typeof AudioNode.prototype.connect;
+
+    AudioNode.prototype.disconnect = function (this: AudioNode, ...args: unknown[]) {
+        const [target, ...rest] = args;
+        if (target instanceof AudioDestinationNode) {
+            const tap = taps.get(target.context);
+            if (tap) {
+                return Reflect.apply(nativeDisconnect, this, [tap.input, ...rest]);
+            }
+        }
+        return Reflect.apply(nativeDisconnect, this, args);
+    } as typeof AudioNode.prototype.disconnect;
+
+    window.addEventListener(options.controlEvent, (event) => {
+        const detail = (event as CustomEvent<{ muted?: boolean; mono?: boolean }>).detail;
+        muted = detail?.muted !== false;
+        mono = detail?.mono === true;
+        taps.forEach(applyOutput);
+    });
+}
+
+function injectWebAudioTap(): void {
+    const options: WebAudioTapOptions = {
+        mono: monoOutput,
+        fftSize: LEVEL_FFT_SIZE,
+        intervalMs: LEVEL_INTERVAL_MS,
+        phaseIntervalMs: PHASE_METRICS_INTERVAL_MS,
+        levelEvent: WEB_AUDIO_LEVEL_EVENT,
+        controlEvent: WEB_AUDIO_CONTROL_EVENT,
+    };
+    const source = `(() => {
+        const PHASE_MIN_SIGNAL_RMS = ${PHASE_MIN_SIGNAL_RMS};
+        ${calculatePeakDb.toString()}
+        ${calculatePhaseMetrics.toString()}
+        ;(${installWebAudioTap.toString()})(
+            ${JSON.stringify(options)}, calculatePeakDb, calculatePhaseMetrics);
+    })()`;
+    webFrame.executeJavaScript(source).catch(() => {});
+
+    window.addEventListener(WEB_AUDIO_LEVEL_EVENT, (event) => {
+        const detail = (
+            event as CustomEvent<{
+                left: number;
+                right: number;
+                correlation: number | null;
+                monoLossDb: number | null;
+            }>
+        ).detail;
+        if (typeof detail?.left !== 'number' || typeof detail.right !== 'number') {
+            return;
+        }
+
+        webAudioLevels = {
+            left: detail.left,
+            right: detail.right,
+            phase:
+                typeof detail.correlation === 'number' && typeof detail.monoLossDb === 'number'
+                    ? { correlation: detail.correlation, monoLossDb: detail.monoLossDb }
+                    : null,
+            at: performance.now(),
+        };
+        startLevelLoop();
+    });
+}
+
+if (!isScreenShare) {
+    injectWebAudioTap();
+}
 
 window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
