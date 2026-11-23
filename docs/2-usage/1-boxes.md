@@ -27,6 +27,7 @@ The toolbar counts the wall by these states. Click a count other than **live** t
 
 ## Worth knowing
 
+- A box meters every `<video>` and `<audio>` element on its page that is making sound, mixed into one meter. Muted elements and sounds the page plays without an element, such as Web Audio, are not metered.
 - The copy button copies the box's URL.
 - Expand fills the window; press **Esc** to go back.
 - A removed box can be restored with **Undo** for 8 s. You can remove every box; the empty wall then offers quick ways to start: paste, choose a file, share a screen, or fill in a form.

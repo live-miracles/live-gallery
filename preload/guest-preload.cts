@@ -15,16 +15,21 @@ type AudioSampleBuffers = {
     right: Float32Array<ArrayBuffer>;
 };
 
+type MediaSourceNodes = {
+    source: MediaElementAudioSourceNode;
+    meterSource?: MediaStreamAudioSourceNode;
+};
+
+// One graph per box. Every audible <video> or <audio> element in the page is a source into
+// it, so the meter reads their mix.
 type AudioTools = {
     context: AudioContext;
     splitter: ChannelSplitterNode;
     analyserL: AnalyserNode;
     analyserR: AnalyserNode;
     gain: GainNode;
-    source: MediaElementAudioSourceNode;
-    meterSource?: MediaStreamAudioSourceNode;
+    sources: Map<HTMLMediaElement, MediaSourceNodes>;
     sampleBuffers: AudioSampleBuffers;
-    usingCapturedMeter: boolean;
 };
 
 type StreamAudioTools = {
@@ -113,7 +118,7 @@ const VIDEO_HEALTH_INTERVAL_MS = 500;
 // A box counts as playing only while its playback time keeps moving. The same 8 s as the
 // frozen alert, so a stuck picture never looks live.
 const PLAYBACK_STALE_MS = FROZEN_ALERT_MS;
-// How often to check that the player's video element is still in the page.
+// How often to check the page's media elements (see recheckMedia).
 const MEDIA_RECHECK_MS = 2000;
 
 function parseScreenShareValue(value: string): { micDeviceId: string } {
@@ -142,11 +147,30 @@ function querySelectorAllShadows<T extends Element>(
     return [...direct, ...shadowResults];
 }
 
+function findMediaElements(): HTMLMediaElement[] {
+    return querySelectorAllShadows<HTMLMediaElement>('video, audio');
+}
+
+function isPlaying(media: HTMLMediaElement): boolean {
+    return !media.paused && !media.ended;
+}
+
+// A muted element (a decorative looping video, say) makes no sound, so it never counts.
+function isAudiblyPlaying(media: HTMLMediaElement): boolean {
+    return isPlaying(media) && !media.muted && media.volume > 0;
+}
+
+// The element the box's health checks follow: one that is making sound, else one that is
+// playing, else the first in the page.
+function pickMedia(candidates: HTMLMediaElement[]): HTMLMediaElement | undefined {
+    return candidates.find(isAudiblyPlaying) ?? candidates.find(isPlaying) ?? candidates[0];
+}
+
 async function waitForVideo(): Promise<HTMLMediaElement | null> {
     for (let attempt = 0; attempt < 120; attempt += 1) {
-        const video = querySelectorAllShadows<HTMLMediaElement>('video, audio')[0];
-        if (video) {
-            return video;
+        const media = pickMedia(findMediaElements());
+        if (media) {
+            return media;
         }
         await sleep(500);
     }
@@ -154,29 +178,22 @@ async function waitForVideo(): Promise<HTMLMediaElement | null> {
     return null;
 }
 
-function createTools(media: HTMLMediaElement): AudioTools | null {
+function createTools(): AudioTools | null {
     try {
         const context = new AudioContext();
-        const source = context.createMediaElementSource(media);
         const { splitter, analyserL, analyserR } = createMeterNodes(context);
         const gain = context.createGain();
-
-        source.connect(splitter);
-        source.connect(gain);
         gain.connect(context.destination);
 
-        const tools = {
+        return {
             context,
-            source,
             splitter,
             analyserL,
             analyserR,
             gain,
+            sources: new Map(),
             sampleBuffers: createSampleBuffers(),
-            usingCapturedMeter: false,
         };
-        attachCapturedMeterSource(tools, media);
-        return tools;
     } catch (error) {
         ipcRenderer.sendToHost('gallery-error', {
             boxId,
@@ -186,8 +203,27 @@ function createTools(media: HTMLMediaElement): AudioTools | null {
     }
 }
 
-function attachCapturedMeterSource(tools: AudioTools, media: HTMLMediaElement): void {
-    if (tools.usingCapturedMeter || !media.currentSrc.startsWith('file:')) {
+// Throws if the element cannot be routed, e.g. the page already built its own Web Audio
+// graph on it.
+function addMediaSource(tools: AudioTools, media: HTMLMediaElement): void {
+    let nodes = tools.sources.get(media);
+    if (!nodes) {
+        const source = tools.context.createMediaElementSource(media);
+        source.connect(tools.splitter);
+        source.connect(tools.gain);
+        nodes = { source };
+        tools.sources.set(media, nodes);
+    }
+
+    attachCapturedMeterSource(tools, media, nodes);
+}
+
+function attachCapturedMeterSource(
+    tools: AudioTools,
+    media: HTMLMediaElement,
+    nodes: MediaSourceNodes,
+): void {
+    if (nodes.meterSource || !media.currentSrc.startsWith('file:')) {
         return;
     }
 
@@ -202,11 +238,10 @@ function attachCapturedMeterSource(tools: AudioTools, media: HTMLMediaElement): 
 
     const meterSource = tools.context.createMediaStreamSource(stream);
     try {
-        tools.source.disconnect(tools.splitter);
+        nodes.source.disconnect(tools.splitter);
     } catch {}
     meterSource.connect(tools.splitter);
-    tools.meterSource = meterSource;
-    tools.usingCapturedMeter = true;
+    nodes.meterSource = meterSource;
 }
 
 function createMeterNodes(context: AudioContext): {
@@ -462,7 +497,7 @@ function disconnectScreenShareAudio(): void {
 }
 
 function connectScreenShareAudioFromPage(): void {
-    const media = querySelectorAllShadows<HTMLMediaElement>('video, audio')[0];
+    const media = findMediaElements()[0];
     const stream = media?.srcObject;
     if (!(stream instanceof MediaStream)) {
         return;
@@ -554,38 +589,55 @@ function keepMediaAudibleForMeter(media: HTMLMediaElement): void {
     }, 1000);
 }
 
-function disconnectMediaAudio(): void {
-    if (!audioTools) {
-        return;
+// Elements the page removed are dead; release their nodes.
+function dropRemovedMedia(tools: AudioTools): void {
+    for (const [media, nodes] of tools.sources) {
+        if (!media.isConnected) {
+            nodes.meterSource?.disconnect();
+            nodes.source.disconnect();
+            tools.sources.delete(media);
+        }
     }
+}
 
-    audioTools.meterSource?.disconnect();
-    audioTools.source.disconnect();
-    audioTools.gain.disconnect();
-    audioTools.context.close().catch(() => {});
-    audioTools = null;
+// Elements that could not be routed are not retried every check.
+const unroutableMedia = new WeakSet<HTMLMediaElement>();
+
+// Any other element in the page that starts making sound joins the meter. Routing happens
+// only then, since a routed element can no longer play through the page's own output.
+function routeAudibleMedia(tools: AudioTools, candidates: HTMLMediaElement[]): void {
+    for (const media of candidates) {
+        if (tools.sources.has(media) || unroutableMedia.has(media) || !isAudiblyPlaying(media)) {
+            continue;
+        }
+
+        try {
+            addMediaSource(tools, media);
+        } catch {
+            unroutableMedia.add(media);
+        }
+    }
 }
 
 function connectMedia(media: HTMLMediaElement): void {
-    const stream = media.srcObject instanceof MediaStream ? media.srcObject : null;
     if (isScreenShare) {
         return;
     }
 
-    if (connectedElement === media && audioTools) {
-        connectedStream = stream;
-        keepMediaAudibleForMeter(media);
-        attachCapturedMeterSource(audioTools, media);
-        applyMute();
-        return;
-    }
-
-    // A different element than the one the meter was built on: drop the old graph first.
-    disconnectMediaAudio();
     keepMediaAudibleForMeter(media);
     connectedElement = media;
-    connectedStream = stream;
-    audioTools = createTools(media);
+    connectedStream = media.srcObject instanceof MediaStream ? media.srcObject : null;
+    audioTools ??= createTools();
+    if (audioTools) {
+        try {
+            addMediaSource(audioTools, media);
+        } catch (error) {
+            ipcRenderer.sendToHost('gallery-error', {
+                boxId,
+                message: error instanceof Error ? error.message : String(error),
+            });
+        }
+    }
     applyMute();
     startLevelLoop();
 }
@@ -605,20 +657,35 @@ function watchMedia(media: HTMLMediaElement): void {
             connectMedia(watchedMedia);
         }
     });
-    window.setInterval(followReplacedMedia, MEDIA_RECHECK_MS);
+    window.setInterval(recheckMedia, MEDIA_RECHECK_MS);
+    // Media events do not bubble, but a capturing listener still sees them in the page.
+    document.addEventListener('playing', recheckMedia, true);
 }
 
-// Some players (JW Player, for one) rebuild themselves and put a new <video> in the page.
-// The old element is then dead, so both the meter and the health checks, built on it, would
-// go quiet for good. While the element is in the page this is one cheap property read; once
-// it is gone, the page is searched for its replacement and both are moved over to it.
-function followReplacedMedia(): void {
-    if (!watchedMedia || watchedMedia.isConnected) {
+// Keeps the box on the page's current media:
+// - Any element in the page that is making sound is added to the meter.
+// - Some players (JW Player, for one) rebuild themselves and put a new <video> in the page.
+//   The old element is then dead, so the health checks built on it would go quiet for good.
+// - If the watched element is paused while another one plays sound, the health checks and
+//   the "playing" status move to that one.
+function recheckMedia(): void {
+    const watched = watchedMedia;
+    if (!watched) {
         return;
     }
 
-    const next = querySelectorAllShadows<HTMLMediaElement>('video, audio')[0];
-    if (!next || next === watchedMedia) {
+    const candidates = findMediaElements();
+    if (audioTools) {
+        dropRemovedMedia(audioTools);
+        routeAudibleMedia(audioTools, candidates);
+    }
+
+    if (watched.isConnected && isPlaying(watched)) {
+        return;
+    }
+
+    const next = pickMedia(candidates);
+    if (!next || next === watched || (watched.isConnected && !isAudiblyPlaying(next))) {
         return;
     }
 
