@@ -605,8 +605,11 @@ article:not(.box-expanded):has(> .box-form:not(.hidden)) > .box-header {
     backdrop-filter: none;
 }
 
+/* Keyboard focus keeps the controls up; a mouse click leaves focus on the button, which must
+   not pin them open once the pointer has gone. The edit form keeps its own bar open. */
 article:hover .box-header,
-article:focus-within .box-header,
+article:has(> .box-header :focus-visible) .box-header,
+article:has(> .box-form:not(.hidden)) .box-header,
 .box-dragging .box-header {
     opacity: 1;
     pointer-events: auto;
@@ -839,7 +842,7 @@ article:hover:not(.box-expanded) .alert-banner {
 }
 
 .app-header-reveal:hover > .app-header,
-.app-header-reveal:focus-within > .app-header,
+.app-header-reveal:has(:focus-visible) > .app-header,
 .app-header-reveal:has([popover]:popover-open, details[open]) > .app-header {
     transform: translateY(0);
     visibility: visible;
