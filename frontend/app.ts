@@ -1002,7 +1002,11 @@ function render(): void {
     meterStates.clear();
     meterClipHoldUntil.clear();
     signalTracker.clear();
-    boxes.forEach((box, index) => renderBox(box, index));
+    boxes.forEach((box, index) => {
+        renderBox(box, index);
+        // A loaded wall fades in box by box, capped so a big wall is not slow to appear.
+        elements.get(box.id)!.root.style.animationDelay = `${Math.min(index * 25, 250)}ms`;
+    });
     syncWallEmpty();
     syncSoloButtons();
     alertController.resetAll();
@@ -1042,6 +1046,7 @@ function renderBox(box: GalleryBox, index: number, isEditing = false): void {
     const root = document.createElement('article');
     root.className =
         'bg-surface relative m-1 h-fit w-[calc(279px*var(--box-scale))] max-w-[calc(100%-0.5rem)] border-hairline overflow-hidden rounded-lg border';
+    root.classList.add('box-enter');
     root.setAttribute('role', 'group');
     root.innerHTML = `
         <div class="box-header">
@@ -1669,7 +1674,7 @@ function toggleExpanded(root: HTMLElement): void {
 }
 
 function closeExpandedBox(): boolean {
-    const root = gallery.querySelector<HTMLElement>('.box-expanded');
+    const root = gallery.querySelector<HTMLElement>('.box-expanded:not(.box-leave)');
     if (!root) {
         return false;
     }
@@ -1846,12 +1851,33 @@ function removeBox(boxId: string): void {
 
 // Drops everything the app holds for a box that has left the wall.
 function forgetBox(boxId: string): void {
-    elements.get(boxId)?.root.remove();
+    const root = elements.get(boxId)?.root;
+    if (root) {
+        fadeOutAndRemove(root);
+    }
     elements.delete(boxId);
     meterClipHoldUntil.delete(boxId);
     meterStates.delete(boxId);
     signalTracker.set(boxId, null);
     alertController.clearBox(boxId);
+}
+
+// The box is already gone from the wall's state; this only lets it fade before it leaves the page.
+function fadeOutAndRemove(root: HTMLElement): void {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        root.remove();
+        return;
+    }
+
+    root.classList.add('box-leave');
+    root.setAttribute('aria-hidden', 'true');
+    root.addEventListener('animationend', (event) => {
+        if (event.target === root) {
+            root.remove();
+        }
+    });
+    // In case the animation never runs, such as in a background window.
+    window.setTimeout(() => root.remove(), 400);
 }
 
 function restoreBox(box: GalleryBox, index: number): void {

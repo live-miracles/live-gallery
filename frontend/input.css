@@ -574,8 +574,11 @@ main {
     box-shadow: 0 4px 16px rgb(0 0 0 / 0.45);
     backdrop-filter: blur(8px);
     opacity: 0;
+    transform: scale(0.94);
     pointer-events: none;
-    transition: opacity 120ms ease;
+    transition:
+        opacity 140ms ease,
+        transform 140ms ease;
     zoom: min(1, var(--box-scale));
 }
 
@@ -612,6 +615,7 @@ article:has(> .box-header :focus-visible) .box-header,
 article:has(> .box-form:not(.hidden)) .box-header,
 .box-dragging .box-header {
     opacity: 1;
+    transform: none;
     pointer-events: auto;
 }
 
@@ -834,11 +838,16 @@ article:hover:not(.box-expanded) .alert-banner {
     z-index: 200;
 }
 
+/* Slides down on reveal and back up on hide. Visibility waits for the slide-out to finish. */
 .app-header {
     position: absolute;
     inset: 0 0 auto;
     transform: translateY(-100%);
     visibility: hidden;
+    pointer-events: none;
+    transition:
+        transform 180ms ease-in,
+        visibility 0s linear 180ms;
 }
 
 .app-header-reveal:hover > .app-header,
@@ -846,6 +855,10 @@ article:hover:not(.box-expanded) .alert-banner {
 .app-header-reveal:has([popover]:popover-open, details[open]) > .app-header {
     transform: translateY(0);
     visibility: visible;
+    pointer-events: auto;
+    transition:
+        transform 180ms ease-out,
+        visibility 0s;
 }
 
 /* Give toolbar controls a visible surface even before hovering. Keep tally colours
@@ -965,6 +978,43 @@ button.status-chip {
     }
     100% {
         box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* Boxes fade up when they join the wall (a loaded preset staggers them, see render in app.ts)
+   and fade down before they go. Opacity and a small transform only: no layout. */
+.box-enter {
+    animation: box-enter 220ms ease-out backwards;
+}
+
+@keyframes box-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.97);
+    }
+}
+
+.box-leave {
+    pointer-events: none;
+    animation: box-leave 160ms ease-in forwards;
+}
+
+@keyframes box-leave {
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .box-enter,
+    .box-leave {
+        animation: none;
+    }
+
+    .app-header,
+    .box-header {
+        transition: none !important;
     }
 }
 
