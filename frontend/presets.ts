@@ -77,8 +77,18 @@ export function createPresetController({
         presetLabel.title = name ? `Preset: ${name}` : '';
     }
 
-    // Everything that replaces the wall can be undone from the toast it shows.
+    // Everything that replaces the wall asks first (unless the wall is empty) and can be
+    // undone from the toast it shows.
     function replaceWall(nextBoxes: GalleryBox[], name: string, message: string): void {
+        if (
+            boxes.length > 0 &&
+            !window.confirm(
+                `Replace the current ${boxes.length === 1 ? 'box' : `${boxes.length} boxes`} with this preset?`,
+            )
+        ) {
+            return;
+        }
+
         const previousBoxes = boxes.slice();
         const previousName = currentName;
         boxes.splice(0, boxes.length, ...nextBoxes);
