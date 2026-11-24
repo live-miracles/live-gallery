@@ -14,6 +14,11 @@ type PresetControllerOptions = {
     presetNameDialog: HTMLDialogElement;
     presetNameTitle: HTMLElement;
     presetNameInput: HTMLInputElement;
+    confirmDialog: HTMLDialogElement;
+    confirmTitle: HTMLElement;
+    confirmMessage: HTMLElement;
+    confirmCancelButton: HTMLButtonElement;
+    confirmOkButton: HTMLButtonElement;
     newPresetButton: HTMLButtonElement;
     exportPresetButton: HTMLButtonElement;
     copyPresetButton: HTMLButtonElement;
@@ -32,6 +37,11 @@ export function createPresetController({
     presetNameDialog,
     presetNameTitle,
     presetNameInput,
+    confirmDialog,
+    confirmTitle,
+    confirmMessage,
+    confirmCancelButton,
+    confirmOkButton,
     newPresetButton,
     exportPresetButton,
     copyPresetButton,
@@ -77,14 +87,50 @@ export function createPresetController({
         presetLabel.title = name ? `Preset: ${name}` : '';
     }
 
+    // The app's own confirmation dialog; resolves true only when the action button is chosen.
+    function confirmAction(options: {
+        title: string;
+        message: string;
+        confirmLabel: string;
+        destructive?: boolean;
+    }): Promise<boolean> {
+        confirmTitle.textContent = options.title;
+        confirmMessage.textContent = options.message;
+        confirmOkButton.textContent = options.confirmLabel;
+        confirmOkButton.classList.toggle('btn-primary', !options.destructive);
+        confirmOkButton.classList.toggle('btn-destructive', Boolean(options.destructive));
+        presetMenu.open = false;
+        // Escape leaves the previous answer in returnValue, so clear it first.
+        confirmDialog.returnValue = '';
+        confirmDialog.showModal();
+        // Deleting defaults to Cancel; everything else defaults to the action.
+        requestAnimationFrame(() =>
+            (options.destructive ? confirmCancelButton : confirmOkButton).focus(),
+        );
+
+        return new Promise((resolve) => {
+            confirmDialog.addEventListener(
+                'close',
+                () => resolve(confirmDialog.returnValue === 'default'),
+                { once: true },
+            );
+        });
+    }
+
     // Everything that replaces the wall asks first (unless the wall is empty) and can be
     // undone from the toast it shows.
-    function replaceWall(nextBoxes: GalleryBox[], name: string, message: string): void {
+    async function replaceWall(
+        nextBoxes: GalleryBox[],
+        name: string,
+        message: string,
+    ): Promise<void> {
         if (
             boxes.length > 0 &&
-            !window.confirm(
-                `Replace the current ${boxes.length === 1 ? 'box' : `${boxes.length} boxes`} with this preset?`,
-            )
+            !(await confirmAction({
+                title: 'Replace the current boxes?',
+                message: `The ${boxes.length === 1 ? 'box' : `${boxes.length} boxes`} on the wall will be replaced. You can undo it right after.`,
+                confirmLabel: 'Replace',
+            }))
         ) {
             return;
         }
@@ -105,12 +151,12 @@ export function createPresetController({
         });
     }
 
-    function importPresetBoxes(presetBoxes: PresetBox[] | null): void {
+    function importPresetBoxes(presetBoxes: PresetBox[] | null): Promise<void> {
         if (!presetBoxes) {
-            return;
+            return Promise.resolve();
         }
 
-        replaceWall(presetToBoxes(presetBoxes), '', 'Preset imported');
+        return replaceWall(presetToBoxes(presetBoxes), '', 'Preset imported');
     }
 
     function renderSavedPresets(presets: SavedPreset[]): void {
@@ -134,7 +180,14 @@ export function createPresetController({
             loadButton.textContent = preset.name;
             loadButton.title = preset.name;
             loadButton.addEventListener('click', () => {
-                replaceWall(presetToBoxes(preset.boxes), preset.name, `Loaded “${preset.name}”`);
+                replaceWall(
+                    presetToBoxes(preset.boxes),
+                    preset.name,
+                    `Loaded “${preset.name}”`,
+                ).catch((error) => {
+                    console.error('Could not load preset:', error);
+                    showToast('Could not load preset', 'error');
+                });
             });
 
             const renameButton = document.createElement('button');
@@ -161,7 +214,10 @@ export function createPresetController({
             deleteButton.setAttribute('aria-label', 'Delete preset');
             deleteButton.addEventListener('click', (event) => {
                 event.stopPropagation();
-                deleteSavedPreset(preset.name);
+                deleteSavedPreset(preset.name).catch((error) => {
+                    console.error('Could not delete preset:', error);
+                    showToast('Delete failed', 'error');
+                });
             });
 
             row.append(loadButton, renameButton, deleteButton);
@@ -216,7 +272,11 @@ export function createPresetController({
         const existing = presets.find((preset) => preset.name.toLowerCase() === savedName);
         if (
             existing &&
-            !window.confirm(`Preset "${existing.name}" already exists. Overwrite it?`)
+            !(await confirmAction({
+                title: 'Overwrite preset?',
+                message: `A preset named “${existing.name}” already exists. Saving replaces its boxes with the current ones.`,
+                confirmLabel: 'Overwrite',
+            }))
         ) {
             return;
         }
@@ -254,8 +314,15 @@ export function createPresetController({
             });
     }
 
-    function deleteSavedPreset(name: string): void {
-        if (!window.confirm(`Delete preset "${name}"?`)) {
+    async function deleteSavedPreset(name: string): Promise<void> {
+        if (
+            !(await confirmAction({
+                title: 'Delete preset?',
+                message: `“${name}” will be deleted from your saved presets. This cannot be undone.`,
+                confirmLabel: 'Delete',
+                destructive: true,
+            }))
+        ) {
             return;
         }
 
@@ -277,7 +344,10 @@ export function createPresetController({
     function init(): void {
         setCurrentName(currentName);
         newPresetButton.addEventListener('click', () => {
-            replaceWall([], '', 'Started a new preset');
+            replaceWall([], '', 'Started a new preset').catch((error) => {
+                console.error('Could not start a new preset:', error);
+                showToast('Could not start a new preset', 'error');
+            });
         });
 
         exportPresetButton.addEventListener('click', () => {

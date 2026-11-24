@@ -220,6 +220,20 @@ main {
         color: var(--color-danger);
     }
 
+    /* The filled button of a confirmation that deletes something. */
+    .btn-destructive {
+        background: var(--color-danger);
+        color: #fff;
+
+        &:hover {
+            background: color-mix(in srgb, var(--color-danger) 88%, #fff);
+        }
+
+        &:active {
+            background: color-mix(in srgb, var(--color-danger) 88%, #000);
+        }
+    }
+
     /* A toggle that is on (rotation, mono output, beeps) and a button reporting a problem. */
     .btn.is-on {
         background: color-mix(in srgb, var(--color-accent) 18%, transparent);

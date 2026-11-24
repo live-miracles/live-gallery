@@ -309,6 +309,17 @@
       </form>
     </dialog>
 
+    <dialog id="confirm-dialog" class="dialog w-[24rem]" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+      <form method="dialog" class="p-5">
+        <h2 id="confirm-title" class="text-[15px] font-semibold tracking-tight">Are you sure?</h2>
+        <p id="confirm-message" class="text-label-2 mt-2 text-sm leading-relaxed"></p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button id="confirm-cancel" value="cancel" class="btn btn-gray min-w-20">Cancel</button>
+          <button id="confirm-ok" value="default" class="btn btn-primary min-w-20">OK</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="alerts-dialog" class="dialog alerts-sheet" aria-labelledby="alerts-title">
       <form method="dialog" class="flex max-h-full min-h-0 flex-col">
         <div class="dialog-header">
